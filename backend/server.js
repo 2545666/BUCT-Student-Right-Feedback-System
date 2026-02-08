@@ -17,6 +17,7 @@ const compression = require('compression');
 const morgan = require('morgan');
 
 const app = express();
+app.set('trust proxy', 1);
 
 // ============================================
 // 环境配置
@@ -66,9 +67,18 @@ app.use('/api', limiter);
 
 // 登录接口更严格的限制
 const loginLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1小时
-  max: 10, // 每小时最多10次登录尝试
-  message: { success: false, message: '登录尝试次数过多，请1小时后再试' }
+  windowMs: 10 * 60 * 1000, // 1小时
+  max: 10000000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req, res) => {
+        // 如果请求里有学号，就锁学号；如果没有（比如乱填的），才锁 IP
+        return req.body.studentId || req.ip;
+    },
+    message: { 
+        success: false, 
+        message: "密码错误次数过多，该账号已被暂时锁定，请10分钟后再试" 
+    }
 });
 
 // 请求体解析
