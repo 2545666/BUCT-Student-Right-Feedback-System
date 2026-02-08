@@ -247,7 +247,7 @@ const LoginPage = ({ onLogin, onRegister }) => {
          <h1 className="text-xl font-medium text-purple-200/80 mb-2">
               北京化工大学国际教育学院
          </h1>
-         <p className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 tracking-wider drop-shadow-sm py-2">
+         <p className="text-2xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 tracking-wider drop-shadow-sm py-2">
            学生权益反馈系统
          </p>
         </div>
@@ -328,7 +328,7 @@ const LoginPage = ({ onLogin, onRegister }) => {
           </Button>
         </form>
         
-        <p className="mt-6 text-center text-xs text-purple-200/40">
+        <p className="mt-6 text-center text-[10px] md:text-xs text-purple-200/40 px-4">
           © 2026北京化工大学 国际教育学院 学生权益部 版权所有
         </p>
       </Card>
@@ -413,7 +413,9 @@ const DashboardPage = ({ user, token, onLogout }) => {
              className="w-12 h-12 object-contain" // object-contain 保证图片完整显示不被裁剪
            />
             <div>
-              <h1 className="text-lg font-bold text-white">学生权益反馈系统</h1>
+              <h1 className="text-lg md:text-2xl font-bold text-white whitespace-nowrap">
+                  学生权益反馈系统
+                </h1>
               <p className="text-xs text-purple-200/60">北京化工大学国际教育学院</p>
             </div>
           </div>
