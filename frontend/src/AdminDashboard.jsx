@@ -9,6 +9,8 @@ export default function AdminDashboard({ user, token, onLogout }) {
   const [selectedFeedback, setSelectedFeedback] = useState(null);
   const [filters, setFilters] = useState({ status: '', category: '', priority: '' });
   const [loading, setLoading] = useState(false);
+  const [resetStudentId, setResetStudentId] = useState('');
+  const [resetNewPassword, setResetNewPassword] = useState('');
   const [responseText, setResponseText] = useState('');
 
   const categories = {
@@ -99,6 +101,34 @@ export default function AdminDashboard({ user, token, onLogout }) {
       alert('网络错误');
     }
   };
+  const handleResetPassword = async () => {
+    if (!resetStudentId || !resetNewPassword) {
+      alert('请输入学号和新密码');
+      return;
+    }
+    if (!confirm(`确定要将学号 ${resetStudentId} 的密码重置吗？`)) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/admin/users/${resetStudentId}/reset-password`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ newPassword: resetNewPassword })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        setResetStudentId('');
+        setResetNewPassword('');
+      } else {
+        alert(data.message || '重置失败');
+      }
+    } catch (err) {
+      alert('网络错误');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950/30 to-slate-950">
@@ -170,6 +200,40 @@ export default function AdminDashboard({ user, token, onLogout }) {
             </div>
           </div>
         )}
+        
+        <div className="mb-8 p-6 rounded-2xl bg-white/5 border border-white/10">
+          <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
+            <span>🔐</span> 用户密码重置
+          </h3>
+          <div className="flex flex-col md:flex-row gap-4 items-end">
+            <div className="flex-1 w-full">
+              <label className="text-sm text-purple-200/60 mb-1 block">学生学号</label>
+              <input
+                type="text"
+                value={resetStudentId}
+                onChange={e => setResetStudentId(e.target.value)}
+                placeholder="例如：2024090101"
+                className="w-full px-4 py-2 rounded-lg bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500"
+              />
+            </div>
+            <div className="flex-1 w-full">
+              <label className="text-sm text-purple-200/60 mb-1 block">新密码</label>
+              <input
+                type="text"
+                value={resetNewPassword}
+                onChange={e => setResetNewPassword(e.target.value)}
+                placeholder="设置一个临时密码"
+                className="w-full px-4 py-2 rounded-lg bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500"
+              />
+            </div>
+            <button
+              onClick={handleResetPassword}
+              className="w-full md:w-auto px-6 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white transition-all font-medium"
+            >
+              确认重置
+            </button>
+          </div>
+        </div>
 
         {/* Filters */}
         <div className="mb-6 flex flex-wrap gap-4 p-4 rounded-xl bg-white/5 border border-white/10">

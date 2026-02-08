@@ -627,6 +627,41 @@ app.patch('/api/admin/feedback/:id/status', authenticate, adminOnly, async (req,
   }
 });
 
+//  管理员重置用户密码
+app.patch('/api/admin/users/:studentId/reset-password', authenticate, adminOnly, async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+    const targetStudentId = req.params.studentId;
+
+    if (!newPassword) {
+      return res.status(400).json({ success: false, message: '请提供新密码' });
+    }
+
+    // 查找用户
+    const user = await User.findOne({ studentId: targetStudentId });
+    
+    if (!user) {
+      return res.status(404).json({ success: false, message: '找不到该学号的用户' });
+    }
+
+    // 修改密码 (User模型会自动加密)
+    user.password = newPassword;
+    
+    // 解锁账户 (如果因为尝试次数过多被锁)
+    user.loginAttempts = 0;
+    user.lockUntil = undefined;
+    
+    await user.save();
+
+    await logAction(req.user._id, 'admin_reset_password', 'user', user._id, { targetStudentId }, req);
+
+    res.json({ success: true, message: `用户 ${targetStudentId} 的密码已重置` });
+  } catch (error) {
+    console.error('重置密码失败:', error);
+    res.status(500).json({ success: false, message: '重置密码失败' });
+  }
+});
+
 // 获取统计数据（管理员）
 app.get('/api/admin/stats', authenticate, adminOnly, async (req, res) => {
   try {

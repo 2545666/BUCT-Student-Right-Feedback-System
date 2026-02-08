@@ -322,7 +322,16 @@ const LoginPage = ({ onLogin, onRegister }) => {
             icon="🔒"
             required
           />
-          
+         {/* [新增] 忘记密码提示 */}
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => alert('请企业微信联系（赵启涵）重置密码\n学号：2024090107')}
+            className="text-xs text-purple-300/60 hover:text-purple-200 transition-colors"
+          >
+            忘记密码？
+          </button>
+        </div>
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? '处理中...' : (isLogin ? '登录系统' : '注册账户')}
           </Button>
