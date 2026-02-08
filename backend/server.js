@@ -9,7 +9,6 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
 const hpp = require('hpp');
@@ -65,21 +64,6 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
-// 登录接口更严格的限制
-const loginLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000, // 1小时
-  max: 10000000,
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: (req, res) => {
-        // 如果请求里有学号，就锁学号；如果没有（比如乱填的），才锁 IP
-        return req.body.studentId || req.ip;
-    },
-    message: { 
-        success: false, 
-        message: "密码错误次数过多，该账号已被暂时锁定，请10分钟后再试" 
-    }
-});
 
 // 请求体解析
 app.use(express.json({ limit: '10kb' }));
@@ -383,7 +367,7 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 // 用户登录
-app.post('/api/auth/login', loginLimiter, async (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   try {
     const { studentId, password } = req.body;
     

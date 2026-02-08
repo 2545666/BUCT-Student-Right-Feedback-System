@@ -111,8 +111,8 @@ export default function AdminDashboard({ user, token, onLogout }) {
               <span className="text-xl">🎓</span>
             </div>
             <div>
-              <h1 className="text-lg font-bold text-white">管理控制台</h1>
-              <p className="text-xs text-purple-200/60">学生权益反馈系统</p>
+              <h1 className="text-base font-bold text-white">管理控制台</h1>
+              <p className="text-base text-purple-200/60">学生权益反馈系统</p>
             </div>
           </div>
           
