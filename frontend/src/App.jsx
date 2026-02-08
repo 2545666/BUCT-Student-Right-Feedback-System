@@ -326,7 +326,7 @@ const LoginPage = ({ onLogin, onRegister }) => {
         <div className="flex justify-end">
           <button
             type="button"
-            onClick={() => alert('请企业微信联系【赵启涵】重置密码\n学号：2024090107'\n 默认密码：123456)}
+            onClick={() => alert('请企业微信联系【赵启涵】重置密码\n学号：2024090107\n 默认密码：123456')}
             className="text-xs text-purple-300/60 hover:text-purple-200 transition-colors"
           >
             忘记密码？
