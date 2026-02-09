@@ -350,7 +350,42 @@ const DashboardPage = ({ user, token, onLogout }) => {
   const [feedbacks, setFeedbacks] = useState([]);
   const [stats, setStats] = useState({ total: 0, pending: 0, processing: 0, resolved: 0 });
   const [loading, setLoading] = useState(false);
+ // [新增] 修改密码相关状态
+  const [showPwdModal, setShowPwdModal] = useState(false);
+  const [pwdData, setPwdData] = useState({ current: '', new: '' });
 
+  // [新增] 处理修改密码
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    if (pwdData.new.length < 6) {
+      alert('新密码至少需要6位');
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/auth/password`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ 
+          currentPassword: pwdData.current, 
+          newPassword: pwdData.new 
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('密码修改成功！请重新登录。');
+        setShowPwdModal(false);
+        setPwdData({ current: '', new: '' });
+        onLogout(); // 强制退出让用户重新登录
+      } else {
+        alert(data.message || '修改失败');
+      }
+    } catch (err) {
+      alert('网络错误');
+    }
+  };
   const categories = [
     { value: 'academic', label: '教学教务', icon: '📚', desc: '课程安排、考试成绩、教学质量等' },
     { value: 'accommodation', label: '宿舍住宿', icon: '🏠', desc: '宿舍设施、卫生环境、维修服务等' },
@@ -434,9 +469,17 @@ const DashboardPage = ({ user, token, onLogout }) => {
               <p className="text-sm text-white">{user?.name || '用户'}</p>
               <p className="text-xs text-purple-200/60">{user?.studentId}</p>
             </div>
-            <Button variant="ghost" onClick={onLogout} className="px-4 py-2">
-              退出
-            </Button>
+           <div className="flex gap-2">
+              <button 
+                onClick={() => setShowPwdModal(true)}
+                className="px-4 py-2 rounded-xl text-sm text-purple-200 hover:bg-white/10 hover:text-white transition-all"
+              >
+                修改密码
+              </button>
+              <Button variant="ghost" onClick={onLogout} className="px-4 py-2 text-red-400 hover:text-red-300 hover:bg-red-500/10">
+                退出
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -490,6 +533,59 @@ const DashboardPage = ({ user, token, onLogout }) => {
           <FeedbackList feedbacks={feedbacks} categories={categories} />
         )}
       </main>
+      {/* [新增] 修改密码弹窗 */}
+      {showPwdModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <Card className="w-full max-w-sm p-6 relative" hover={false}>
+            <button 
+              onClick={() => setShowPwdModal(false)}
+              className="absolute top-4 right-4 text-purple-200/50 hover:text-white"
+            >
+              ✕
+            </button>
+            <h3 className="text-xl font-bold text-white mb-6">修改登录密码</h3>
+            <form onSubmit={handleChangePassword} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm text-purple-200/80">当前密码</label>
+                <input
+                  type="password"
+                  required
+                  value={pwdData.current}
+                  onChange={e => setPwdData({...pwdData, current: e.target.value})}
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-purple-500"
+                  placeholder="输入当前使用的密码"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm text-purple-200/80">新密码</label>
+                <input
+                  type="password"
+                  required
+                  value={pwdData.new}
+                  onChange={e => setPwdData({...pwdData, new: e.target.value})}
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-purple-500"
+                  placeholder="设置新密码（至少6位）"
+                />
+              </div>
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowPwdModal(false)}
+                  className="flex-1 py-3 rounded-xl bg-white/5 text-purple-200 hover:bg-white/10 transition-all"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 rounded-xl bg-purple-600 text-white hover:bg-purple-500 transition-all font-medium shadow-lg shadow-purple-500/20"
+                >
+                  确认修改
+                </button>
+              </div>
+            </form>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };

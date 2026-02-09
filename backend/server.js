@@ -438,24 +438,39 @@ app.get('/api/auth/me', authenticate, async (req, res) => {
 });
 
 // 修改密码
+// [修改] 修改密码 - 增强版
 app.put('/api/auth/password', authenticate, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-    
-    const user = await User.findById(req.user._id).select('+password');
-    
-    if (!(await user.comparePassword(currentPassword))) {
-      return res.status(400).json({ success: false, message: '当前密码错误' });
+
+    // 1. 验证输入
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: '请提供当前密码和新密码' });
     }
-    
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: '新密码至少需要6位' });
+    }
+
+    // 2. 获取用户（需包含密码字段用于比对）
+    const user = await User.findById(req.user._id).select('+password');
+
+    // 3. 校验旧密码
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: '当前密码验证失败' });
+    }
+
+    // 4. 设置新密码并保存 (pre-save hook 会自动处理加密)
     user.password = newPassword;
     await user.save();
-    
-    await logAction(req.user._id, 'password_change', 'user', req.user._id, {}, req);
-    
-    res.json({ success: true, message: '密码修改成功' });
+
+    // 5. 记录日志
+    await logAction(req.user._id, 'password_change', 'user', req.user._id, { action: 'self_reset' }, req);
+
+    res.json({ success: true, message: '密码修改成功，请妥善保管' });
   } catch (error) {
-    res.status(500).json({ success: false, message: '密码修改失败' });
+    console.error('密码修改失败:', error);
+    res.status(500).json({ success: false, message: '服务器错误，请稍后再试' });
   }
 });
 
