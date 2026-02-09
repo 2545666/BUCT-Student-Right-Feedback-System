@@ -463,23 +463,33 @@ const DashboardPage = ({ user, token, onLogout }) => {
               <p className="text-xs text-purple-200/60">北京化工大学国际教育学院</p>
             </div>
           </div>
-          
-          <div className="flex items-center gap-4">
-            <div className="text-right">
-              <p className="text-sm text-white">{user?.name || '用户'}</p>
-              <p className="text-xs text-purple-200/60">{user?.studentId}</p>
-            </div>
-           <div className="flex gap-2">
+          {/* 右侧用户信息区域 - 修改为三行布局 */}
+          <div className="flex flex-col items-end justify-center">
+            {/* 第一行：操作按钮 (小尺寸适配手机) */}
+            <div className="flex items-center gap-2 mb-1">
               <button 
                 onClick={() => setShowPwdModal(true)}
-                className="px-4 py-2 rounded-xl text-sm text-purple-200 hover:bg-white/10 hover:text-white transition-all"
+                className="px-2 py-1 rounded-md bg-white/5 border border-white/10 text-[10px] md:text-xs text-purple-200 hover:bg-white/10 hover:text-white transition-all whitespace-nowrap"
               >
                 修改密码
               </button>
-              <Button variant="ghost" onClick={onLogout} className="px-4 py-2 text-red-400 hover:text-red-300 hover:bg-red-500/10">
+              <button 
+                onClick={onLogout}
+                className="px-2 py-1 rounded-md bg-red-500/10 border border-red-500/20 text-[10px] md:text-xs text-red-400 hover:bg-red-500/20 transition-all whitespace-nowrap"
+              >
                 退出
-              </Button>
+              </button>
             </div>
+            
+            {/* 第二行：姓名 */}
+            <p className="text-xs md:text-sm font-bold text-white leading-tight">
+              {user?.name || '用户'}
+            </p>
+            
+            {/* 第三行：学号 */}
+            <p className="text-[10px] md:text-xs text-purple-200/50 font-mono leading-tight">
+              {user?.studentId}
+            </p>
           </div>
         </div>
       </header>
