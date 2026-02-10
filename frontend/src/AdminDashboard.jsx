@@ -8,6 +8,10 @@ export default function AdminDashboard({ user, token, onLogout }) {
   const [stats, setStats] = useState(null);
   const [selectedFeedback, setSelectedFeedback] = useState(null);
   const [filters, setFilters] = useState({ status: '', category: '', priority: '' });
+  // [新增] 高级检索与归档状态
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  const [semesterName, setSemesterName] = useState(''); // 用于显示学期归档的大标题
   const [loading, setLoading] = useState(false);
   const [resetStudentId, setResetStudentId] = useState('');
   const [resetNewPassword, setResetNewPassword] = useState('');
@@ -52,9 +56,15 @@ export default function AdminDashboard({ user, token, onLogout }) {
     setLoading(true);
     try {
       const params = new URLSearchParams();
+      // 原有的筛选参数
       if (filters.status) params.append('status', filters.status);
       if (filters.category) params.append('category', filters.category);
       if (filters.priority) params.append('priority', filters.priority);
+      
+      // [新增] 附加高级检索参数
+      if (searchQuery) params.append('search', searchQuery);
+      if (dateRange.start) params.append('startDate', dateRange.start);
+      if (dateRange.end) params.append('endDate', dateRange.end);
 
       const res = await fetch(`${API_BASE}/admin/feedbacks?${params}`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -65,8 +75,7 @@ export default function AdminDashboard({ user, token, onLogout }) {
       console.error('获取反馈失败:', err);
     }
     setLoading(false);
-  }, [token, filters]);
-
+  }, [token, filters, searchQuery, dateRange]); // [注意] 依赖项增加了 searchQuery 和 dateRange
   useEffect(() => {
     fetchStats();
     fetchFeedbacks();
@@ -200,7 +209,7 @@ export default function AdminDashboard({ user, token, onLogout }) {
             </div>
           </div>
         )}
-        
+
         <div className="mb-8 p-6 rounded-2xl bg-white/5 border border-white/10">
           <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
             <span>🔐</span> 用户密码重置
@@ -234,7 +243,76 @@ export default function AdminDashboard({ user, token, onLogout }) {
             </button>
           </div>
         </div>
+      {/* [新增] 高级检索与学期归档工具栏 */}
+        <div className="mb-6 p-6 rounded-2xl bg-white/5 border border-white/10 space-y-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-lg font-medium text-white flex items-center gap-2">
+              <span>🔍</span> 问题检索与归档
+            </h3>
+            <button 
+              onClick={() => {
+                setSearchQuery('');
+                setDateRange({ start: '', end: '' });
+                setSemesterName('');
+                setFilters({ status: '', category: '', priority: '' });
+              }}
+              className="text-xs text-purple-300 hover:text-white transition-colors"
+            >
+              清空所有条件
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+            {/* 1. 关键词搜索 (占4格) */}
+            <div className="md:col-span-4">
+              <label className="text-xs text-purple-200/60 mb-1.5 block">关键词检索 (空格分隔)</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="例如：宿舍 漏水"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white placeholder-white/20 focus:outline-none focus:border-purple-500 transition-all"
+                />
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30">🔎</span>
+              </div>
+            </div>
 
+            {/* 2. 归档/学期名称 (占3格) */}
+            <div className="md:col-span-3">
+              <label className="text-xs text-purple-200/60 mb-1.5 block">归档/学期名称 (可选)</label>
+              <input
+                type="text"
+                value={semesterName}
+                onChange={e => setSemesterName(e.target.value)}
+                placeholder="例: 23-24学年第一学期"
+                className="w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500 transition-all text-yellow-300 placeholder-white/20"
+              />
+            </div>
+
+            {/* 3. 时间范围 (占5格) */}
+            <div className="md:col-span-5 grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-purple-200/60 mb-1.5 block">起始日期</label>
+                <input
+                  type="date"
+                  value={dateRange.start}
+                  onChange={e => setDateRange({...dateRange, start: e.target.value})}
+                  className="w-full px-3 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500 transition-all [color-scheme:dark]"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-purple-200/60 mb-1.5 block">截止日期</label>
+                <input
+                  type="date"
+                  value={dateRange.end}
+                  onChange={e => setDateRange({...dateRange, end: e.target.value})}
+                  className="w-full px-3 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500 transition-all [color-scheme:dark]"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
         {/* Filters */}
         <div className="mb-6 flex flex-wrap gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
           <select
@@ -280,6 +358,25 @@ export default function AdminDashboard({ user, token, onLogout }) {
 
         {/* Feedback List */}
         <div className="space-y-4">
+          {/* [新增] 学期归档展示框架 - 当设定了学期名和时间时显示 */}
+          {semesterName && dateRange.start && dateRange.end && !loading && (
+            <div className="mb-6 p-6 rounded-2xl bg-gradient-to-r from-purple-900/40 to-blue-900/40 border border-purple-500/30 flex items-center justify-between shadow-lg shadow-purple-900/20">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="text-3xl">📂</span>
+                  <h2 className="text-2xl font-bold text-white tracking-wide">{semesterName}</h2>
+                  <span className="px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 text-xs border border-purple-500/30 uppercase tracking-wider">
+                    Archive
+                  </span>
+                </div>
+                <p className="text-purple-200/60 text-sm flex items-center gap-3 font-mono">
+                  <span>📅 {dateRange.start} ~ {dateRange.end}</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                  <span>共检索到 <span className="text-white font-bold">{feedbacks.length}</span> 条反馈</span>
+                </p>
+              </div>
+            </div>
+          )}
           {loading ? (
             <div className="text-center py-12 text-purple-200/60">加载中...</div>
           ) : feedbacks.length === 0 ? (
