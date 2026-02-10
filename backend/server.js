@@ -566,24 +566,66 @@ app.get('/api/feedback/:id', authenticate, async (req, res) => {
 
 // ================== 管理员API ==================
 
-// 获取所有反馈（管理员）
+// [修改] 获取所有反馈（管理员）- 支持高级检索与时间归档
 app.get('/api/admin/feedbacks', authenticate, adminOnly, async (req, res) => {
   try {
-    const { status, category, priority, page = 1, limit = 20 } = req.query;
+    const { 
+      status, 
+      category, 
+      priority, 
+      page = 1, 
+      limit = 20,
+      search,      // [新增] 接收搜索关键词
+      startDate,   // [新增] 接收开始日期
+      endDate      // [新增] 接收结束日期
+    } = req.query;
     
+    // 1. 构建基础查询条件
     const query = {};
     if (status) query.status = status;
     if (category) query.category = category;
     if (priority) query.priority = priority;
+
+    // 2. [新增] 时间范围检索 logic (用于学期归档)
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) {
+        query.createdAt.$gte = new Date(startDate); // 大于等于开始时间
+      }
+      if (endDate) {
+        // 将结束时间设定为当天的最后一毫秒，确保包含当天的数据
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        query.createdAt.$lte = end;
+      }
+    }
+
+    // 3. [新增] 多关键词复合检索 logic
+    if (search) {
+      // 将搜索字符串按空格拆分为数组，支持多个关键词同时搜索
+      const keywords = search.trim().split(/\s+/);
+      
+      if (keywords.length > 0) {
+        // 使用 $and 逻辑：必须同时满足所有关键词（精准定位）
+        // 在 title 和 content 中进行模糊匹配 ($regex)
+        query.$and = keywords.map(kw => ({
+          $or: [
+            { title: { $regex: kw, $options: 'i' } },   // 匹配标题 (忽略大小写)
+            { content: { $regex: kw, $options: 'i' } }  // 匹配内容 (忽略大小写)
+          ]
+        }));
+      }
+    }
     
+    // 执行数据库查询
     const feedbacks = await Feedback.find(query)
       .populate('user', 'studentId name')
-      .sort({ priority: -1, createdAt: -1 })
+      .sort({ createdAt: -1 }) // 默认按时间倒序排列
       .skip((page - 1) * limit)
       .limit(parseInt(limit))
       .lean();
     
-    // 处理匿名
+    // 处理匿名用户显示
     feedbacks.forEach(f => {
       if (f.isAnonymous) {
         f.user = { studentId: '匿名', name: '匿名用户' };
@@ -603,6 +645,7 @@ app.get('/api/admin/feedbacks', authenticate, adminOnly, async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('获取反馈列表失败:', error); // 增加详细错误日志
     res.status(500).json({ success: false, message: '获取反馈列表失败' });
   }
 });
