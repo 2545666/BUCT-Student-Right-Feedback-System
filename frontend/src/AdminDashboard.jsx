@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-
+import sieLogo from './assets/SIE_LOGO.gif';
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3001/api' : '/api';
 
 // 管理员仪表板组件
@@ -145,10 +145,13 @@ export default function AdminDashboard({ user, token, onLogout }) {
       <header className="border-b border-white/10 backdrop-blur-xl bg-slate-950/50 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-600 to-blue-600 
-              flex items-center justify-center shadow-lg shadow-purple-500/20">
-              <span className="text-xl">🎓</span>
-            </div>
+            {/* 替换开始：使用院徽图片 */}
+           <img 
+                src={sieLogo} 
+                alt="学院院徽" 
+                className="w-12 h-12 object-contain" // object-contain 保证图片完整显示不被裁剪
+           />
+            {/* 替换结束 */}
             <div>
               <h1 className="text-lg font-bold text-white">管理控制台</h1>
               <p className="text-base md:text-2xl font-boldtext-purple-200/60">学生权益反馈系统</p>
