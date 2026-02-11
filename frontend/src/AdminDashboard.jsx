@@ -157,7 +157,7 @@ export default function AdminDashboard({ user, token, onLogout }) {
           </div>
           
           <div className="flex items-center gap-4">
-            <span className="px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 text-sm">
+            <span className="px-1 py-1 rounded-full bg-purple-500/20 text-purple-300 text-sm">
               {user?.role === 'superadmin' ? '超级管理员' : '管理员'}
             </span>
             <span className="text-white">{user?.name}</span>
