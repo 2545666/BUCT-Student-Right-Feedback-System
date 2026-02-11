@@ -145,16 +145,14 @@ export default function AdminDashboard({ user, token, onLogout }) {
       <header className="border-b border-white/10 backdrop-blur-xl bg-slate-950/50 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            {/* 替换开始：使用院徽图片 */}
            <img 
                 src={sieLogo} 
                 alt="系统LOGO" 
                 className="w-12 h-12 object-contain" // object-contain 保证图片完整显示不被裁剪
            />
-            {/* 替换结束 */}
             <div>
-              <h1 className="text-lg font-bold text-white">管理控制台</h1>
-              <p className="text-base md:text-2xl font-boldtext-purple-200/60">学生权益反馈系统</p>
+             <h1 className="text-base md:text-2xl font-bold text-white whitespace-nowrap">管理控制台</h1>
+             <p className="text-xs text-purple-200/60">学生权益反馈系统</p>
             </div>
           </div>
           
