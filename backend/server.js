@@ -719,6 +719,37 @@ app.patch('/api/admin/users/:studentId/reset-password', authenticate, adminOnly,
     res.status(500).json({ success: false, message: '重置密码失败' });
   }
 });
+// [新增] 修改用户角色（提升为管理员/降级）
+app.patch('/api/admin/users/:studentId/role', authenticate, adminOnly, async (req, res) => {
+  try {
+    // 只有超级管理员可以修改角色
+    if (req.user.role !== 'superadmin') {
+      return res.status(403).json({ success: false, message: '权限不足：只有超级管理员可操作' });
+    }
+
+    const { role } = req.body; // 目标角色: 'admin' 或 'student'
+    const targetStudentId = req.params.studentId;
+
+    if (!['student', 'admin'].includes(role)) {
+      return res.status(400).json({ success: false, message: '角色无效' });
+    }
+
+    const user = await User.findOne({ studentId: targetStudentId });
+    if (!user) {
+      return res.status(404).json({ success: false, message: '用户不存在' });
+    }
+
+    user.role = role;
+    await user.save();
+
+    await logAction(req.user._id, 'change_role', 'user', user._id, { targetStudentId, newRole: role }, req);
+
+    res.json({ success: true, message: `用户 ${targetStudentId} 已更新为 ${role === 'admin' ? '管理员' : '学生'}` });
+  } catch (error) {
+    console.error('修改角色失败:', error);
+    res.status(500).json({ success: false, message: '操作失败' });
+  }
+});
 
 // 获取统计数据（管理员）
 app.get('/api/admin/stats', authenticate, adminOnly, async (req, res) => {
@@ -789,14 +820,14 @@ const startServer = async () => {
     });
     console.log('✅ MongoDB 连接成功');
     
-    // 创建默认管理员账户（如果不存在）
+    // 创建管理员账户
     const adminExists = await User.findOne({ role: 'superadmin' });
     if (!adminExists) {
       await User.create({
         studentId: '20240901007',
-        password: 'SIE38324.',
+        password: 'SIEStudent2026.',
         name: '系统管理员',
-        email: 'admin@buct.edu.cn',
+        email: '2024090107@buct.edu.cn',
         role: 'superadmin'
       });
       console.log('✅ 默认管理员账户已创建');

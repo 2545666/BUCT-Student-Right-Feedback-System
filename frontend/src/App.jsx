@@ -1,6 +1,6 @@
 import AdminDashboard from './AdminDashboard'; // [!code ++]
 import React, { useState, useEffect, useCallback } from 'react';
-import sieLogo from './assets/SIE_LOGO.gif';
+import sieLogo from './assets/SIE_LOGO.png';
 // API Configuration
 // 开发环境使用完整地址，生产环境使用相对路径（通过 Nginx 代理）
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3001/api' : '/api';
@@ -241,7 +241,7 @@ const LoginPage = ({ onLogin, onRegister }) => {
         <div className="text-center mb-8">
           <img 
             src={sieLogo} 
-            alt="学院院徽" 
+            alt="系统LOGO" 
             className="w-20 h-20 mx-auto mb-4 object-contain" 
           />
          <h1 className="text-xl font-medium text-purple-200/80 mb-2">
@@ -453,7 +453,7 @@ const DashboardPage = ({ user, token, onLogout }) => {
           <div className="flex items-center gap-4">
            <img 
              src={sieLogo} 
-             alt="学院院徽" 
+             alt="系统LOGO" 
              className="w-12 h-12 object-contain" // object-contain 保证图片完整显示不被裁剪
            />
             <div>

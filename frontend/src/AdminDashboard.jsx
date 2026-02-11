@@ -148,7 +148,7 @@ export default function AdminDashboard({ user, token, onLogout }) {
             {/* 替换开始：使用院徽图片 */}
            <img 
                 src={sieLogo} 
-                alt="学院院徽" 
+                alt="系统LOGO" 
                 className="w-12 h-12 object-contain" // object-contain 保证图片完整显示不被裁剪
            />
             {/* 替换结束 */}
