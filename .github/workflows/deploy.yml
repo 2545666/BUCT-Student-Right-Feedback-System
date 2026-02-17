@@ -22,7 +22,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script_stop: true
           script: |
-            cd /var/www/buct-feedback-system
+            cd /var/www/student-feedback-system
             
             echo "📥 拉取最新代码..."
             git pull origin main
