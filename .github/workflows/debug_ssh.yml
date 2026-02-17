@@ -1,0 +1,34 @@
+name: 🔍 SSH 连接诊断
+
+on: 
+  workflow_dispatch: # 允许手动点击按钮触发
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检查环境
+        run: echo "准备连接到 ${{ secrets.SERVER_HOST }}..."
+
+      - name: 写入私钥并测试
+        run: |
+          # 1. 创建 .ssh 目录
+          mkdir -p ~/.ssh
+          
+          # 2. 将 GitHub Secret 写入文件
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_test
+          chmod 600 ~/.ssh/id_test
+          
+          # 3. 检查私钥格式（只看头尾，不泄露内容）
+          echo "=== 私钥格式检查 ==="
+          head -n 2 ~/.ssh/id_test
+          echo "..."
+          tail -n 2 ~/.ssh/id_test
+          echo "=================="
+          
+          # 4. 添加主机指纹
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+          
+          # 5. 尝试详细模式连接 (-vvv 会显示所有报错细节)
+          echo "=== 开始连接测试 ==="
+          ssh -vvv -o BatchMode=yes -i ~/.ssh/id_test ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "echo '🎉 恭喜！连接成功！'"
