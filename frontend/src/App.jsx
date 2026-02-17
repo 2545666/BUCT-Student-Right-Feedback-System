@@ -338,7 +338,7 @@ const LoginPage = ({ onLogin, onRegister }) => {
         </form>
         
         <p className="mt-6 text-center text-[10px] md:text-xs text-purple-200/40 px-4 transform scale-90 origin-center">
-          © 2026北京化工大学 国际教育学院 学生权益部 版权所有
+          ©2026 赵启涵. All Rights Reserved. (Designed for BUCT SIE)
         </p>
       </Card>
     </div>
