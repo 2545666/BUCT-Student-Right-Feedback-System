@@ -618,9 +618,6 @@ const DashboardPage = ({ user, token, onLogout }) => {
     </div>
   );
 };
-
-
-
 const SubmitForm = ({ categories, onSubmit, loading }) => {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedSubCategory, setSelectedSubCategory] = useState('');
@@ -762,7 +759,6 @@ const SubmitForm = ({ categories, onSubmit, loading }) => {
     </div>
   );
 };
-
 const FeedbackList = ({ feedbacks, categories }) => {
   const [expandedId, setExpandedId] = useState(null);
 
