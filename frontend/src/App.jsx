@@ -620,9 +620,10 @@ const DashboardPage = ({ user, token, onLogout }) => {
 };
 
 
+
 const SubmitForm = ({ categories, onSubmit, loading }) => {
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [selectedSubCategory, setSelectedSubCategory] = useState(''); // [新增状态]
+  const [selectedSubCategory, setSelectedSubCategory] = useState('');
   const [formData, setFormData] = useState({
     title: '',
     content: '',
@@ -632,19 +633,14 @@ const SubmitForm = ({ categories, onSubmit, loading }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // [修改校验逻辑]
     if (!selectedCategory || !selectedSubCategory) {
       alert('请完整选择问题类别（包含一级与二级细分）');
       return;
     }
-    // [提交数据增加 subCategory]
     onSubmit({ ...formData, category: selectedCategory, subCategory: selectedSubCategory });
     setFormData({ title: '', content: '', isAnonymous: false, priority: 'normal' });
     setSelectedCategory('');
-    setSelectedSubCategory(''); // [重置二级状态]
-  };
-    setFormData({ title: '', content: '', isAnonymous: false, priority: 'normal' });
-    setSelectedCategory('');
+    setSelectedSubCategory('');
   };
 
   return (
@@ -653,7 +649,6 @@ const SubmitForm = ({ categories, onSubmit, loading }) => {
       <div className="md:col-span-1">
         <h3 className="text-lg font-medium text-white mb-4">选择问题类别</h3>
         <div className="space-y-3">
-         // 修改后
           {categories.map(cat => (
             <Card
               key={cat.value}
@@ -664,15 +659,21 @@ const SubmitForm = ({ categories, onSubmit, loading }) => {
               }`}
               onClick={() => {
                 setSelectedCategory(cat.value);
-                setSelectedSubCategory(''); // [修改：点击一级时清空二级]
+                setSelectedSubCategory('');
               }}
             >
-          {/* ... Card 内部代码不变 ... */}
-          </Card>
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">{cat.icon}</span>
+                <div>
+                  <p className="text-white font-medium">{cat.label}</p>
+                  <p className="text-xs text-purple-200/60">{cat.desc}</p>
+                </div>
+              </div>
+            </Card>
           ))}
         </div>
         
-        {/* [新增：就在 map 循环结束后的位置] */}
+        {/* 二级分类动态展示区 */}
         {selectedCategory && (
           <div className="mt-6 p-4 rounded-xl bg-white/5 border border-purple-500/30">
             <h4 className="text-sm font-medium text-purple-200 mb-3">详细诉求分类 (必选)</h4>
@@ -694,16 +695,6 @@ const SubmitForm = ({ categories, onSubmit, loading }) => {
             </div>
           </div>
         )}
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">{cat.icon}</span>
-                <div>
-                  <p className="text-white font-medium">{cat.label}</p>
-                  <p className="text-xs text-purple-200/60">{cat.desc}</p>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
       </div>
 
       {/* Form */}
@@ -731,7 +722,6 @@ const SubmitForm = ({ categories, onSubmit, loading }) => {
             />
           </div>
 
-        // 修改后
           <div className="space-y-2">
             <Select
               label="优先级"
@@ -744,7 +734,7 @@ const SubmitForm = ({ categories, onSubmit, loading }) => {
                 { value: 'low', label: '低' }
               ]}
             />
-            {/* [新增提示框：紧贴 Select 下方] */}
+            {/* 场景定义信息框 */}
             <div className="mt-2 p-3 rounded-xl bg-blue-900/20 border border-blue-500/20 text-xs text-blue-200/80 space-y-1.5 leading-relaxed">
               <p><span className="font-bold text-red-400">紧急：</span>涉及人身安全、重大财产损失、严重设施损坏等需立即干预处置的问题。</p>
               <p><span className="font-bold text-orange-400">高：</span>影响正常学习秩序、涉及核心权益受损、需快速响应的问题。</p>
@@ -771,9 +761,9 @@ const SubmitForm = ({ categories, onSubmit, loading }) => {
       </Card>
     </div>
   );
-}
+};
 
-function FeedbackList({ feedbacks, categories }) {
+const FeedbackList = ({ feedbacks, categories }) => {
   const [expandedId, setExpandedId] = useState(null);
 
   const getCategoryInfo = (cat) => categories.find(c => c.value === cat) || { label: cat, icon: '📋' };
@@ -809,7 +799,10 @@ function FeedbackList({ feedbacks, categories }) {
                   <div>
                     <h4 className="text-white font-medium">{feedback.title}</h4>
                     <div className="flex items-center gap-3 mt-1">
-                      <span className="text-xs text-purple-200/60">{catInfo.label}</span>
+                      {/* 显示一级分类与二级分类 */}
+                      <span className="text-xs text-purple-200/60">
+                        {catInfo.label} {feedback.subCategory ? ` > ${feedback.subCategory}` : ''}
+                      </span>
                       <span className="text-xs text-purple-200/40">
                         {new Date(feedback.createdAt).toLocaleDateString('zh-CN')}
                       </span>
@@ -844,7 +837,7 @@ function FeedbackList({ feedbacks, categories }) {
       })}
     </div>
   );
-}
+};
 
 // Main App
 export default function App() {
