@@ -5,6 +5,29 @@ import sieLogo from './assets/SIE_LOGO.png';
 // 开发环境使用完整地址，生产环境使用相对路径（通过 Nginx 代理）
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3001/api' : '/api';
 
+// [新增] 全局分类字典配置 (含一二级联动)
+export const CATEGORIES_CONFIG = {
+  academic: {
+    label: '教学教务', icon: '📚', desc: '课程、考试与规划',
+    sub: ['课程与教学管理', '学辅答疑与讲座安排', '考试与成绩管理', '发展与规划指导', '学籍与培养方案', '设施维修与维护','其他教学相关']
+  },
+  accommodation: {
+    label: '宿舍住宿', icon: '🏠', desc: '环境与配套服务',
+    sub: ['住宿环境与管理', '生活配套服务','其他宿舍相关']
+  },
+  catering: {
+    label: '餐饮服务', icon: '🍽️', desc: '食品、运营与价格',
+    sub: ['食品安全与卫生', '菜品与价格管理', '食堂运营与服务', '其他餐饮相关']
+  },
+  safety: {
+    label: '安全保卫', icon: '🛡️', desc: '人身、消防与网络',
+    sub: ['人身与财产安全', '消防安全与隐患', '交通与出行安全', '网络与信息安全','其他安全相关']
+  },
+  comprehensive: {
+    label: '综合服务与其他', icon: '📋', desc: '活动、心理与行政',
+    sub: ['学院活动与文化建设', '心理健康与成长支持', '行政服务与流程优化', '校园公共设施与环境', '其他未分类诉求']
+  }
+};
 // Custom Hooks
 const useAuth = () => {
   const [user, setUser] = useState(null);
@@ -386,14 +409,10 @@ const DashboardPage = ({ user, token, onLogout }) => {
       alert('网络错误');
     }
   };
-  const categories = [
-    { value: 'academic', label: '教学教务', icon: '📚', desc: '课程安排、考试成绩、教学质量等' },
-    { value: 'accommodation', label: '宿舍住宿', icon: '🏠', desc: '宿舍设施、卫生环境、维修服务等' },
-    { value: 'catering', label: '餐饮服务', icon: '🍽️', desc: '食堂饭菜、价格、卫生等问题' },
-    { value: 'financial', label: '财务收费', icon: '💰', desc: '学费、奖学金、退费等问题' },
-    { value: 'safety', label: '安全保卫', icon: '🛡️', desc: '校园安全、财产保护等' },
-    { value: 'other', label: '其他问题', icon: '📋', desc: '其他未分类的问题' }
-  ];
+  const categories = Object.entries(CATEGORIES_CONFIG).map(([value, info]) => ({
+    value,
+    ...info
+  }));
 
   const fetchFeedbacks = useCallback(async () => {
     try {
@@ -600,8 +619,10 @@ const DashboardPage = ({ user, token, onLogout }) => {
   );
 };
 
+
 const SubmitForm = ({ categories, onSubmit, loading }) => {
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedSubCategory, setSelectedSubCategory] = useState(''); // [新增状态]
   const [formData, setFormData] = useState({
     title: '',
     content: '',
@@ -611,11 +632,17 @@ const SubmitForm = ({ categories, onSubmit, loading }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!selectedCategory) {
-      alert('请选择问题类别');
+    // [修改校验逻辑]
+    if (!selectedCategory || !selectedSubCategory) {
+      alert('请完整选择问题类别（包含一级与二级细分）');
       return;
     }
-    onSubmit({ ...formData, category: selectedCategory });
+    // [提交数据增加 subCategory]
+    onSubmit({ ...formData, category: selectedCategory, subCategory: selectedSubCategory });
+    setFormData({ title: '', content: '', isAnonymous: false, priority: 'normal' });
+    setSelectedCategory('');
+    setSelectedSubCategory(''); // [重置二级状态]
+  };
     setFormData({ title: '', content: '', isAnonymous: false, priority: 'normal' });
     setSelectedCategory('');
   };
@@ -626,6 +653,7 @@ const SubmitForm = ({ categories, onSubmit, loading }) => {
       <div className="md:col-span-1">
         <h3 className="text-lg font-medium text-white mb-4">选择问题类别</h3>
         <div className="space-y-3">
+         // 修改后
           {categories.map(cat => (
             <Card
               key={cat.value}
@@ -634,8 +662,38 @@ const SubmitForm = ({ categories, onSubmit, loading }) => {
                   ? '!border-purple-500 !bg-purple-500/20' 
                   : ''
               }`}
-              onClick={() => setSelectedCategory(cat.value)}
+              onClick={() => {
+                setSelectedCategory(cat.value);
+                setSelectedSubCategory(''); // [修改：点击一级时清空二级]
+              }}
             >
+          {/* ... Card 内部代码不变 ... */}
+          </Card>
+          ))}
+        </div>
+        
+        {/* [新增：就在 map 循环结束后的位置] */}
+        {selectedCategory && (
+          <div className="mt-6 p-4 rounded-xl bg-white/5 border border-purple-500/30">
+            <h4 className="text-sm font-medium text-purple-200 mb-3">详细诉求分类 (必选)</h4>
+            <div className="flex flex-wrap gap-2">
+              {CATEGORIES_CONFIG[selectedCategory].sub.map(sub => (
+                <button
+                  key={sub}
+                  type="button"
+                  onClick={() => setSelectedSubCategory(sub)}
+                  className={`px-3 py-1.5 text-xs rounded-lg border transition-all ${
+                    selectedSubCategory === sub 
+                      ? 'bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-500/20' 
+                      : 'border-white/10 text-purple-200/60 hover:bg-white/10'
+                  }`}
+                >
+                  {sub}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
               <div className="flex items-center gap-3">
                 <span className="text-2xl">{cat.icon}</span>
                 <div>
@@ -673,17 +731,27 @@ const SubmitForm = ({ categories, onSubmit, loading }) => {
             />
           </div>
 
-          <Select
-            label="优先级"
-            value={formData.priority}
-            onChange={e => setFormData({...formData, priority: e.target.value})}
-            options={[
-              { value: 'low', label: '低 - 一般性建议' },
-              { value: 'normal', label: '普通 - 需要解决的问题' },
-              { value: 'high', label: '高 - 紧急问题' },
-              { value: 'urgent', label: '紧急 - 需立即处理' }
-            ]}
-          />
+        // 修改后
+          <div className="space-y-2">
+            <Select
+              label="优先级"
+              value={formData.priority}
+              onChange={e => setFormData({...formData, priority: e.target.value})}
+              options={[
+                { value: 'urgent', label: '紧急' },
+                { value: 'high', label: '高' },
+                { value: 'normal', label: '普通' },
+                { value: 'low', label: '低' }
+              ]}
+            />
+            {/* [新增提示框：紧贴 Select 下方] */}
+            <div className="mt-2 p-3 rounded-xl bg-blue-900/20 border border-blue-500/20 text-xs text-blue-200/80 space-y-1.5 leading-relaxed">
+              <p><span className="font-bold text-red-400">紧急：</span>涉及人身安全、重大财产损失、严重设施损坏等需立即干预处置的问题。</p>
+              <p><span className="font-bold text-orange-400">高：</span>影响正常学习秩序、涉及核心权益受损、需快速响应的问题。</p>
+              <p><span className="font-bold text-blue-400">普通：</span>日常权益、校园生活、服务体验等常规问题。</p>
+              <p><span className="font-bold text-gray-400">低：</span>长期优化建议、功能改进等建设性意见。</p>
+            </div>
+          </div>
 
           <label className="flex items-center gap-3 cursor-pointer">
             <input
@@ -703,9 +771,9 @@ const SubmitForm = ({ categories, onSubmit, loading }) => {
       </Card>
     </div>
   );
-};
+}
 
-const FeedbackList = ({ feedbacks, categories }) => {
+function FeedbackList({ feedbacks, categories }) {
   const [expandedId, setExpandedId] = useState(null);
 
   const getCategoryInfo = (cat) => categories.find(c => c.value === cat) || { label: cat, icon: '📋' };
@@ -725,10 +793,10 @@ const FeedbackList = ({ feedbacks, categories }) => {
       {feedbacks.map(feedback => {
         const catInfo = getCategoryInfo(feedback.category);
         const isExpanded = expandedId === feedback._id;
-        
+
         return (
-          <Card 
-            key={feedback._id} 
+          <Card
+            key={feedback._id}
             className="overflow-hidden"
             onClick={() => setExpandedId(isExpanded ? null : feedback._id)}
           >
@@ -750,11 +818,11 @@ const FeedbackList = ({ feedbacks, categories }) => {
                 </div>
                 <StatusBadge status={feedback.status} />
               </div>
-              
+
               {isExpanded && (
                 <div className="mt-4 pt-4 border-t border-white/10">
                   <p className="text-purple-200/80 text-sm whitespace-pre-wrap">{feedback.content}</p>
-                  
+
                   {feedback.responses && feedback.responses.length > 0 && (
                     <div className="mt-4 space-y-3">
                       <h5 className="text-sm font-medium text-white">处理进度</h5>
@@ -776,7 +844,7 @@ const FeedbackList = ({ feedbacks, categories }) => {
       })}
     </div>
   );
-};
+}
 
 // Main App
 export default function App() {

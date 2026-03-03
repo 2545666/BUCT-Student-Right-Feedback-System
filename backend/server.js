@@ -159,10 +159,16 @@ const feedbackSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
-  category: {
+ category: {
     type: String,
-    enum: ['academic', 'accommodation', 'catering', 'financial', 'safety', 'other'],
+    // [修改] 移除了 financial 和 other，增加了 comprehensive
+    enum: ['academic', 'accommodation', 'catering', 'safety', 'comprehensive'],
     required: [true, '请选择问题类别']
+  },
+  // [新增] 必须包含二级具体分类
+  subCategory: {
+    type: String,
+    required: [true, '请选择具体的诉求分类']
   },
   title: {
     type: String,
@@ -479,15 +485,18 @@ app.put('/api/auth/password', authenticate, async (req, res) => {
 // 提交反馈
 app.post('/api/feedback', authenticate, async (req, res) => {
   try {
-    const { category, title, content, priority, isAnonymous } = req.body;
+    // [修改] 解构出 subCategory
+    const { category, subCategory, title, content, priority, isAnonymous } = req.body;
     
-    if (!category || !title || !content) {
+    // [修改] 增加 subCategory 的校验
+    if (!category || !subCategory || !title || !content) {
       return res.status(400).json({ success: false, message: '请填写所有必填字段' });
     }
     
     const feedback = await Feedback.create({
       user: req.user._id,
       category,
+      subCategory, // [新增] 保存至数据库
       title: sanitizeInput(title),
       content: sanitizeInput(content),
       priority: priority || 'normal',
