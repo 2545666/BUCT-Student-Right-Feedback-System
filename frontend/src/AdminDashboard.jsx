@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import sieLogo from './assets/SIE_LOGO.png';
-import sievox from './assets/sievox.png';
+import sievox from './assets/SIEVOX_LOGO.png';
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3001/api' : '/api';
 
 // 管理员仪表板组件

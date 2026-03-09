@@ -1,7 +1,7 @@
 import AdminDashboard from './AdminDashboard'; // [!code ++]
 import React, { useState, useEffect, useCallback } from 'react';
 import sieLogo from './assets/SIE_LOGO.png';
-import Sievox from './assets/SIEVOX_LOGO.png';
+import sievox from './assets/SIEVOX_LOGO.png';
 // API Configuration
 // 开发环境使用完整地址，生产环境使用相对路径（通过 Nginx 代理）
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3001/api' : '/api';
