@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import sieLogo from './assets/SIE_LOGO.png';
+import sievox from './assets/sievox.png';
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3001/api' : '/api';
 
 // 管理员仪表板组件
@@ -148,6 +149,11 @@ export default function AdminDashboard({ user, token, onLogout }) {
            <img 
                 src={sieLogo} 
                 alt="系统LOGO" 
+                className="w-12 h-12 object-contain" // object-contain 保证图片完整显示不被裁剪
+           />
+           <img 
+                src={sievox} 
+                alt="名称LOGO" 
                 className="w-12 h-12 object-contain" // object-contain 保证图片完整显示不被裁剪
            />
             <div>
