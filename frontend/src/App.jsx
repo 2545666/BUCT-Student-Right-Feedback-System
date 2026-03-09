@@ -270,7 +270,7 @@ const LoginPage = ({ onLogin, onRegister }) => {
             className="w-32 h-32 md:w-40 md:h-40 object-contain mb-2 hover:scale-105 transition-transform duration-300" 
           />
            < img 
-             src={Sievox} 
+             src={sievox} 
              alt="名称LOGO" 
              className="w-48 md:w-56 h-auto object-contain mb-6 hover:scale-105 transition-transform duration-300" 
            />
