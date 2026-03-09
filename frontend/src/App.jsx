@@ -1,6 +1,7 @@
 import AdminDashboard from './AdminDashboard'; // [!code ++]
 import React, { useState, useEffect, useCallback } from 'react';
 import sieLogo from './assets/SIE_LOGO.png';
+import Sievox from './assets/SIEVOX_LOGO.png';
 // API Configuration
 // 开发环境使用完整地址，生产环境使用相对路径（通过 Nginx 代理）
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3001/api' : '/api';
@@ -267,6 +268,11 @@ const LoginPage = ({ onLogin, onRegister }) => {
             alt="系统LOGO" 
             className="w-20 h-20 mx-auto mb-4 object-contain" 
           />
+           <img 
+             src={sievox} 
+             alt="名称LOGO" 
+             className="w-12 h-12 object-contain" // object-contain 保证图片完整显示不被裁剪
+           />
          <h1 className="text-xl font-medium text-purple-200/80 mb-2">
               北京化工大学国际教育学院
          </h1>
@@ -473,6 +479,11 @@ const DashboardPage = ({ user, token, onLogout }) => {
            <img 
              src={sieLogo} 
              alt="系统LOGO" 
+             className="w-12 h-12 object-contain" // object-contain 保证图片完整显示不被裁剪
+           />
+           <img 
+             src={sievox} 
+             alt="名称LOGO" 
              className="w-12 h-12 object-contain" // object-contain 保证图片完整显示不被裁剪
            />
             <div>
