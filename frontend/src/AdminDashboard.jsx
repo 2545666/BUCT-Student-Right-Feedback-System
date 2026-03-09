@@ -151,11 +151,6 @@ export default function AdminDashboard({ user, token, onLogout }) {
                 alt="系统LOGO" 
                 className="w-12 h-12 object-contain" // object-contain 保证图片完整显示不被裁剪
            />
-           <img 
-                src={sievox} 
-                alt="名称LOGO" 
-                className="w-12 h-12 object-contain" // object-contain 保证图片完整显示不被裁剪
-           />
             <div>
              <h1 className="text-base md:text-2xl font-bold text-white whitespace-nowrap">管理控制台</h1>
              <p className="text-xs text-purple-200/60">学生权益反馈系统</p>

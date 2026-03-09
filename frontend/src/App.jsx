@@ -262,23 +262,24 @@ const LoginPage = ({ onLogin, onRegister }) => {
       <Background />
       
       <Card className="w-full max-w-md p-8 relative z-10" hover={false}>
-        <div className="text-center mb-8">
-          <img 
+       {/* 使用 flex 布局垂直居中，并大幅增加图片尺寸 */}
+        <div className="text-center mb-8 flex flex-col items-center justify-center">
+          < img 
             src={sieLogo} 
             alt="系统LOGO" 
-            className="w-20 h-20 mx-auto mb-4 object-contain" 
+            className="w-32 h-32 md:w-40 md:h-40 object-contain mb-2 hover:scale-105 transition-transform duration-300" 
           />
-           <img 
-             src={sievox} 
+           < img 
+             src={Sievox} 
              alt="名称LOGO" 
-             className="w-12 h-12 object-contain" // object-contain 保证图片完整显示不被裁剪
+             className="w-48 md:w-56 h-auto object-contain mb-6 hover:scale-105 transition-transform duration-300" 
            />
          <h1 className="text-xl font-medium text-purple-200/80 mb-2">
               北京化工大学国际教育学院
          </h1>
          <p className="text-xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 tracking-wider drop-shadow-sm py-2">
            学生权益反馈系统
-         </p>
+         </p >
         </div>
 
         <div className="flex mb-6 p-1 bg-white/5 rounded-xl">
@@ -479,11 +480,6 @@ const DashboardPage = ({ user, token, onLogout }) => {
            <img 
              src={sieLogo} 
              alt="系统LOGO" 
-             className="w-12 h-12 object-contain" // object-contain 保证图片完整显示不被裁剪
-           />
-           <img 
-             src={sievox} 
-             alt="名称LOGO" 
              className="w-12 h-12 object-contain" // object-contain 保证图片完整显示不被裁剪
            />
             <div>
