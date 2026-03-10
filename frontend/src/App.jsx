@@ -360,15 +360,21 @@ const LoginPage = ({ onLogin, onRegister }) => {
             {loading ? '处理中...' : (isLogin ? '登录系统' : '注册账户')}
           </Button>
         </form>
-        
-        <p className="mt-6 text-center text-[10px] md:text-xs text-purple-200/40 px-4 transform scale-90 origin-center">
-          ©2026 赵启涵. All Rights Reserved. (Designed for BUCT SIE)
-        </p>
+        <div className="mt-6 text-center text-[10px] md:text-xs text-purple-200/40 px-4 transform scale-90 origin-center space-y-1">
+          <p>Copyright @ 2026 赵启涵</p>
+          <a 
+            href="https://beian.miit.gov.cn/" 
+            target="_blank" 
+            rel="noreferrer" 
+            className="inline-block hover:text-purple-200 transition-colors"
+          >
+            京ICP备2026010091号
+          </a>
+        </div>
       </Card>
     </div>
   );
 };
-
 const DashboardPage = ({ user, token, onLogout }) => {
   const [activeTab, setActiveTab] = useState('submit');
   const [feedbacks, setFeedbacks] = useState([]);
@@ -613,9 +619,20 @@ const DashboardPage = ({ user, token, onLogout }) => {
                 </button>
               </div>
             </form>
-          </Card>
+         </Card>
         </div>
       )}
+      <footer className="relative z-10 py-6 text-center text-[10px] md:text-xs text-purple-200/40 space-y-1">
+        <p>©Copyright @ 2026 赵启涵</p>
+        <a 
+          href="https://beian.miit.gov.cn/" 
+          target="_blank" 
+          rel="noreferrer" 
+          className="inline-block hover:text-purple-200 transition-colors"
+        >
+          京ICP备2026010091号
+        </a>
+      </footer>
     </div>
   );
 };

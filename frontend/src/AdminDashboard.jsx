@@ -491,6 +491,19 @@ export default function AdminDashboard({ user, token, onLogout }) {
           )}
         </div>
       </main>
+
+      {/* [新增] 页面底部 ICP 备案信息 */}
+      <footer className="relative z-10 py-6 text-center text-[10px] md:text-xs text-purple-200/40 space-y-1">
+        <p>©2026 赵启涵. All Rights Reserved.</p>
+        <a 
+          href="https://beian.miit.gov.cn/" 
+          target="_blank" 
+          rel="noreferrer" 
+          className="inline-block hover:text-purple-200 transition-colors"
+        >
+          京ICP备2026010091号
+        </a>
+      </footer>
     </div>
   );
 }
