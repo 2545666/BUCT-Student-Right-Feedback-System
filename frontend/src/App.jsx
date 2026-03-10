@@ -268,9 +268,6 @@ const LoginPage = ({ onLogin, onRegister }) => {
             alt="系统LOGO" 
             className="w-32 h-32 md:w-40 md:h-40 object-contain mb-2 hover:scale-105 transition-transform duration-300" 
           />
-         <h1 className="text-xl font-medium text-purple-200/80 mb-2">
-              北京化工大学国际教育学院
-         </h1>
          <p className="text-xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 tracking-wider drop-shadow-sm py-2">
            学生权益反馈系统
          </p >
