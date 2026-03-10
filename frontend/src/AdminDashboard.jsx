@@ -17,13 +17,13 @@ export default function AdminDashboard({ user, token, onLogout }) {
   const [resetNewPassword, setResetNewPassword] = useState('');
   const [responseText, setResponseText] = useState('');
 
+// [修改] 同步最新的 5 大分类
   const categories = {
     academic: { label: '教学教务', icon: '📚' },
     accommodation: { label: '宿舍住宿', icon: '🏠' },
     catering: { label: '餐饮服务', icon: '🍽️' },
-    financial: { label: '财务收费', icon: '💰' },
     safety: { label: '安全保卫', icon: '🛡️' },
-    other: { label: '其他问题', icon: '📋' }
+    comprehensive: { label: '综合服务与其他', icon: '📋' }
   };
 
   const statusConfig = {
@@ -196,10 +196,11 @@ export default function AdminDashboard({ user, token, onLogout }) {
         )}
 
         {/* Category Stats */}
-        {stats?.byCategory && (
+       {stats?.byCategory && (
           <div className="mb-8 p-6 rounded-2xl bg-white/5 border border-white/10">
             <h3 className="text-lg font-medium text-white mb-4">按类别统计</h3>
-            <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
+            {/* [修改] 适配 5 个分类的网格布局 */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               {Object.entries(categories).map(([key, cat]) => (
                 <div key={key} className="text-center p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-all">
                   <span className="text-3xl">{cat.icon}</span>
@@ -411,8 +412,9 @@ export default function AdminDashboard({ user, token, onLogout }) {
                             {priority.label}
                           </span>
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-purple-200/60">
-                          <span>{cat.label}</span>
+                       <div className="flex items-center gap-4 text-sm text-purple-200/60">
+                          {/* [修改] 增加二级分类的箭头与显示 */}
+                          <span>{cat.label}{feedback.subCategory ? ` > ${feedback.subCategory}` : ''}</span>
                           <span>{feedback.isAnonymous ? '匿名用户' : feedback.user?.name}</span>
                           <span>{new Date(feedback.createdAt).toLocaleString('zh-CN')}</span>
                         </div>
