@@ -1,7 +1,6 @@
 import AdminDashboard from './AdminDashboard'; // [!code ++]
 import React, { useState, useEffect, useCallback } from 'react';
-import sieLogo from './assets/SIE_LOGO.png';
-import sievox from './assets/SIEVOX_LOGO.png';
+import sieLogo from './assets/MIXED_LOGO.png';
 // API Configuration
 // 开发环境使用完整地址，生产环境使用相对路径（通过 Nginx 代理）
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3001/api' : '/api';
@@ -269,11 +268,6 @@ const LoginPage = ({ onLogin, onRegister }) => {
             alt="系统LOGO" 
             className="w-32 h-32 md:w-40 md:h-40 object-contain mb-2 hover:scale-105 transition-transform duration-300" 
           />
-           < img 
-             src={sievox} 
-             alt="名称LOGO" 
-             className="w-48 md:w-56 h-auto object-contain mb-6 hover:scale-105 transition-transform duration-300" 
-           />
          <h1 className="text-xl font-medium text-purple-200/80 mb-2">
               北京化工大学国际教育学院
          </h1>
