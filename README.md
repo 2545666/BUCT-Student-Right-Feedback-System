@@ -159,5 +159,5 @@ MIT License
 
 ---
 
-© 2026 赵启涵 All Rights Reserved.(Designed for BUCT SIEgit)
+Copyright© 2026 赵启涵
 京ICP备2026010091号
