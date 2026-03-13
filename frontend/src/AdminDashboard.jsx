@@ -2,6 +2,35 @@ import React, { useState, useEffect, useCallback } from 'react';
 import sieLogo from './assets/LOGO_1.png';
 import beian from './assets/beian.png';
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3001/api' : '/api';
+// [新增] 引入公共附件组件
+export const AttachmentViewer = ({ attachments }) => {
+  if (!attachments || attachments.length === 0) return null;
+  const SERVER_URL = API_BASE.replace('/api', '');
+  return (
+    <div className="flex flex-wrap gap-3 mt-3 mb-2">
+      {attachments.map((file, i) => {
+        const url = `${SERVER_URL}${file.path}`;
+        if (file.mimetype.startsWith('image/')) {
+          return (
+            <a key={i} href={url} target="_blank" rel="noreferrer" className="block w-20 h-20 md:w-24 md:h-24 overflow-hidden rounded-xl border border-white/20 hover:border-purple-500 transition-all shadow-md" onClick={e => e.stopPropagation()}>
+              <img src={url} alt={file.filename} className="w-full h-full object-cover hover:scale-110 transition-transform duration-300" />
+            </a>
+          );
+        }
+        if (file.mimetype.startsWith('video/')) {
+          return (
+            <video key={i} src={url} controls className="h-20 md:h-24 max-w-[150px] md:max-w-[200px] object-cover rounded-xl border border-white/20 shadow-md" onClick={e => e.stopPropagation()} />
+          );
+        }
+        return (
+          <a key={i} href={url} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-xl text-xs text-purple-200 hover:bg-white/10 hover:text-white transition-all shadow-sm" onClick={e => e.stopPropagation()}>
+            <span>📎</span><span className="truncate max-w-[120px]" title={file.filename}>{file.filename}</span>
+          </a>
+        );
+      })}
+    </div>
+  );
+};
 //账号管理组件
 const AccountManagement = ({ token, user: currentUser }) => {
   const [users, setUsers] = useState([]);
@@ -234,7 +263,7 @@ export default function AdminDashboard({ user, token, onLogout }) {
   const [resetStudentId, setResetStudentId] = useState('');
   const [resetNewPassword, setResetNewPassword] = useState('');
   const [responseText, setResponseText] = useState('');
-  // 找到现有的 useState 区域
+  const [selectedReplyFiles, setSelectedReplyFiles] = useState([]); // [新增] 管理员回复附件状态
   const [activeTab, setActiveTab] = useState('overview'); // 默认显示概览
   const [showAccountManagement, setShowAccountManagement] = useState(false); // [新增] 控制账号管理面板的显示
 // [修改] 同步最新的 5 大分类
@@ -308,18 +337,33 @@ export default function AdminDashboard({ user, token, onLogout }) {
 
   const updateStatus = async (feedbackId, status) => {
     try {
+      let uploadedFiles = [];
+      // [新增] 如果管理员选了附件，先上传
+      if (selectedReplyFiles.length > 0) {
+        const fileData = new FormData();
+        selectedReplyFiles.forEach(f => fileData.append('files', f));
+        const uploadRes = await fetch(`${API_BASE}/upload`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: fileData
+        });
+        const uploadData = await uploadRes.json();
+        if (uploadData.success) uploadedFiles = uploadData.files;
+      }
+
       const res = await fetch(`${API_BASE}/admin/feedback/${feedbackId}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ status, response: responseText })
+        body: JSON.stringify({ status, response: responseText, attachments: uploadedFiles }) // [修改] 附带附件
       });
       const data = await res.json();
       if (data.success) {
         alert('状态更新成功');
         setResponseText('');
+        setSelectedReplyFiles([]); // [新增] 清空
         setSelectedFeedback(null);
         fetchFeedbacks();
         fetchStats();
@@ -675,9 +719,12 @@ export default function AdminDashboard({ user, token, onLogout }) {
                     </span>
                   </div>
                   
-                  {selectedFeedback?._id === feedback._id && (
+                 {selectedFeedback?._id === feedback._id && (
                     <div className="mt-4 pt-4 border-t border-white/10" onClick={e => e.stopPropagation()}>
                       <p className="text-purple-200/80 whitespace-pre-wrap mb-4">{feedback.content}</p>
+                      
+                      {/* [新增] 显示学生上传的图片/文件 */}
+                      <AttachmentViewer attachments={feedback.attachments} />
                       
                       {feedback.responses?.length > 0 && (
                         <div className="mb-4 space-y-2">
@@ -685,6 +732,8 @@ export default function AdminDashboard({ user, token, onLogout }) {
                           {feedback.responses.map((resp, i) => (
                             <div key={i} className="pl-4 border-l-2 border-purple-500/50 py-2">
                               <p className="text-sm text-purple-200/80">{resp.content}</p>
+                              {/* [新增] 显示管理员回复的图片/文件 */}
+                              <AttachmentViewer attachments={resp.attachments} />
                               <p className="text-xs text-purple-200/40 mt-1">
                                 {resp.adminName} · {new Date(resp.createdAt).toLocaleString('zh-CN')}
                               </p>
@@ -699,6 +748,13 @@ export default function AdminDashboard({ user, token, onLogout }) {
                           onChange={e => setResponseText(e.target.value)}
                           placeholder="添加处理回复..."
                           className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-purple-500 min-h-[100px]"
+                        />
+                        {/* [新增] 管理员回复的附件上传框 */}
+                        <input
+                          type="file"
+                          multiple
+                          onChange={e => setSelectedReplyFiles(Array.from(e.target.files))}
+                          className="block w-full text-xs text-purple-200/60 file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 transition-all cursor-pointer"
                         />
                         
                         <div className="flex flex-wrap gap-2">

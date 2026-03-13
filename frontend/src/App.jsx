@@ -7,6 +7,39 @@ import beian from './assets/beian.png';
 // 开发环境使用完整地址，生产环境使用相对路径（通过 Nginx 代理）
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3001/api' : '/api';
 
+// [新增] 全局附件渲染组件
+export const AttachmentViewer = ({ attachments }) => {
+  if (!attachments || attachments.length === 0) return null;
+  const SERVER_URL = API_BASE.replace('/api', '');
+
+  return (
+    <div className="flex flex-wrap gap-3 mt-3 mb-2">
+      {attachments.map((file, i) => {
+        const url = `${SERVER_URL}${file.path}`;
+        if (file.mimetype.startsWith('image/')) {
+          return (
+            <a key={i} href={url} target="_blank" rel="noreferrer" className="block w-20 h-20 md:w-24 md:h-24 overflow-hidden rounded-xl border border-white/20 hover:border-purple-500 transition-all shadow-md">
+              <img src={url} alt={file.filename} className="w-full h-full object-cover hover:scale-110 transition-transform duration-300" />
+            </a>
+          );
+        }
+        if (file.mimetype.startsWith('video/')) {
+          return (
+            <video key={i} src={url} controls className="h-20 md:h-24 max-w-[150px] md:max-w-[200px] object-cover rounded-xl border border-white/20 shadow-md" />
+          );
+        }
+        return (
+          <a key={i} href={url} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-xl text-xs text-purple-200 hover:bg-white/10 hover:text-white transition-all shadow-sm">
+            <span>📎</span><span className="truncate max-w-[120px]" title={file.filename}>{file.filename}</span>
+          </a>
+        );
+      })}
+    </div>
+  );
+};
+
+// [新增] 全局分类字典配置 (含一二级联动)
+
 // [新增] 全局分类字典配置 (含一二级联动)
 export const CATEGORIES_CONFIG = {
   academic: {
@@ -459,16 +492,30 @@ const DashboardPage = ({ user, token, onLogout }) => {
     return () => clearInterval(interval);
   }, [fetchFeedbacks]);
 
-  const handleSubmit = async (formData) => {
+  const handleSubmit = async (formData, files) => { // [修改] 接收 files
     setLoading(true);
     try {
+      let uploadedFiles = [];
+      // [新增] 优先上传附件
+      if (files && files.length > 0) {
+        const fileData = new FormData();
+        files.forEach(f => fileData.append('files', f));
+        const uploadRes = await fetch(`${API_BASE}/upload`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: fileData
+        });
+        const uploadData = await uploadRes.json();
+        if (uploadData.success) uploadedFiles = uploadData.files;
+      }
+
       const res = await fetch(`${API_BASE}/feedback`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({ ...formData, attachments: uploadedFiles }) // [修改] 拼接附件
       });
       const data = await res.json();
       if (data.success) {
@@ -665,6 +712,7 @@ const DashboardPage = ({ user, token, onLogout }) => {
 const SubmitForm = ({ categories, onSubmit, loading }) => {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedSubCategory, setSelectedSubCategory] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState([]); // [新增]
   const [formData, setFormData] = useState({
     title: '',
     content: '',
@@ -678,10 +726,12 @@ const SubmitForm = ({ categories, onSubmit, loading }) => {
       alert('请完整选择问题类别（包含一级与二级细分）');
       return;
     }
-    onSubmit({ ...formData, category: selectedCategory, subCategory: selectedSubCategory });
+    // [修改] 传递 selectedFiles
+    onSubmit({ ...formData, category: selectedCategory, subCategory: selectedSubCategory }, selectedFiles);
     setFormData({ title: '', content: '', isAnonymous: false, priority: 'normal' });
     setSelectedCategory('');
     setSelectedSubCategory('');
+    setSelectedFiles([]); // [新增] 清空附件
   };
 
   return (
@@ -760,6 +810,17 @@ const SubmitForm = ({ categories, onSubmit, loading }) => {
               value={formData.content}
               onChange={e => setFormData({...formData, content: e.target.value})}
               required
+            />
+          </div>
+
+          {/* [新增] 附件上传区 */}
+          <div className="space-y-2">
+            <label className="text-sm text-purple-200/80 font-medium">补充附件 (图片/视频/文档等，可选)</label>
+            <input
+              type="file"
+              multiple
+              onChange={e => setSelectedFiles(Array.from(e.target.files))}
+              className="block w-full text-sm text-purple-200/60 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-purple-600/20 file:text-purple-300 hover:file:bg-purple-600/30 transition-all cursor-pointer"
             />
           </div>
 
@@ -855,13 +916,18 @@ const FeedbackList = ({ feedbacks, categories }) => {
               {isExpanded && (
                 <div className="mt-4 pt-4 border-t border-white/10">
                   <p className="text-purple-200/80 text-sm whitespace-pre-wrap">{feedback.content}</p>
+                  
+                  {/* [新增] 渲染用户提交的附件 */}
+                  <AttachmentViewer attachments={feedback.attachments} />
 
                   {feedback.responses && feedback.responses.length > 0 && (
                     <div className="mt-4 space-y-3">
                       <h5 className="text-sm font-medium text-white">处理进度</h5>
                       {feedback.responses.map((resp, i) => (
-                        <div key={i} className="pl-4 border-l-2 border-purple-500/50">
+                        <div key={i} className="pl-4 border-l-2 border-purple-500/50 py-1">
                           <p className="text-sm text-purple-200/80">{resp.content}</p>
+                          {/* [新增] 渲染管理员回复的附件 */}
+                          <AttachmentViewer attachments={resp.attachments} />
                           <p className="text-xs text-purple-200/40 mt-1">
                             {resp.adminName} · {new Date(resp.createdAt).toLocaleString('zh-CN')}
                           </p>

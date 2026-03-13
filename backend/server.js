@@ -14,10 +14,30 @@ const xss = require('xss-clean');
 const hpp = require('hpp');
 const compression = require('compression');
 const morgan = require('morgan');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 
 const app = express();
 app.set('trust proxy', 1);
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname);
+    // 解决中文文件名乱码问题，使用时间戳+随机数
+    cb(null, Date.now() + '-' + Math.round(Math.random() * 1E9) + ext);
+  }
+});
+const upload = multer({ storage: storage, limits: { fileSize: 50 * 1024 * 1024 } }); // 限制 50MB
 
+// [新增] 开放 uploads 静态目录供前端直接访问
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // ============================================
 // 环境配置
 // ============================================
@@ -201,10 +221,12 @@ const feedbackSchema = new mongoose.Schema({
     path: String,
     mimetype: String
   }],
-  responses: [{
+ responses: [{
     content: String,
     adminId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     adminName: String,
+    // [新增] 允许管理员回复携带附件
+    attachments: [{ filename: String, path: String, mimetype: String }],
     createdAt: { type: Date, default: Date.now }
   }],
   assignedTo: {
@@ -314,6 +336,24 @@ app.get('/api/health', (req, res) => {
     message: '服务运行正常',
     timestamp: new Date().toISOString()
   });
+});
+
+// [新增] 通用文件上传接口
+app.post('/api/upload', authenticate, upload.array('files', 10), (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ success: false, message: '未检测到文件' });
+    }
+    const files = req.files.map(file => ({
+      filename: Buffer.from(file.originalname, 'latin1').toString('utf8'), // 修复中文名乱码
+      path: `/uploads/${file.filename}`,
+      mimetype: file.mimetype
+    }));
+    res.json({ success: true, files });
+  } catch (error) {
+    console.error('上传失败:', error);
+    res.status(500).json({ success: false, message: '文件上传失败' });
+  }
 });
 
 // ================== 认证相关 ==================
@@ -485,10 +525,9 @@ app.put('/api/auth/password', authenticate, async (req, res) => {
 // 提交反馈
 app.post('/api/feedback', authenticate, async (req, res) => {
   try {
-    // [修改] 解构出 subCategory
-    const { category, subCategory, title, content, priority, isAnonymous } = req.body;
+    // [修改] 解构出 attachments
+    const { category, subCategory, title, content, priority, isAnonymous, attachments } = req.body;
     
-    // [修改] 增加 subCategory 的校验
     if (!category || !subCategory || !title || !content) {
       return res.status(400).json({ success: false, message: '请填写所有必填字段' });
     }
@@ -496,13 +535,13 @@ app.post('/api/feedback', authenticate, async (req, res) => {
     const feedback = await Feedback.create({
       user: req.user._id,
       category,
-      subCategory, // [新增] 保存至数据库
+      subCategory,
       title: sanitizeInput(title),
       content: sanitizeInput(content),
       priority: priority || 'normal',
-      isAnonymous: !!isAnonymous
+      isAnonymous: !!isAnonymous,
+      attachments: attachments || [] // [新增] 存入数据库
     });
-    
     await logAction(req.user._id, 'create', 'feedback', feedback._id, { category }, req);
     
     res.status(201).json({
@@ -662,7 +701,8 @@ app.get('/api/admin/feedbacks', authenticate, adminOnly, async (req, res) => {
 // 更新反馈状态（管理员）
 app.patch('/api/admin/feedback/:id/status', authenticate, adminOnly, async (req, res) => {
   try {
-    const { status, response } = req.body;
+    // [修改] 接收 attachments
+    const { status, response, attachments } = req.body;
     
     const feedback = await Feedback.findById(req.params.id);
     
@@ -672,11 +712,13 @@ app.patch('/api/admin/feedback/:id/status', authenticate, adminOnly, async (req,
     
     feedback.status = status;
     
-    if (response) {
+    // [修改] 如果有文本或有附件，都算作一次有效回复
+    if (response || (attachments && attachments.length > 0)) {
       feedback.responses.push({
-        content: sanitizeInput(response),
+        content: response ? sanitizeInput(response) : '',
         adminId: req.user._id,
-        adminName: req.user.name
+        adminName: req.user.name,
+        attachments: attachments || [] // [新增]
       });
     }
     
