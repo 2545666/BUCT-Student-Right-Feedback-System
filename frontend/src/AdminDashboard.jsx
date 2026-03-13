@@ -94,6 +94,22 @@ const AccountManagement = ({ token, user: currentUser }) => {
     } catch (err) { alert('操作失败'); }
   };
 
+  // [新增] 列表中直接点击升级的快捷操作
+  const handleDirectPromote = async (studentId, studentName) => {
+    if (!window.confirm(`确定要将 ${studentName} (${studentId}) 升级为管理员吗？`)) return;
+    try {
+      const res = await fetch(`${API_BASE}/admin/users/${studentId}/role`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ role: 'admin' })
+      });
+      if ((await res.json()).success) {
+        alert(`${studentName} (${studentId}) 已经是管理员了`);
+        fetchUsers(); // 刷新列表，该用户会自动移到上方的管理员列表中
+      }
+    } catch (err) { alert('操作失败'); }
+  };
+
   const handleResetPassword = async (studentId) => {
     const newPwd = prompt(`请输入学号 ${studentId} 的新密码(至少6位)：`, '123456');
     if (!newPwd || newPwd.length < 6) return alert('密码无效或取消操作');
@@ -196,7 +212,7 @@ const AccountManagement = ({ token, user: currentUser }) => {
               <thead className="sticky top-0 bg-slate-900/90 backdrop-blur border-b border-white/10 text-white z-10">
                 <tr><th className="py-2 pl-2">人员</th><th className="py-2">操作</th></tr>
               </thead>
-              <tbody>
+             <tbody>
                 {students.map(student => (
                   <tr key={student._id} className="border-b border-white/5 hover:bg-white/5">
                     <td className="py-3 pl-2">
@@ -206,6 +222,8 @@ const AccountManagement = ({ token, user: currentUser }) => {
                     <td className="py-3 space-x-2">
                       <button onClick={() => viewStudentFeedbacks(student._id, student.name)} className="text-xs px-2 py-1 bg-purple-500/20 text-purple-300 rounded hover:bg-purple-500/40 transition">查阅</button>
                       <button onClick={() => handleResetPassword(student.studentId)} className="text-xs px-2 py-1 bg-yellow-500/20 text-yellow-300 rounded hover:bg-yellow-500/40 transition">重置</button>
+                      {/* [新增] 绿色的升级按钮 */}
+                      <button onClick={() => handleDirectPromote(student.studentId, student.name)} className="text-xs px-2 py-1 bg-green-500/20 text-green-300 rounded hover:bg-green-500/40 transition">升级</button>
                     </td>
                   </tr>
                 ))}
