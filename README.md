@@ -1,4 +1,4 @@
-# # <img src="./frontend/src/assets/LOGO_1.png" width="24" height="24" style="vertical-align: middle;"> 北京化工大学国际教育学院 - SIEVOX学生权益反馈系统
+ # <img src="./frontend/src/assets/LOGO_1.png" width="24" height="24" style="vertical-align: middle;"> 北京化工大学国际教育学院 - SIEVOX学生权益反馈系统
 
 北京化工大学国际教育学院学生权益反馈管理平台，支持实时反馈、分类管理、进度跟踪等功能。
 
