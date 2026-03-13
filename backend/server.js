@@ -834,7 +834,7 @@ const startServer = async () => {
     if (!adminExists) {
       await User.create({
         studentId: '20240901007',
-        password: 'SIEStudent2026.',
+        password: 'SIEVOX2026.',
         name: '系统管理员',
         email: '2024090107@buct.edu.cn',
         role: 'superadmin'
