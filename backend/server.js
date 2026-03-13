@@ -1,5 +1,5 @@
 // ============================================
-// 北京化工大学国际教育学院 - 学生权益反馈系统
+// 北京化工大学国际教育学院 - SIEVOX学生权益反馈系统
 // 后端服务器 - Express + MongoDB + JWT
 // ============================================
 
@@ -691,6 +691,52 @@ app.patch('/api/admin/feedback/:id/status', authenticate, adminOnly, async (req,
     res.json({ success: true, message: '状态更新成功', feedback });
   } catch (error) {
     res.status(500).json({ success: false, message: '更新状态失败' });
+  }
+});
+// ================== 超级管理员账号管理专属 API ==================
+
+// 1. 获取所有用户列表（区分角色）
+app.get('/api/admin/users', authenticate, adminOnly, async (req, res) => {
+  try {
+    // 仅限超级管理员访问
+    if (req.user.role !== 'superadmin') {
+      return res.status(403).json({ success: false, message: '仅超级管理员可用' });
+    }
+    // 获取所有用户，去除密码字段
+    const users = await User.find().select('-password').sort({ createdAt: -1 }).lean();
+    res.json({ success: true, users });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '获取用户列表失败' });
+  }
+});
+
+// 2. 获取特定学生提交的所有反馈（包含匿名）
+app.get('/api/admin/users/:id/feedbacks', authenticate, adminOnly, async (req, res) => {
+  try {
+    if (req.user.role !== 'superadmin') {
+      return res.status(403).json({ success: false, message: '仅超级管理员可用' });
+    }
+    // 直接通过 user ObjectID 查询，不受匿名状态限制
+    const feedbacks = await Feedback.find({ user: req.params.id }).sort({ createdAt: -1 }).lean();
+    res.json({ success: true, feedbacks });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '获取学生反馈记录失败' });
+  }
+});
+
+// 3. 获取子管理员的操作日志（状态更新、回复等）
+app.get('/api/admin/users/:id/logs', authenticate, adminOnly, async (req, res) => {
+  try {
+    if (req.user.role !== 'superadmin') {
+      return res.status(403).json({ success: false, message: '仅超级管理员可用' });
+    }
+    // 查询 AuditLog 表中的操作记录
+    const logs = await AuditLog.find({ user: req.params.id })
+      .sort({ createdAt: -1 })
+      .lean();
+    res.json({ success: true, logs });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '获取操作日志失败' });
   }
 });
 
