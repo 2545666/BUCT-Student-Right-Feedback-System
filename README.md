@@ -1,4 +1,4 @@
-# ![LOGO](C:\Users\25453\Desktop\student-feedback-system\frontend\src\assets\LOGO_1.png) 北京化工大学国际教育学院 - 学生权益反馈系统
+# ![LOGO](./frontend/src/assets/LOGO_1.png) 北京化工大学国际教育学院 - 学生权益反馈系统
 
 北京化工大学国际教育学院学生权益反馈管理平台，支持实时反馈、分类管理、进度跟踪等功能。
 
