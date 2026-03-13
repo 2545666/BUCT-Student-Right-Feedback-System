@@ -497,7 +497,7 @@ export default function AdminDashboard({ user, token, onLogout }) {
 
             {/* [修改] 底部双备案信息 */}
         <div className="mt-6 text-center text-[10px] md:text-xs text-purple-200/40 px-4 transform scale-90 origin-center space-y-2">
-          <p>Copyright ©2026 赵启涵. </p>
+          <p>Copyright© 2026 赵启涵. </p>
           <div className="flex flex-col md:flex-row items-center justify-center gap-2 md:gap-4 mt-1">
             <a 
               href="https://beian.miit.gov.cn/" 
