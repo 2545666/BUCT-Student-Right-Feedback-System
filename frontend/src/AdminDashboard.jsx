@@ -2,26 +2,35 @@ import React, { useState, useEffect, useCallback } from 'react';
 import sieLogo from './assets/LOGO_1.png';
 import beian from './assets/beian.png';
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3001/api' : '/api';
-// [新增] 引入公共附件组件
+// ======= 替换现有的 AttachmentViewer (AdminDashboard.jsx) =======
 export const AttachmentViewer = ({ attachments }) => {
   if (!attachments || attachments.length === 0) return null;
-  const SERVER_URL = API_BASE.replace('/api', '');
+  
+  // [修复 URL 路径] 确保开发环境下，图片强制去后端 (3001端口) 获取
+  const SERVER_URL = import.meta.env.DEV ? 'http://localhost:3001' : '';
+
   return (
     <div className="flex flex-wrap gap-3 mt-3 mb-2">
       {attachments.map((file, i) => {
         const url = `${SERVER_URL}${file.path}`;
-        if (file.mimetype.startsWith('image/')) {
+        
+        // [增强识别] 即使 mimetype 丢失，也通过后缀名强制识别图片和视频
+        const isImage = file.mimetype?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp)$/i.test(file.path || file.filename);
+        const isVideo = file.mimetype?.startsWith('video/') || /\.(mp4|webm|ogg)$/i.test(file.path || file.filename);
+
+        if (isImage) {
           return (
             <a key={i} href={url} target="_blank" rel="noreferrer" className="block w-20 h-20 md:w-24 md:h-24 overflow-hidden rounded-xl border border-white/20 hover:border-purple-500 transition-all shadow-md" onClick={e => e.stopPropagation()}>
               <img src={url} alt={file.filename} className="w-full h-full object-cover hover:scale-110 transition-transform duration-300" />
             </a>
           );
         }
-        if (file.mimetype.startsWith('video/')) {
+        if (isVideo) {
           return (
             <video key={i} src={url} controls className="h-20 md:h-24 max-w-[150px] md:max-w-[200px] object-cover rounded-xl border border-white/20 shadow-md" onClick={e => e.stopPropagation()} />
           );
         }
+        // 渲染其他格式文档 (Word/PDF 等)
         return (
           <a key={i} href={url} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-xl text-xs text-purple-200 hover:bg-white/10 hover:text-white transition-all shadow-sm" onClick={e => e.stopPropagation()}>
             <span>📎</span><span className="truncate max-w-[120px]" title={file.filename}>{file.filename}</span>
