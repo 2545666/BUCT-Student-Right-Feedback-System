@@ -1,6 +1,8 @@
 import AdminDashboard from './AdminDashboard'; // [!code ++]
 import React, { useState, useEffect, useCallback } from 'react';
 import sieLogo from './assets/MIXED_LOGO.png';
+import beian from './assets/beian.png';
+
 // API Configuration
 // 开发环境使用完整地址，生产环境使用相对路径（通过 Nginx 代理）
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3001/api' : '/api';
@@ -261,9 +263,9 @@ const LoginPage = ({ onLogin, onRegister }) => {
       <Background />
       
       <Card className="w-full max-w-md p-8 relative z-10" hover={false}>
-       {/* 使用 flex 布局垂直居中，并大幅增加图片尺寸 */}
+     {/* 使用 flex 布局垂直居中，并大幅增加图片尺寸 */}
         <div className="text-center mb-8 flex flex-col items-center justify-center">
-          < img 
+          <img 
             src={sieLogo} 
             alt="系统LOGO" 
             className="w-32 h-32 md:w-40 md:h-40 object-contain mb-2 hover:scale-105 transition-transform duration-300" 
@@ -272,8 +274,8 @@ const LoginPage = ({ onLogin, onRegister }) => {
               北京化工大学国际教育学院
          </h1>
          <p className="text-xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 tracking-wider drop-shadow-sm py-2">
-           学生权益反馈系统
-         </p >
+            学生权益反馈系统
+         </p>
         </div>
 
         <div className="flex mb-6 p-1 bg-white/5 rounded-xl">
@@ -360,16 +362,29 @@ const LoginPage = ({ onLogin, onRegister }) => {
             {loading ? '处理中...' : (isLogin ? '登录系统' : '注册账户')}
           </Button>
         </form>
-        <div className="mt-6 text-center text-[10px] md:text-xs text-purple-200/40 px-4 transform scale-90 origin-center space-y-1">
-          <p>Copyright @ 2026 赵启涵</p>
-          <a 
-            href="https://beian.miit.gov.cn/" 
-            target="_blank" 
-            rel="noreferrer" 
-            className="inline-block hover:text-purple-200 transition-colors"
-          >
-            京ICP备2026010091号
-          </a>
+       {/* [修改] 底部双备案信息 */}
+        <div className="mt-6 text-center text-[10px] md:text-xs text-purple-200/40 px-4 transform scale-90 origin-center space-y-2">
+          <p>Copyright© 2026 赵启涵. </p>
+          <div className="flex flex-col md:flex-row items-center justify-center gap-2 md:gap-4 mt-1">
+            <a 
+              href="https://beian.miit.gov.cn/" 
+              target="_blank" 
+              rel="noreferrer" 
+              className="hover:text-purple-200 transition-colors"
+            >
+              京ICP备2026010091号-1
+            </a>
+            <a 
+              href="https://beian.mps.gov.cn/#/query/webSearch?code=11011402055565" 
+              target="_blank" 
+              rel="noreferrer" 
+              className="flex items-center gap-1 hover:text-purple-200 transition-colors"
+            >
+              
+              <img src={beian} alt="公安" className="w-3 h-3 md:w-4 md:h-4" /> 
+              京公网安备11011402055565号
+            </a>
+          </div>
         </div>
       </Card>
     </div>
@@ -621,16 +636,28 @@ const DashboardPage = ({ user, token, onLogout }) => {
          </Card>
         </div>
       )}
-      <footer className="relative z-10 py-6 text-center text-[10px] md:text-xs text-purple-200/40 space-y-1">
-        <p>Copyright @ 2026 赵启涵</p>
+     {/* 页面底部双备案信息 */}
+      <footer className="relative z-10 py-6 text-center text-[10px] md:text-xs text-purple-200/40 space-y-2">
+        <p>©2026 赵启涵. All Rights Reserved.</p>
+        <div className="flex flex-col md:flex-row items-center justify-center gap-2 md:gap-4 mt-1">
+          <a 
+            href="https://beian.miit.gov.cn/" 
+            target="_blank" 
+            rel="noreferrer" 
+            className="hover:text-purple-200 transition-colors"
+          >
+            京ICP备2026010091号-1
+          </a>
         <a 
-          href="https://beian.miit.gov.cn/" 
-          target="_blank" 
-          rel="noreferrer" 
-          className="inline-block hover:text-purple-200 transition-colors"
-        >
-          京ICP备2026010091号
-        </a>
+            href="https://beian.mps.gov.cn/#/query/webSearch?code=11011402055565" 
+            target="_blank" 
+            rel="noreferrer" 
+            className="flex items-center gap-1 hover:text-purple-200 transition-colors"
+          >
+            <img src={beian} alt="公安" className="w-3 h-3" /> 
+            京公网安备11011402055565号
+          </a>
+        </div>
       </footer>
     </div>
   );

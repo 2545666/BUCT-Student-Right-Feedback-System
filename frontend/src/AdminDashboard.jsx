@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import sieLogo from './assets/MIXED_LOGO.png';
+import beian from './assets/beian.png';
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3001/api' : '/api';
 
 // 管理员仪表板组件
@@ -494,18 +495,29 @@ export default function AdminDashboard({ user, token, onLogout }) {
         </div>
       </main>
 
-      {/* [新增] 页面底部 ICP 备案信息 */}
-      <footer className="relative z-10 py-6 text-center text-[10px] md:text-xs text-purple-200/40 space-y-1">
-        <p>Copyright @ 2026 赵启涵</p>
-        <a 
-          href="https://beian.miit.gov.cn/" 
-          target="_blank" 
-          rel="noreferrer" 
-          className="inline-block hover:text-purple-200 transition-colors"
-        >
-          京ICP备2026010091号
-        </a>
-      </footer>
-    </div>
+            {/* [修改] 底部双备案信息 */}
+        <div className="mt-6 text-center text-[10px] md:text-xs text-purple-200/40 px-4 transform scale-90 origin-center space-y-2">
+          <p>Copyright ©2026 赵启涵. </p>
+          <div className="flex flex-col md:flex-row items-center justify-center gap-2 md:gap-4 mt-1">
+            <a 
+              href="https://beian.miit.gov.cn/" 
+              target="_blank" 
+              rel="noreferrer" 
+              className="hover:text-purple-200 transition-colors"
+            >
+              京ICP备2026010091号-1
+            </a>
+            <a 
+              href="https://beian.mps.gov.cn/#/query/webSearch?code=11011402055565" 
+              target="_blank" 
+              rel="noreferrer" 
+              className="flex items-center gap-1 hover:text-purple-200 transition-colors"
+            >
+              <img src={beian} alt="公安" className="w-3 h-3 md:w-4 md:h-4" /> 
+              京公网安备11011402055565号
+            </a>
+          </div>
+        </div>
+      </div>
   );
 }
