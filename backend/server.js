@@ -36,8 +36,8 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage, limits: { fileSize: 50 * 1024 * 1024 } }); // 限制 50MB
 
-// [新增] 开放 uploads 静态目录供前端直接访问
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// [修复] 将静态资源映射到 /api/uploads 下，完美利用现有的代理配置
+app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
 // ============================================
 // 环境配置
 // ============================================
@@ -345,8 +345,9 @@ app.post('/api/upload', authenticate, upload.array('files', 10), (req, res) => {
       return res.status(400).json({ success: false, message: '未检测到文件' });
     }
     const files = req.files.map(file => ({
-      filename: Buffer.from(file.originalname, 'latin1').toString('utf8'), // 修复中文名乱码
-      path: `/uploads/${file.filename}`,
+      filename: Buffer.from(file.originalname, 'latin1').toString('utf8'),
+      // [修复] 新上传的文件路径加上 /api 前缀
+      path: `/api/uploads/${file.filename}`,
       mimetype: file.mimetype
     }));
     res.json({ success: true, files });

@@ -9,18 +9,17 @@ const API_BASE = import.meta.env.DEV ? 'http://localhost:3001/api' : '/api';
 
 // [新增] 全局附件渲染组件
 // ======= 替换现有的 AttachmentViewer (App.jsx) =======
+// ======= 用这段代码替换原有的 AttachmentViewer =======
 export const AttachmentViewer = ({ attachments }) => {
   if (!attachments || attachments.length === 0) return null;
-  
-  // [修复 URL 路径] 确保开发环境下，图片强制去后端 (3001端口) 获取
-  const SERVER_URL = import.meta.env.DEV ? 'http://localhost:3001' : '';
 
   return (
     <div className="flex flex-wrap gap-3 mt-3 mb-2">
       {attachments.map((file, i) => {
-        const url = `${SERVER_URL}${file.path}`;
+        // [修复] 兼容处理：如果旧数据只有 /uploads/，强制补全 /api，利用代理自动分发
+        const url = file.path.startsWith('/api') ? file.path : `/api${file.path}`;
         
-        // [增强识别] 即使 mimetype 丢失，也通过后缀名强制识别图片和视频
+        // 双重校验：通过 mimetype 或后缀名识别图片和视频
         const isImage = file.mimetype?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp)$/i.test(file.path || file.filename);
         const isVideo = file.mimetype?.startsWith('video/') || /\.(mp4|webm|ogg)$/i.test(file.path || file.filename);
 
@@ -36,7 +35,6 @@ export const AttachmentViewer = ({ attachments }) => {
             <video key={i} src={url} controls className="h-20 md:h-24 max-w-[150px] md:max-w-[200px] object-cover rounded-xl border border-white/20 shadow-md" onClick={e => e.stopPropagation()} />
           );
         }
-        // 渲染其他格式文档 (Word/PDF 等)
         return (
           <a key={i} href={url} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-xl text-xs text-purple-200 hover:bg-white/10 hover:text-white transition-all shadow-sm" onClick={e => e.stopPropagation()}>
             <span>📎</span><span className="truncate max-w-[120px]" title={file.filename}>{file.filename}</span>
