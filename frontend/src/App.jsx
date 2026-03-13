@@ -1,6 +1,6 @@
 import AdminDashboard from './AdminDashboard'; // [!code ++]
 import React, { useState, useEffect, useCallback } from 'react';
-import sieLogo from './assets/MIXED_LOGO.png';
+import sieLogo from './assets/LOGO_1.png';
 import beian from './assets/beian.png';
 
 // API Configuration
