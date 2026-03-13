@@ -1,8 +1,226 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import sieLogo from './assets/MIXED_LOGO.png';
+import React, { useState, useEffect } from 'react';
+import sieLogo from './assets/LOGO_1.png';
 import beian from './assets/beian.png';
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3001/api' : '/api';
+//账号管理组件
+const AccountManagement = ({ token, user: currentUser }) => {
+  const [users, setUsers] = useState([]);
+  const [targetStudentId, setTargetStudentId] = useState('');
+  const [detailsModal, setDetailsModal] = useState({ isOpen: false, type: '', data: [], title: '' });
 
+  const fetchUsers = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/users`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) setUsers(data.users);
+    } catch (err) {
+      alert('获取用户列表失败');
+    }
+  }, [token]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  const handlePromote = async (e) => {
+    e.preventDefault();
+    if (!targetStudentId) return;
+    const targetUser = users.find(u => u.studentId === targetStudentId);
+    if (!targetUser) return alert('未找到该学号的用户');
+    try {
+      const res = await fetch(`${API_BASE}/admin/users/${targetStudentId}/role`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ role: 'admin' })
+      });
+      if ((await res.json()).success) {
+        alert(`${targetUser.name} (${targetStudentId}) 已经是管理员了`);
+        setTargetStudentId('');
+        fetchUsers();
+      }
+    } catch (err) { alert('操作失败'); }
+  };
+
+  const handleDemote = async (studentId) => {
+    if (!window.confirm(`确定要撤销学号 ${studentId} 的管理员权限吗？`)) return;
+    try {
+      const res = await fetch(`${API_BASE}/admin/users/${studentId}/role`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ role: 'student' })
+      });
+      if ((await res.json()).success) {
+        alert('该账号已降级为普通学生');
+        fetchUsers();
+      }
+    } catch (err) { alert('操作失败'); }
+  };
+
+  const handleResetPassword = async (studentId) => {
+    const newPwd = prompt(`请输入学号 ${studentId} 的新密码(至少6位)：`, '123456');
+    if (!newPwd || newPwd.length < 6) return alert('密码无效或取消操作');
+    try {
+      const res = await fetch(`${API_BASE}/admin/users/${studentId}/reset-password`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ newPassword: newPwd })
+      });
+      if ((await res.json()).success) alert('密码重置成功');
+    } catch (err) { alert('重置失败'); }
+  };
+
+  const viewStudentFeedbacks = async (userId, userName) => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/users/${userId}/feedbacks`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setDetailsModal({
+          isOpen: true, type: 'feedback', title: `${userName} 提交的问题 (含匿名)`, data: data.feedbacks
+        });
+      }
+    } catch (err) { alert('获取记录失败'); }
+  };
+
+  const viewAdminLogs = async (userId, userName) => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/users/${userId}/logs`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setDetailsModal({
+          isOpen: true, type: 'log', title: `${userName} 的处理操作日志`, data: data.logs
+        });
+      }
+    } catch (err) { alert('获取日志失败'); }
+  };
+
+  const admins = users.filter(u => u.role === 'admin' || u.role === 'superadmin');
+  const students = users.filter(u => u.role === 'student');
+
+  if (currentUser?.role !== 'superadmin') return null;
+
+  return (
+    <div className="space-y-6 mt-6 animate-fadeIn">
+      <div className="p-6 bg-white/5 border border-purple-500/30 rounded-2xl relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-blue-500" />
+        <h3 className="text-lg font-bold text-white mb-4">赋予管理员权限</h3>
+        <form onSubmit={handlePromote} className="flex gap-4">
+          <input
+            type="text"
+            value={targetStudentId}
+            onChange={(e) => setTargetStudentId(e.target.value)}
+            placeholder="输入要升级的学生学号"
+            className="flex-1 px-4 py-2 rounded-xl bg-slate-900 border border-white/10 text-white focus:border-purple-500 outline-none"
+            required
+          />
+          <button type="submit" className="px-6 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-medium transition-all">
+            确认设为管理员
+          </button>
+        </form>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-6">
+        <div className="p-6 bg-white/5 border border-white/10 rounded-2xl h-96 flex flex-col">
+          <h3 className="text-lg font-bold text-white mb-4 shrink-0">子管理员账号</h3>
+          <div className="overflow-y-auto flex-1 pr-2 custom-scrollbar">
+            <table className="w-full text-left text-sm text-purple-200/80">
+              <thead className="sticky top-0 bg-slate-900/90 backdrop-blur border-b border-white/10 text-white z-10">
+                <tr><th className="py-2 pl-2">人员</th><th className="py-2">操作</th></tr>
+              </thead>
+              <tbody>
+                {admins.map(admin => (
+                  <tr key={admin._id} className="border-b border-white/5 hover:bg-white/5">
+                    <td className="py-3 pl-2">
+                      <div className="text-white font-medium">{admin.name} {admin.role === 'superadmin' && <span className="text-[10px] text-yellow-400 border border-yellow-400/50 rounded px-1 ml-1">超管</span>}</div>
+                      <div className="text-xs font-mono opacity-60">{admin.studentId}</div>
+                    </td>
+                    <td className="py-3 space-x-2">
+                      <button onClick={() => viewAdminLogs(admin._id, admin.name)} className="text-xs px-2 py-1 bg-blue-500/20 text-blue-300 rounded hover:bg-blue-500/40 transition">日志</button>
+                      <button onClick={() => handleResetPassword(admin.studentId)} className="text-xs px-2 py-1 bg-yellow-500/20 text-yellow-300 rounded hover:bg-yellow-500/40 transition">重置</button>
+                      {admin.role !== 'superadmin' && (
+                        <button onClick={() => handleDemote(admin.studentId)} className="text-xs px-2 py-1 bg-red-500/20 text-red-300 rounded hover:bg-red-500/40 transition">降级</button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="p-6 bg-white/5 border border-white/10 rounded-2xl h-96 flex flex-col">
+          <h3 className="text-lg font-bold text-white mb-4 shrink-0">学生账号</h3>
+          <div className="overflow-y-auto flex-1 pr-2 custom-scrollbar">
+            <table className="w-full text-left text-sm text-purple-200/80">
+              <thead className="sticky top-0 bg-slate-900/90 backdrop-blur border-b border-white/10 text-white z-10">
+                <tr><th className="py-2 pl-2">人员</th><th className="py-2">操作</th></tr>
+              </thead>
+              <tbody>
+                {students.map(student => (
+                  <tr key={student._id} className="border-b border-white/5 hover:bg-white/5">
+                    <td className="py-3 pl-2">
+                      <div className="text-white font-medium">{student.name}</div>
+                      <div className="text-xs font-mono opacity-60">{student.studentId}</div>
+                    </td>
+                    <td className="py-3 space-x-2">
+                      <button onClick={() => viewStudentFeedbacks(student._id, student.name)} className="text-xs px-2 py-1 bg-purple-500/20 text-purple-300 rounded hover:bg-purple-500/40 transition">查阅</button>
+                      <button onClick={() => handleResetPassword(student.studentId)} className="text-xs px-2 py-1 bg-yellow-500/20 text-yellow-300 rounded hover:bg-yellow-500/40 transition">重置</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {detailsModal.isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <div className="w-full max-w-2xl bg-slate-900 border border-white/10 rounded-2xl p-6 max-h-[80vh] flex flex-col relative">
+            <button onClick={() => setDetailsModal({ isOpen: false, type: '', data: [], title: '' })} className="absolute top-4 right-4 text-white/50 hover:text-white text-xl z-10">✕</button>
+            <h3 className="text-xl font-bold text-white mb-4 shrink-0 pr-8">{detailsModal.title}</h3>
+            <div className="space-y-3 overflow-y-auto flex-1 pr-2 custom-scrollbar">
+              {detailsModal.data.length === 0 ? (
+                <p className="text-purple-200/50 py-4 text-center">暂无记录</p>
+              ) : (
+                detailsModal.data.map((item, index) => (
+                  <div key={index} className="p-3 bg-white/5 rounded-lg text-sm text-purple-200/80 border border-white/5">
+                    {detailsModal.type === 'feedback' && (
+                      <>
+                        <div className="flex justify-between items-start text-white font-medium mb-1">
+                          <span className="flex-1 pr-2 break-all">{item.title} {item.isAnonymous && <span className="text-xs px-1 py-0.5 ml-1 bg-orange-500/20 text-orange-400 rounded">匿名提交</span>}</span>
+                          <span className="text-xs text-purple-200/50 shrink-0 mt-0.5">{new Date(item.createdAt).toLocaleString()}</span>
+                        </div>
+                        <p className="line-clamp-2 text-xs opacity-80 mt-1">{item.content}</p>
+                      </>
+                    )}
+                    {detailsModal.type === 'log' && (
+                      <>
+                        <div className="flex justify-between items-center font-medium mb-1">
+                          <span className="text-blue-300 px-2 py-0.5 bg-blue-500/10 rounded text-xs">{item.action}</span>
+                          <span className="text-xs text-purple-200/50">{new Date(item.createdAt).toLocaleString()}</span>
+                        </div>
+                        <div className="mt-2 text-xs opacity-70 bg-black/20 p-2 rounded break-all font-mono">
+                          {JSON.stringify(item.details)}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 // 管理员仪表板组件
 export default function AdminDashboard({ user, token, onLogout }) {
   const [feedbacks, setFeedbacks] = useState([]);
@@ -17,7 +235,9 @@ export default function AdminDashboard({ user, token, onLogout }) {
   const [resetStudentId, setResetStudentId] = useState('');
   const [resetNewPassword, setResetNewPassword] = useState('');
   const [responseText, setResponseText] = useState('');
-
+  // 找到现有的 useState 区域
+  const [activeTab, setActiveTab] = useState('overview'); // 默认显示概览
+  const [showAccountManagement, setShowAccountManagement] = useState(false); // [新增] 控制账号管理面板的显示
 // [修改] 同步最新的 5 大分类
   const categories = {
     academic: { label: '教学教务', icon: '📚' },
@@ -172,9 +392,37 @@ export default function AdminDashboard({ user, token, onLogout }) {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* Stats Cards */}
-        {stats && (
+     <main className="max-w-7xl mx-auto px-6 py-8">
+        
+        {/* [新增] 模块切换控制区 (仅超级管理员可见) */}
+        {user?.role === 'superadmin' && (
+          <div className="mb-8 flex gap-2 p-1 bg-white/5 rounded-xl w-fit">
+            <button
+              onClick={() => setShowAccountManagement(false)}
+              className={`px-6 py-2 rounded-lg flex items-center gap-2 transition-all ${
+                !showAccountManagement ? 'bg-purple-600 text-white' : 'text-purple-200/60 hover:text-white'
+              }`}
+            >
+              <span>📋</span> 业务处理面板
+            </button>
+            <button
+              onClick={() => setShowAccountManagement(true)}
+              className={`px-6 py-2 rounded-lg flex items-center gap-2 transition-all ${
+                showAccountManagement ? 'bg-purple-600 text-white' : 'text-purple-200/60 hover:text-white'
+              }`}
+            >
+              <span>👥</span> 账号管理面板
+            </button>
+          </div>
+        )}
+
+        {/* --- [新增] 根据状态决定显示哪个区域 --- */}
+        {showAccountManagement && user?.role === 'superadmin' ? (
+           <AccountManagement token={token} user={user} />
+        ) : (
+          <>
+            {/* Stats Cards */}
+            {stats && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             {[
               { label: '总反馈', value: stats.total, icon: '📊', gradient: 'from-purple-600 to-purple-400' },
@@ -246,6 +494,7 @@ export default function AdminDashboard({ user, token, onLogout }) {
             </button>
           </div>
         </div>
+
       {/* [新增] 高级检索与学期归档工具栏 */}
         <div className="mb-6 p-6 rounded-2xl bg-white/5 border border-white/10 space-y-4">
           <div className="flex items-center justify-between mb-2">
@@ -489,10 +738,12 @@ export default function AdminDashboard({ user, token, onLogout }) {
                     </div>
                   )}
                 </div>
-              );
+             );
             })
           )}
         </div>
+        </> // [新增] 闭合 showAccountManagement 判断的 else 分支
+        )}  {/* [新增] 闭合大括号 */}
       </main>
 
             {/* [修改] 底部双备案信息 */}
