@@ -1010,8 +1010,9 @@ export default function App() {
   if (!user) {
     return <LoginPage onLogin={login} onRegister={register} />;
   }
-  if (user.role === 'admin' || user.role === 'superadmin') {
-    return <AdminDashboard user={user} token={token} onLogout={logout} />;
+ if (user.role === 'admin' || user.role === 'superadmin') {
+    // [修改] 为管理端也传入 onRefreshUser
+    return <AdminDashboard user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} />;
   }
 
   // [修改] 传递 onRefreshUser 方法
