@@ -17,7 +17,7 @@ const morgan = require('morgan');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-
+const https = require('https'); // [新增] 引入 https 模块
 const app = express();
 app.set('trust proxy', 1);
 const uploadDir = path.join(__dirname, 'uploads');
@@ -909,7 +909,6 @@ app.use((err, req, res, next) => {
 // ============================================
 // 数据库连接和服务器启动
 // ============================================
-
 const startServer = async () => {
   try {
     await mongoose.connect(config.mongoUri, {
@@ -931,10 +930,27 @@ const startServer = async () => {
       console.log('✅ 默认管理员账户已创建');
     }
     
-    app.listen(config.port, () => {
-      console.log(`🚀 服务器运行在 http://localhost:${config.port}`);
-      console.log(`📝 环境: ${config.nodeEnv}`);
-    });
+    // [修改] 根据环境决定启动 HTTP 还是 HTTPS
+    if (config.nodeEnv === 'production') {
+      // 生产环境：读取 SSL 证书并启动 HTTPS
+    
+      const privateKey = fs.readFileSync(path.join(__dirname, 'ssl', 'sievox.cn.key'), 'utf8');
+      const certificate = fs.readFileSync(path.join(__dirname, 'ssl', 'sievox.cn.pem'), 'utf8');
+      const credentials = { key: privateKey, cert: certificate };
+
+      const httpsServer = https.createServer(credentials, app);
+      
+      // HTTPS 默认端口是 443
+      httpsServer.listen(443, () => {
+        console.log(`🚀 生产环境: HTTPS 服务器安全运行在端口 443`);
+      });
+    } else {
+      // 开发环境：依然使用普通的 HTTP 和 3001 端口
+      app.listen(config.port, () => {
+        console.log(`🚀 开发环境: HTTP 服务器运行在 http://localhost:${config.port}`);
+      });
+    }
+
   } catch (error) {
     console.error('❌ 服务器启动失败:', error);
     process.exit(1);
