@@ -18,6 +18,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const https = require('https'); // [新增] 引入 https 模块
+const http = require('http'); // [新增] 引入 http 模块用于重定向
 const app = express();
 app.set('trust proxy', 1);
 const uploadDir = path.join(__dirname, 'uploads');
@@ -933,7 +934,13 @@ const startServer = async () => {
     // [修改] 根据环境决定启动 HTTP 还是 HTTPS
     if (config.nodeEnv === 'production') {
       // 生产环境：读取 SSL 证书并启动 HTTPS
-    
+    // 1. [新增] 启动 HTTP 服务监听 80 端口，将所有请求强制定向到 HTTPS
+      http.createServer((req, res) => {
+        res.writeHead(301, { "Location": "https://" + req.headers['host'] + req.url });
+        res.end();
+      }).listen(80, () => {
+        console.log(`🚀 生产环境: HTTP 服务器运行在端口 80 (仅用于自动重定向至 HTTPS)`);
+      })
       const privateKey = fs.readFileSync(path.join(__dirname, 'ssl', 'sievox.cn.key'), 'utf8');
       const certificate = fs.readFileSync(path.join(__dirname, 'ssl', 'sievox.cn.pem'), 'utf8');
       const credentials = { key: privateKey, cert: certificate };
