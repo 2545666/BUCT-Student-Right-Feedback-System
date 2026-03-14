@@ -105,21 +105,27 @@ const useAuth = () => {
     setUser(null);
   };
 
-  useEffect(() => {
+  // [新增] 提取出独立刷新用户信息的方法
+  const refreshUser = useCallback(async () => {
     if (token) {
-      fetch(`${API_BASE}/auth/me`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.success) setUser(data.user);
-          else logout();
-        })
-        .catch(() => logout());
+      try {
+        const res = await fetch(`${API_BASE}/auth/me`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success) setUser(data.user);
+        else logout();
+      } catch (err) {
+        logout();
+      }
     }
   }, [token]);
 
-  return { user, token, login, register, logout };
+  useEffect(() => {
+    refreshUser();
+  }, [refreshUser]);
+
+  return { user, token, login, register, logout, refreshUser }; // [修改] 导出 refreshUser
 };
 
 // Components
@@ -430,46 +436,56 @@ const LoginPage = ({ onLogin, onRegister }) => {
     </div>
   );
 };
-const DashboardPage = ({ user, token, onLogout }) => {
+const DashboardPage = ({ user, token, onLogout, onRefreshUser }) => {
   const [activeTab, setActiveTab] = useState('submit');
   const [feedbacks, setFeedbacks] = useState([]);
   const [stats, setStats] = useState({ total: 0, pending: 0, processing: 0, resolved: 0 });
   const [loading, setLoading] = useState(false);
- // [新增] 修改密码相关状态
-  const [showPwdModal, setShowPwdModal] = useState(false);
+  
+  // [修改] 整合为“修改信息”的综合状态
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [settingsTab, setSettingsTab] = useState('profile'); // 'profile' 资料 | 'password' 密码
   const [pwdData, setPwdData] = useState({ current: '', new: '' });
+  const [profileData, setProfileData] = useState({ name: '', studentId: '', email: '', phone: '' });
 
-  // [新增] 处理修改密码
   const handleChangePassword = async (e) => {
     e.preventDefault();
-    if (pwdData.new.length < 6) {
-      alert('新密码至少需要6位');
-      return;
-    }
+    if (pwdData.new.length < 6) return alert('新密码至少需要6位');
     try {
       const res = await fetch(`${API_BASE}/auth/password`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ 
-          currentPassword: pwdData.current, 
-          newPassword: pwdData.new 
-        })
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ currentPassword: pwdData.current, newPassword: pwdData.new })
       });
       const data = await res.json();
       if (data.success) {
         alert('密码修改成功！请重新登录。');
-        setShowPwdModal(false);
+        setShowSettingsModal(false);
         setPwdData({ current: '', new: '' });
-        onLogout(); // 强制退出让用户重新登录
+        onLogout(); 
       } else {
         alert(data.message || '修改失败');
       }
-    } catch (err) {
-      alert('网络错误');
-    }
+    } catch (err) { alert('网络错误'); }
+  };
+
+  // [新增] 提交修改个人信息
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`${API_BASE}/auth/profile`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(profileData)
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('个人信息修改成功！');
+        if (onRefreshUser) onRefreshUser(); // 调用刷新让名字/学号实时更新
+      } else {
+        alert(data.message || '修改失败');
+      }
+    } catch (err) { alert('网络错误'); }
   };
   const categories = Object.entries(CATEGORIES_CONFIG).map(([value, info]) => ({
     value,
@@ -562,12 +578,21 @@ const DashboardPage = ({ user, token, onLogout }) => {
             {/* 第一行：操作按钮 (小尺寸适配手机) */}
             <div className="flex items-center gap-2 mb-1">
               <button 
-                onClick={() => setShowPwdModal(true)}
+                onClick={() => {
+                  setProfileData({
+                    name: user?.name || '',
+                    studentId: user?.studentId || '',
+                    email: user?.email || '',
+                    phone: user?.phone || ''
+                  });
+                  setSettingsTab('profile'); // 默认展示个人资料页
+                  setShowSettingsModal(true);
+                }}
                 className="px-2 py-1 rounded-md bg-white/5 border border-white/10 text-[10px] md:text-xs text-purple-200 hover:bg-white/10 hover:text-white transition-all whitespace-nowrap"
               >
-                修改密码
+                修改信息
               </button>
-              <button 
+              <button
                 onClick={onLogout}
                 className="px-2 py-1 rounded-md bg-red-500/10 border border-red-500/20 text-[10px] md:text-xs text-red-400 hover:bg-red-500/20 transition-all whitespace-nowrap"
               >
@@ -637,56 +662,81 @@ const DashboardPage = ({ user, token, onLogout }) => {
           <FeedbackList feedbacks={feedbacks} categories={categories} />
         )}
       </main>
-      {/* [新增] 修改密码弹窗 */}
-      {showPwdModal && (
+    {/* [修改] 整合的修改信息/密码弹窗 */}
+      {showSettingsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <Card className="w-full max-w-sm p-6 relative" hover={false}>
+          <Card className="w-full max-w-md p-6 relative" hover={false}>
             <button 
-              onClick={() => setShowPwdModal(false)}
-              className="absolute top-4 right-4 text-purple-200/50 hover:text-white"
+              onClick={() => setShowSettingsModal(false)}
+              className="absolute top-4 right-4 text-purple-200/50 hover:text-white text-lg"
             >
               ✕
             </button>
-            <h3 className="text-xl font-bold text-white mb-6">修改登录密码</h3>
-            <form onSubmit={handleChangePassword} className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm text-purple-200/80">当前密码</label>
-                <input
-                  type="password"
-                  required
-                  value={pwdData.current}
-                  onChange={e => setPwdData({...pwdData, current: e.target.value})}
-                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-purple-500"
-                  placeholder="输入当前使用的密码"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm text-purple-200/80">新密码</label>
-                <input
-                  type="password"
-                  required
-                  value={pwdData.new}
-                  onChange={e => setPwdData({...pwdData, new: e.target.value})}
-                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-purple-500"
-                  placeholder="设置新密码（至少6位）"
-                />
-              </div>
-              <div className="pt-2 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowPwdModal(false)}
-                  className="flex-1 py-3 rounded-xl bg-white/5 text-purple-200 hover:bg-white/10 transition-all"
-                >
-                  取消
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-3 rounded-xl bg-purple-600 text-white hover:bg-purple-500 transition-all font-medium shadow-lg shadow-purple-500/20"
-                >
-                  确认修改
-                </button>
-              </div>
-            </form>
+
+            {/* 选项卡切换 */}
+            <div className="flex mb-6 p-1 bg-white/5 rounded-xl w-full">
+              <button
+                onClick={() => setSettingsTab('profile')}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
+                  settingsTab === 'profile' ? 'bg-purple-600 text-white shadow-md' : 'text-purple-200/60 hover:text-white'
+                }`}
+              >
+                个人资料
+              </button>
+              <button
+                onClick={() => setSettingsTab('password')}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
+                  settingsTab === 'password' ? 'bg-purple-600 text-white shadow-md' : 'text-purple-200/60 hover:text-white'
+                }`}
+              >
+                修改密码
+              </button>
+            </div>
+
+            {/* 内容区 */}
+            {settingsTab === 'profile' ? (
+              <form onSubmit={handleUpdateProfile} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm text-purple-200/80">学号</label>
+                    <input type="text" required value={profileData.studentId} onChange={e => setProfileData({...profileData, studentId: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-purple-500" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm text-purple-200/80">姓名</label>
+                    <input type="text" required value={profileData.name} onChange={e => setProfileData({...profileData, name: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-purple-500" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm text-purple-200/80">邮箱</label>
+                  <input type="email" required value={profileData.email} onChange={e => setProfileData({...profileData, email: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-purple-500" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm text-purple-200/80">手机号</label>
+                  <input type="text" value={profileData.phone} onChange={e => setProfileData({...profileData, phone: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-purple-500" />
+                </div>
+                <div className="pt-2">
+                  <button type="submit" className="w-full py-3 rounded-xl bg-purple-600 text-white hover:bg-purple-500 transition-all font-medium shadow-lg shadow-purple-500/20">
+                    保存资料修改
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleChangePassword} className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm text-purple-200/80">当前密码</label>
+                  <input type="password" required value={pwdData.current} onChange={e => setPwdData({...pwdData, current: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-purple-500" placeholder="输入当前使用的密码" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm text-purple-200/80">新密码</label>
+                  <input type="password" required value={pwdData.new} onChange={e => setPwdData({...pwdData, new: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-purple-500" placeholder="设置新密码（至少6位）" />
+                </div>
+                <div className="pt-2">
+                  <button type="submit" className="w-full py-3 rounded-xl bg-purple-600 text-white hover:bg-purple-500 transition-all font-medium shadow-lg shadow-purple-500/20">
+                    确认修改密码
+                  </button>
+                </div>
+              </form>
+            )}
          </Card>
         </div>
       )}
@@ -953,8 +1003,9 @@ const FeedbackList = ({ feedbacks, categories }) => {
 };
 
 // Main App
+// Main App
 export default function App() {
-  const { user, token, login, register, logout } = useAuth();
+  const { user, token, login, register, logout, refreshUser } = useAuth(); // [新增] 解构 refreshUser
 
   if (!user) {
     return <LoginPage onLogin={login} onRegister={register} />;
@@ -963,5 +1014,6 @@ export default function App() {
     return <AdminDashboard user={user} token={token} onLogout={logout} />;
   }
 
-  return <DashboardPage user={user} token={token} onLogout={logout} />;
+  // [修改] 传递 onRefreshUser 方法
+  return <DashboardPage user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} />; 
 }

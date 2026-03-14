@@ -515,9 +515,61 @@ app.put('/api/auth/password', authenticate, async (req, res) => {
     // 5. 记录日志
     await logAction(req.user._id, 'password_change', 'user', req.user._id, { action: 'self_reset' }, req);
 
-    res.json({ success: true, message: '密码修改成功，请妥善保管' });
+   res.json({ success: true, message: '密码修改成功，请妥善保管' });
   } catch (error) {
     console.error('密码修改失败:', error);
+    res.status(500).json({ success: false, message: '服务器错误，请稍后再试' });
+  }
+});
+
+// [新增] 修改个人信息接口
+app.put('/api/auth/profile', authenticate, async (req, res) => {
+  try {
+    const { name, email, phone, studentId } = req.body;
+
+    // 基本验证
+    if (!name || !email || !studentId) {
+      return res.status(400).json({ success: false, message: '姓名、邮箱和学号为必填项' });
+    }
+
+    // 检查学号或邮箱是否被其他用户占用
+    const existingUser = await User.findOne({
+      $and: [
+        { _id: { $ne: req.user._id } }, // 排除当前用户自己
+        { $or: [{ studentId }, { email }] }
+      ]
+    });
+
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: existingUser.studentId === studentId ? '该学号已被其他账号使用' : '该邮箱已被其他账号绑定'
+      });
+    }
+
+    // 更新用户信息 (禁止修改 role 权限)
+    const user = await User.findById(req.user._id);
+    user.name = sanitizeInput(name);
+    user.email = sanitizeInput(email);
+    user.phone = sanitizeInput(phone);
+    user.studentId = sanitizeInput(studentId);
+    await user.save();
+
+    await logAction(req.user._id, 'update_profile', 'user', req.user._id, { action: 'update_info' }, req);
+
+    res.json({
+      success: true,
+      message: '个人资料修改成功',
+      user: {
+        id: user._id,
+        studentId: user.studentId,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    console.error('修改信息失败:', error);
     res.status(500).json({ success: false, message: '服务器错误，请稍后再试' });
   }
 });
