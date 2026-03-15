@@ -1070,29 +1070,27 @@ const FeedbackList = ({ feedbacks, categories, onReply }) => {
                     </div>
                   )}
 
-                  {/* [新增] 学生进行多次互动留言的输入区 */}
-                  {feedback.status !== 'resolved' && feedback.status !== 'rejected' && (
-                    <div className="mt-4 pt-3 border-t border-white/10">
-                      <textarea
-                        value={expandedId === feedback._id ? replyText : ''}
-                        onChange={e => setReplyText(e.target.value)}
-                        placeholder="对处理结果有疑问？或需要补充信息，请在此留言..."
-                        className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:border-purple-500 outline-none transition-all resize-none"
-                        rows="2"
-                      />
-                      <div className="mt-2 flex justify-end">
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation(); // 防止点击穿透导致面板收起
-                            onReply(feedback._id, replyText);
-                          }}
-                          className="px-4 py-1.5 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded-lg transition-all shadow-md shadow-purple-500/20"
-                        >
-                          发送补充留言
-                        </button>
-                      </div>
+                {/* [修改] 学生进行多次互动留言的输入区 (全状态开放) */}
+                  <div className="mt-4 pt-3 border-t border-white/10">
+                    <textarea
+                      value={expandedId === feedback._id ? replyText : ''}
+                      onChange={e => setReplyText(e.target.value)}
+                      placeholder="对处理结果有疑问？或需要补充信息，请在此留言..."
+                      className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:border-purple-500 outline-none transition-all resize-none"
+                      rows="2"
+                    />
+                    <div className="mt-2 flex justify-end">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation(); // 防止点击穿透导致面板收起
+                          onReply(feedback._id, replyText);
+                        }}
+                        className="px-4 py-1.5 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded-lg transition-all shadow-md shadow-purple-500/20"
+                      >
+                        发送补充留言
+                      </button>
                     </div>
-                  )}
+                  </div>
 
                 </div>
               )}
