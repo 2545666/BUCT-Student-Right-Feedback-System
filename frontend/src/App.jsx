@@ -702,8 +702,7 @@ const LoginPage = ({ onLogin, onRegister }) => {
             </Card>
           ))}
         </div>
-
-        {/* Tabs */}
+{/* Tabs */}
         <div className="flex gap-2 mb-6 p-1 bg-white/5 rounded-xl w-fit">
           {[
             { id: 'submit', label: '提交反馈', icon: '✏️' },
@@ -724,7 +723,14 @@ const LoginPage = ({ onLogin, onRegister }) => {
           ))}
         </div>
 
-      v
+        {/* 动态渲染对应的内容区，并闭合 main 标签 */}
+        {activeTab === 'submit' ? (
+          <SubmitForm categories={categories} onSubmit={handleSubmit} loading={loading} />
+        ) : (
+          <FeedbackList feedbacks={feedbacks} categories={categories} onReply={handleStudentReply} />
+        )}
+      </main>
+
     {/* [修改] 整合的修改信息/密码弹窗 */}
       {showSettingsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
