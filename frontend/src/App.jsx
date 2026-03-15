@@ -1043,7 +1043,7 @@ const FeedbackList = ({ feedbacks, categories, onReply }) => {
               </div>
 
               {isExpanded && (
-                <div className="mt-4 pt-4 border-t border-white/10">
+                <div className="mt-4 pt-4 border-t border-white/10" onClick={(e) => e.stopPropagation()}>
                   <p className="text-purple-200/80 text-sm whitespace-pre-wrap">{feedback.content}</p>
                   
                   {/* [新增] 渲染用户提交的附件 */}
