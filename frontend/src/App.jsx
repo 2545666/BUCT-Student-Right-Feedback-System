@@ -167,14 +167,14 @@ const Background = () => (
 );
 
 //  Card 组件
-const Card = ({ children, className = '', hover = true, ...props }) => ( // 1. 添加 ...props 接收剩余属性
+const Card = ({ children, className = '', hover = true, ...props }) => (
   <div 
     className={`
       relative backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl
       ${hover ? 'hover:bg-white/10 hover:border-purple-500/30 hover:shadow-lg hover:shadow-purple-500/10 transition-all duration-300' : ''}
       ${className}
     `}
-    {...props} // 2. 将 onClick 等其他属性透传给 div
+    {...props}
   >
     {children}
   </div>
@@ -436,7 +436,7 @@ const LoginPage = ({ onLogin, onRegister }) => {
     </div>
   );
 };
-const DashboardPage = ({ user, token, onLogout, onRefreshUser }) => {
+ const DashboardPage = ({ user, token, onLogout, onRefreshUser }) => {
   const [activeTab, setActiveTab] = useState('submit');
   const [feedbacks, setFeedbacks] = useState([]);
   const [stats, setStats] = useState({ total: 0, pending: 0, processing: 0, resolved: 0 });
@@ -444,7 +444,11 @@ const DashboardPage = ({ user, token, onLogout, onRefreshUser }) => {
   
   // [修改] 整合为“修改信息”的综合状态
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [settingsTab, setSettingsTab] = useState('profile'); // 'profile' 资料 | 'password' 密码
+  const [settingsTab, setSettingsTab] = useState('profile');
+
+  // [新增] 通知状态
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifs, setShowNotifs] = useState(false);
   const [pwdData, setPwdData] = useState({ current: '', new: '' });
   const [profileData, setProfileData] = useState({ name: '', studentId: '', email: '', phone: '' });
 
@@ -487,10 +491,43 @@ const DashboardPage = ({ user, token, onLogout, onRefreshUser }) => {
       }
     } catch (err) { alert('网络错误'); }
   };
-  const categories = Object.entries(CATEGORIES_CONFIG).map(([value, info]) => ({
+ const categories = Object.entries(CATEGORIES_CONFIG).map(([value, info]) => ({
     value,
     ...info
   }));
+
+  // [新增] 消息通知的拉取、已读与学生留言逻辑
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/notifications`, { headers: { 'Authorization': `Bearer ${token}` } });
+      const data = await res.json();
+      if (data.success) setNotifications(data.notifications);
+    } catch (err) {}
+  }, [token]);
+
+  const markNotificationsRead = async () => {
+    try {
+      await fetch(`${API_BASE}/notifications/read`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } });
+      setNotifications([]);
+      setShowNotifs(false);
+    } catch (err) {}
+  };
+
+  const handleStudentReply = async (feedbackId, content) => {
+    if (!content.trim()) return alert('留言内容不能为空');
+    try {
+      const res = await fetch(`${API_BASE}/feedback/${feedbackId}/reply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ content })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('留言发送成功');
+        fetchFeedbacks();
+      }
+    } catch (err) { alert('网络错误'); }
+  };
 
   const fetchFeedbacks = useCallback(async () => {
     try {
@@ -509,12 +546,15 @@ const DashboardPage = ({ user, token, onLogout, onRefreshUser }) => {
     }
   }, [token]);
 
-  useEffect(() => {
+ useEffect(() => {
     fetchFeedbacks();
-    const interval = setInterval(fetchFeedbacks, 10000); // 实时更新
+    fetchNotifications(); // [新增]
+    const interval = setInterval(() => {
+      fetchFeedbacks();
+      fetchNotifications(); // [新增]
+    }, 10000); // 实时更新
     return () => clearInterval(interval);
-  }, [fetchFeedbacks]);
-
+  }, [fetchFeedbacks, fetchNotifications]);
   const handleSubmit = async (formData, files) => { // [修改] 接收 files
     setLoading(true);
     try {
@@ -573,12 +613,41 @@ const DashboardPage = ({ user, token, onLogout, onRefreshUser }) => {
                 </h1>
             </div>
           </div>
-          {/* 右侧用户信息区域 - 修改为三行布局 */}
+       {/* 右侧用户信息区域 - 修改为三行布局 */}
           <div className="flex flex-col items-end justify-center">
             {/* 第一行：操作按钮 (小尺寸适配手机) */}
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-3 mb-1">
+              {/* [新增] 消息信箱 */}
+              <div className="relative">
+                <button onClick={() => setShowNotifs(!showNotifs)} className="p-1 text-lg md:text-xl hover:bg-white/10 rounded-full transition-all relative">
+                  📬
+                  {notifications.length > 0 && <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-slate-950"></span>}
+                </button>
+                {showNotifs && (
+                  <div className="absolute right-0 mt-2 w-64 bg-slate-900 border border-white/10 rounded-xl shadow-2xl z-[100] max-h-80 flex flex-col overflow-hidden text-left">
+                    <div className="p-3 border-b border-white/10 flex justify-between items-center bg-white/5">
+                      <span className="text-sm font-medium text-white">消息通知</span>
+                      {notifications.length > 0 && <button onClick={markNotificationsRead} className="text-xs text-purple-300 hover:text-white">全部标为已读</button>}
+                    </div>
+                    <div className="overflow-y-auto flex-1 p-2 custom-scrollbar">
+                      {notifications.length === 0 ? (
+                        <p className="text-xs text-purple-200/50 text-center py-6">暂无新消息</p>
+                      ) : (
+                        notifications.map(n => (
+                          <div key={n._id} className="p-2.5 mb-1 bg-white/5 rounded-lg border border-white/5 text-purple-100 flex flex-col gap-1">
+                            <p className="text-xs break-words">{n.content}</p>
+                            <span className="text-[10px] text-purple-200/40 text-right">{new Date(n.createdAt).toLocaleString('zh-CN')}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <button 
-                onClick={() => {
+   
+             onClick={() => {
                   setProfileData({
                     name: user?.name || '',
                     studentId: user?.studentId || '',
@@ -655,13 +724,7 @@ const DashboardPage = ({ user, token, onLogout, onRefreshUser }) => {
           ))}
         </div>
 
-        {/* Content */}
-        {activeTab === 'submit' ? (
-          <SubmitForm categories={categories} onSubmit={handleSubmit} loading={loading} />
-        ) : (
-          <FeedbackList feedbacks={feedbacks} categories={categories} />
-        )}
-      </main>
+      v
     {/* [修改] 整合的修改信息/密码弹窗 */}
       {showSettingsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
@@ -921,9 +984,9 @@ const SubmitForm = ({ categories, onSubmit, loading }) => {
     </div>
   );
 };
-const FeedbackList = ({ feedbacks, categories }) => {
+const FeedbackList = ({ feedbacks, categories, onReply }) => {
   const [expandedId, setExpandedId] = useState(null);
-
+  const [replyText, setReplyText] = useState(''); // [新增]
   const getCategoryInfo = (cat) => categories.find(c => c.value === cat) || { label: cat, icon: '📋' };
 
   if (feedbacks.length === 0) {
@@ -946,7 +1009,10 @@ const FeedbackList = ({ feedbacks, categories }) => {
           <Card
             key={feedback._id}
             className="overflow-hidden"
-            onClick={() => setExpandedId(isExpanded ? null : feedback._id)}
+            onClick={() => {
+              setExpandedId(isExpanded ? null : feedback._id);
+              setReplyText(''); // 切换面板时清空输入框
+            }}
           >
             <div className="p-4 cursor-pointer">
               <div className="flex items-start justify-between gap-4">
@@ -977,21 +1043,51 @@ const FeedbackList = ({ feedbacks, categories }) => {
                   {/* [新增] 渲染用户提交的附件 */}
                   <AttachmentViewer attachments={feedback.attachments} />
 
-                  {feedback.responses && feedback.responses.length > 0 && (
+                 {feedback.responses && feedback.responses.length > 0 && (
                     <div className="mt-4 space-y-3">
-                      <h5 className="text-sm font-medium text-white">处理进度</h5>
-                      {feedback.responses.map((resp, i) => (
-                        <div key={i} className="pl-4 border-l-2 border-purple-500/50 py-1">
-                          <p className="text-sm text-purple-200/80">{resp.content}</p>
-                          {/* [新增] 渲染管理员回复的附件 */}
-                          <AttachmentViewer attachments={resp.attachments} />
-                          <p className="text-xs text-purple-200/40 mt-1">
-                            {resp.adminName} · {new Date(resp.createdAt).toLocaleString('zh-CN')}
-                          </p>
-                        </div>
-                      ))}
+                      <h5 className="text-sm font-medium text-white mb-2">对话流转记录</h5>
+                      {feedback.responses.map((resp, i) => {
+                        const isStudent = resp.senderType === 'student';
+                        return (
+                          <div key={i} className={`p-3 rounded-xl border ${isStudent ? 'bg-white/5 border-white/10 ml-8' : 'bg-purple-500/10 border-purple-500/20 mr-8'}`}>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className={`text-xs font-bold ${isStudent ? 'text-white/70' : 'text-purple-300'}`}>
+                                {isStudent ? '我的留言' : (resp.adminName || resp.senderName || '系统管理员')}
+                              </span>
+                              <span className="text-[10px] text-purple-200/40">{new Date(resp.createdAt).toLocaleString('zh-CN')}</span>
+                            </div>
+                            <p className="text-sm text-purple-100 whitespace-pre-wrap">{resp.content}</p>
+                            <AttachmentViewer attachments={resp.attachments} />
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
+
+                  {/* [新增] 学生进行多次互动留言的输入区 */}
+                  {feedback.status !== 'resolved' && feedback.status !== 'rejected' && (
+                    <div className="mt-4 pt-3 border-t border-white/10">
+                      <textarea
+                        value={expandedId === feedback._id ? replyText : ''}
+                        onChange={e => setReplyText(e.target.value)}
+                        placeholder="对处理结果有疑问？或需要补充信息，请在此留言..."
+                        className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:border-purple-500 outline-none transition-all resize-none"
+                        rows="2"
+                      />
+                      <div className="mt-2 flex justify-end">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation(); // 防止点击穿透导致面板收起
+                            onReply(feedback._id, replyText);
+                          }}
+                          className="px-4 py-1.5 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded-lg transition-all shadow-md shadow-purple-500/20"
+                        >
+                          发送补充留言
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                 </div>
               )}
             </div>

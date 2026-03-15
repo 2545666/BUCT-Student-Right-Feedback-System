@@ -297,6 +297,27 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
   const [pwdData, setPwdData] = useState({ current: '', new: '' });
   const [profileData, setProfileData] = useState({ name: '', studentId: '', email: '', phone: '' });
 
+  // [新增] 消息通知状态
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifs, setShowNotifs] = useState(false);
+
+  // [新增] 获取与清空通知方法
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/notifications`, { headers: { 'Authorization': `Bearer ${token}` } });
+      const data = await res.json();
+      if (data.success) setNotifications(data.notifications);
+    } catch (err) {}
+  }, [token]);
+
+  const markNotificationsRead = async () => {
+    try {
+      await fetch(`${API_BASE}/notifications/read`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } });
+      setNotifications([]);
+      setShowNotifs(false);
+    } catch (err) {}
+  };
+
   // ------------------ API 请求函数 ------------------
   const handleChangePassword = async (e) => {
     e.preventDefault();
@@ -367,17 +388,18 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
     setLoading(false);
   }, [token, filters, searchQuery, dateRange]);
 
-  // 补回丢失的生命周期钩子
+ // 补回丢失的生命周期钩子
   useEffect(() => {
     fetchStats();
     fetchFeedbacks();
+    fetchNotifications(); // [新增]
     const interval = setInterval(() => {
       fetchStats();
       fetchFeedbacks();
+      fetchNotifications(); // [新增]
     }, 15000);
     return () => clearInterval(interval);
-  }, [fetchStats, fetchFeedbacks]);
-
+  }, [fetchStats, fetchFeedbacks, fetchNotifications]);
   const updateStatus = async (feedbackId, status) => {
     try {
       let uploadedFiles = [];
@@ -450,9 +472,38 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
             </div>
           </div>
           
-          <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4">
+            {/* [新增] 消息通知信箱 */}
+            <div className="relative">
+              <button onClick={() => setShowNotifs(!showNotifs)} className="p-2 text-xl hover:bg-white/10 rounded-full transition-all relative">
+                📬
+                {notifications.length > 0 && <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-slate-900"></span>}
+              </button>
+              {showNotifs && (
+                <div className="absolute right-0 mt-2 w-72 bg-slate-900 border border-white/10 rounded-xl shadow-2xl z-[100] max-h-80 flex flex-col overflow-hidden text-left">
+                  <div className="p-3 border-b border-white/10 flex justify-between items-center bg-white/5">
+                    <span className="text-sm font-medium text-white">消息通知</span>
+                    {notifications.length > 0 && <button onClick={markNotificationsRead} className="text-xs text-purple-300 hover:text-white">全部标为已读</button>}
+                  </div>
+                  <div className="overflow-y-auto flex-1 p-2 custom-scrollbar">
+                    {notifications.length === 0 ? (
+                      <p className="text-xs text-purple-200/50 text-center py-6">暂无新消息</p>
+                    ) : (
+                      notifications.map(n => (
+                        <div key={n._id} className="p-2.5 mb-1 bg-white/5 rounded-lg border border-white/5 text-purple-100 flex flex-col gap-1">
+                          <p className="text-xs break-words">{n.content}</p>
+                          <span className="text-[10px] text-purple-200/40 text-right">{new Date(n.createdAt).toLocaleString('zh-CN')}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="text-right hidden sm:block">
-              <div className="text-sm font-bold text-white">{user?.name}</div>
+         
+             <div className="text-sm font-bold text-white">{user?.name}</div>
               <div className="text-xs text-purple-200/60 font-mono mt-0.5">{user?.studentId}</div>
             </div>
             
@@ -679,17 +730,27 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                           <AttachmentViewer attachments={feedback.attachments} />
                           
                           {feedback.responses?.length > 0 && (
-                            <div className="mb-4 space-y-2">
-                              <h5 className="text-sm font-medium text-white">处理记录</h5>
-                              {feedback.responses.map((resp, i) => (
-                                <div key={i} className="pl-4 border-l-2 border-purple-500/50 py-2">
-                                  <p className="text-sm text-purple-200/80">{resp.content}</p>
-                                  <AttachmentViewer attachments={resp.attachments} />
-                                  <p className="text-xs text-purple-200/40 mt-1">{resp.adminName} · {new Date(resp.createdAt).toLocaleString('zh-CN')}</p>
-                                </div>
-                              ))}
+                            <div className="mb-4 space-y-3">
+              
+                <h5 className="text-sm font-medium text-white mb-2">流转与对话记录</h5>
+                              {feedback.responses.map((resp, i) => {
+                                const isStudent = resp.senderType === 'student';
+                                return (
+                                  <div key={i} className={`p-3 rounded-xl border ${isStudent ? 'bg-blue-500/10 border-blue-500/20 mr-8' : 'bg-purple-500/10 border-purple-500/20 ml-8'}`}>
+                                    <div className="flex items-center justify-between mb-1.5">
+                                      <span className={`text-xs font-bold ${isStudent ? 'text-blue-300' : 'text-purple-300'}`}>
+                                        {isStudent ? (resp.senderName || '学生') : (resp.adminName || resp.senderName || '系统管理员')}
+                                      </span>
+                                      <span className="text-[10px] text-purple-200/40">{new Date(resp.createdAt).toLocaleString('zh-CN')}</span>
+                                    </div>
+                                    <p className="text-sm text-purple-100 whitespace-pre-wrap leading-relaxed">{resp.content}</p>
+                                    <AttachmentViewer attachments={resp.attachments} />
+                                  </div>
+                                );
+                              })}
                             </div>
-                          )}
+         
+                         )}
                           
                           <div className="space-y-3">
                             <textarea value={responseText} onChange={e => setResponseText(e.target.value)} placeholder="添加处理回复..." className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-purple-500 min-h-[100px]" />

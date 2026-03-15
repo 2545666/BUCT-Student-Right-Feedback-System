@@ -224,12 +224,14 @@ const feedbackSchema = new mongoose.Schema({
   }],
  responses: [{
     content: String,
-    adminId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    adminName: String,
-    // [新增] 允许管理员回复携带附件
-    attachments: [{ filename: String, path: String, mimetype: String }],
+    adminId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // 兼容旧数据
+    adminName: String, // 兼容旧数据
+    senderType: { type: String, enum: ['admin', 'student'], default: 'admin' }, // [新增] 发送者类型
+    senderName: String, // [新增] 发送者姓名
+attachments: [{ filename: String, path: String, mimetype: String }],
     createdAt: { type: Date, default: Date.now }
   }],
+  createdAt: { type: Date, default: Date.now },
   assignedTo: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
@@ -239,13 +241,22 @@ const feedbackSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
-
 // 创建索引以优化查询性能
 feedbackSchema.index({ user: 1, createdAt: -1 });
 feedbackSchema.index({ category: 1, status: 1 });
 feedbackSchema.index({ status: 1, priority: -1 });
 
 const Feedback = mongoose.model('Feedback', feedbackSchema);
+
+// [新增] 消息通知 Schema
+const notificationSchema = new mongoose.Schema({
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  type: String, // 'new_feedback', 'status_update', 'new_message'
+  content: String,
+  isRead: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now }
+});
+const Notification = mongoose.model('Notification', notificationSchema);
 
 // 操作日志模型 - 用于审计
 const auditLogSchema = new mongoose.Schema({
@@ -575,6 +586,58 @@ app.put('/api/auth/profile', authenticate, async (req, res) => {
 });
 
 // ================== 反馈相关 ==================
+// [新增] 获取当前用户的未读通知
+app.get('/api/notifications', authenticate, async (req, res) => {
+  try {
+    const notifications = await Notification.find({ user: req.user._id, isRead: false }).sort({ createdAt: -1 });
+    res.json({ success: true, notifications });
+  } catch (error) {
+    res.status(500).json({ success: false });
+  }
+});
+
+// [新增] 标记通知为已读
+app.put('/api/notifications/read', authenticate, async (req, res) => {
+  try {
+    await Notification.updateMany({ user: req.user._id, isRead: false }, { isRead: true });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false });
+  }
+});
+
+// [新增] 学生对反馈问题添加补充留言
+app.post('/api/feedback/:id/reply', authenticate, async (req, res) => {
+  try {
+    const { content } = req.body;
+    if (!content) return res.status(400).json({ success: false, message: '留言不能为空' });
+    
+    const feedback = await Feedback.findById(req.params.id);
+    if (!feedback || feedback.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: '无权操作' });
+    }
+
+    feedback.responses.push({
+      content: sanitizeInput(content),
+      senderType: 'student',
+      senderName: req.user.name
+    });
+    await feedback.save();
+
+    // 触发通知：发给所有管理员
+    const admins = await User.find({ role: { $in: ['admin', 'superadmin'] } });
+    const notifications = admins.map(admin => ({
+      user: admin._id,
+      type: 'new_message',
+      content: `您有新的留言：学生对问题 [${feedback.title}] 进行了补充`
+    }));
+    await Notification.insertMany(notifications);
+
+    res.json({ success: true, feedback });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '留言失败' });
+  }
+});
 
 // 提交反馈
 app.post('/api/feedback', authenticate, async (req, res) => {
@@ -590,6 +653,7 @@ app.post('/api/feedback', authenticate, async (req, res) => {
       user: req.user._id,
       category,
       subCategory,
+    
       title: sanitizeInput(title),
       content: sanitizeInput(content),
       priority: priority || 'normal',
@@ -598,6 +662,15 @@ app.post('/api/feedback', authenticate, async (req, res) => {
     });
     await logAction(req.user._id, 'create', 'feedback', feedback._id, { category }, req);
     
+    // [新增] 触发通知给管理员
+    const admins = await User.find({ role: { $in: ['admin', 'superadmin'] } });
+    const notifications = admins.map(admin => ({
+      user: admin._id,
+      type: 'new_feedback',
+      content: `您有新的问题待处理：[${title}]`
+    }));
+    await Notification.insertMany(notifications);
+
     res.status(201).json({
       success: true,
       message: '反馈提交成功',
@@ -776,12 +849,19 @@ app.patch('/api/admin/feedback/:id/status', authenticate, adminOnly, async (req,
       });
     }
     
-    if (status === 'resolved') {
+   if (status === 'resolved') {
       feedback.resolvedAt = new Date();
     }
     
     await feedback.save();
     
+    // [新增] 触发状态更新通知给发帖学生
+    await Notification.create({
+      user: feedback.user,
+      type: 'status_update',
+      content: `您的问题状态更新了：[${feedback.title}] 已变更为或有新回复`
+    });
+  
     await logAction(req.user._id, 'update_status', 'feedback', feedback._id, { status }, req);
     
     res.json({ success: true, message: '状态更新成功', feedback });
