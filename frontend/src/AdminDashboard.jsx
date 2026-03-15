@@ -6,11 +6,11 @@ const API_BASE = import.meta.env.DEV ? 'http://localhost:3001/api' : '/api';
 
 // ===================== 全局配置字典 =====================
 const categories = {
-  'facilities': { label: '后勤设施 (水/电/网/修)', icon: '🔧' },
-  'teaching': { label: '教育教学 (排课/考试/教师)', icon: '📚' },
-  'life': { label: '生活服务 (食堂/快递/就医)', icon: '🏠' },
-  'activities': { label: '学生活动 (社团/比赛/活动)', icon: '🎉' },
-  'other': { label: '其他问题', icon: '📝' }
+  'academic': { label: '教学教务', icon: '📚' },
+  'accommodation': { label: '宿舍住宿', icon: '🏠' },
+  'catering': { label: '餐饮服务', icon: '🍽️' },
+  'safety': { label: '安全保卫', icon: '🛡️' },
+  'comprehensive': { label: '综合服务与其他', icon: '📋' }
 };
 
 const statusConfig = {
@@ -256,13 +256,61 @@ const AccountManagement = ({ token, user: currentUser }) => {
                     )}
                     {detailsModal.type === 'log' && (
                       <>
-                        <div className="flex justify-between items-center font-medium mb-1">
-                          <span className="text-blue-300 px-2 py-0.5 bg-blue-500/10 rounded text-xs">{item.action}</span>
-                          <span className="text-xs text-purple-200/50">{new Date(item.createdAt).toLocaleString()}</span>
+                        <div className="flex justify-between items-center font-medium mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-blue-300 px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded text-xs">
+                              {item.action === 'update_status' ? '处理了问题' : (item.action === 'create' ? '提交了问题' : item.action)}
+                            </span>
+                            {/* 显示具体将状态改为了什么 */}
+                            {item.details?.status && (
+                              <span className="text-purple-300 text-xs font-bold">
+                                将状态变更为: {statusConfig[item.details.status]?.label || item.details.status}
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs text-purple-200/50 shrink-0">{new Date(item.createdAt).toLocaleString('zh-CN')}</span>
                         </div>
-                        <div className="mt-2 text-xs opacity-70 bg-black/20 p-2 rounded break-all font-mono">
-                          {JSON.stringify(item.details)}
-                        </div>
+                        
+                        {/* 渲染关联的问题摘要与流转记录 */}
+                        {item.feedbackInfo ? (
+                          <div className="mt-2 bg-slate-950/50 rounded-lg p-3 border border-white/5">
+                            <div className="text-sm text-white font-medium mb-1">处理目标：{item.feedbackInfo.title}</div>
+                            <p className="text-xs text-purple-200/60 mb-3 line-clamp-2">问题描述：{item.feedbackInfo.content}</p>
+                            
+                            {/* 利用 details 标签实现原生的点击折叠展开，不污染外部 state */}
+                            <details className="group cursor-pointer">
+                              <summary className="text-xs text-purple-400 hover:text-purple-300 outline-none select-none font-medium pb-1 transition-colors">
+                                ▶ 点击查看完整对话流转记录 ({item.feedbackInfo.responses?.length || 0} 条互动)
+                              </summary>
+                              <div className="mt-3 space-y-2 cursor-default pt-2 border-t border-white/5">
+                                {item.feedbackInfo.responses?.length > 0 ? (
+                                  item.feedbackInfo.responses.map((resp, idx) => {
+                                    const isStudent = resp.senderType === 'student';
+                                    return (
+                                      <div key={idx} className={`p-2.5 rounded-xl border ${isStudent ? 'bg-blue-500/10 border-blue-500/20 mr-6' : 'bg-purple-500/10 border-purple-500/20 ml-6'}`}>
+                                        <div className="flex items-center justify-between mb-1">
+                                          <span className={`text-[10px] font-bold ${isStudent ? 'text-blue-300' : 'text-purple-300'}`}>
+                                            {isStudent ? (resp.senderName || '学生留言') : (resp.adminName || resp.senderName || '系统管理员')}
+                                          </span>
+                                          <span className="text-[9px] text-purple-200/40">{new Date(resp.createdAt).toLocaleString('zh-CN')}</span>
+                                        </div>
+                                        <p className="text-xs text-purple-100 whitespace-pre-wrap leading-relaxed">{resp.content || '(仅更新了状态/附件)'}</p>
+                                        {resp.attachments?.length > 0 && <span className="text-[10px] text-purple-400 mt-1.5 block">📎 包含 {resp.attachments.length} 个附件</span>}
+                                      </div>
+                                    );
+                                  })
+                                ) : (
+                                  <p className="text-xs text-purple-200/40 italic text-center py-2">暂无流转对话</p>
+                                )}
+                              </div>
+                            </details>
+                          </div>
+                        ) : (
+                          // 如果不是反馈类日志或反馈已被彻底删除，退级显示基础日志
+                          <div className="mt-2 text-xs opacity-70 bg-black/20 p-2 rounded break-all font-mono">
+                            {JSON.stringify(item.details)}
+                          </div>
+                        )}
                       </>
                     )}
                   </div>

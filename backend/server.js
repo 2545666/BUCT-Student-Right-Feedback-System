@@ -910,6 +910,14 @@ app.get('/api/admin/users/:id/logs', authenticate, adminOnly, async (req, res) =
     const logs = await AuditLog.find({ user: req.params.id })
       .sort({ createdAt: -1 })
       .lean();
+
+    // [新增] 关联查询反馈详情，以便在日志中查看处理的是哪个问题以及完整的对话流转
+    for (let log of logs) {
+      if (log.resource === 'feedback' && log.resourceId) {
+        log.feedbackInfo = await Feedback.findById(log.resourceId).lean();
+      }
+    }
+
     res.json({ success: true, logs });
   } catch (error) {
     res.status(500).json({ success: false, message: '获取操作日志失败' });
