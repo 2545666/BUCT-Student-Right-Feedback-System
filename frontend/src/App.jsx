@@ -599,8 +599,8 @@ const LoginPage = ({ onLogin, onRegister }) => {
       <Background />
       
       {/* Header */}
-      <header className="relative z-10 border-b border-white/10 backdrop-blur-xl bg-slate-950/50">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+      <header className="relative z-50 border-b border-white/10 backdrop-blur-xl bg-slate-950/50">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">    
           <div className="flex items-center gap-4">
            <img 
              src={sieLogo} 
