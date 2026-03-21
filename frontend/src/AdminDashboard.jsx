@@ -449,6 +449,22 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
     }, 15000);
     return () => clearInterval(interval);
   }, [fetchStats, fetchFeedbacks, fetchNotifications]);
+  // [新增] 管理端撤回回复方法
+  const handleRecallMsg = async (feedbackId, replyId) => {
+    if (!window.confirm('确定要撤回这条回复吗？（撤回后学生和普通管理员将无法查看具体内容）')) return;
+    try {
+      const res = await fetch(`${API_BASE}/feedback/${feedbackId}/reply/${replyId}/recall`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchFeedbacks(false); // 成功后静默刷新列表
+      } else {
+        alert(data.message || '撤回失败');
+      }
+    } catch (err) { alert('网络错误'); }
+  };
   const updateStatus = async (feedbackId, status) => {
     try {
       let uploadedFiles = [];
@@ -784,13 +800,37 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                 <h5 className="text-sm font-medium text-white mb-2">流转与对话记录</h5>
                               {feedback.responses.map((resp, i) => {
                                 const isStudent = resp.senderType === 'student';
+                                const isAdmin = !isStudent;
+                                const isSuperadmin = user.role === 'superadmin';
+
+                                // [新增] 如果消息已被撤回，且当前身份不是超管 (只是子管理员)，则隐藏内容
+                                if (resp.isRecalled && !isSuperadmin) {
+                                  return (
+                                    <div key={i} className={`p-3 rounded-xl border opacity-50 ${isStudent ? 'bg-blue-500/10 border-blue-500/20 mr-8' : 'bg-purple-500/10 border-purple-500/20 ml-8'}`}>
+                                      <p className="text-xs text-purple-200/50 italic text-center py-2">此消息已撤回</p>
+                                    </div>
+                                  );
+                                }
+
+                                // 正常消息，或者超管视角下被撤回的消息 (利用条件类名实现样式变灰和红框)
                                 return (
-                                  <div key={i} className={`p-3 rounded-xl border ${isStudent ? 'bg-blue-500/10 border-blue-500/20 mr-8' : 'bg-purple-500/10 border-purple-500/20 ml-8'}`}>
+                                  <div key={i} className={`p-3 rounded-xl border ${isStudent ? 'bg-blue-500/10 border-blue-500/20 mr-8' : 'bg-purple-500/10 border-purple-500/20 ml-8'} ${resp.isRecalled ? 'opacity-60 border-red-500/30 bg-red-900/10' : ''}`}>
                                     <div className="flex items-center justify-between mb-1.5">
                                       <span className={`text-xs font-bold ${isStudent ? 'text-blue-300' : 'text-purple-300'}`}>
                                         {isStudent ? (resp.senderName || '学生') : (resp.adminName || resp.senderName || '系统管理员')}
+                                        {/* 超管视角下的撤回徽标 */}
+                                        {resp.isRecalled && isSuperadmin && <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-red-500/20 text-red-400 border border-red-500/30">已撤回</span>}
                                       </span>
-                                      <span className="text-[10px] text-purple-200/40">{new Date(resp.createdAt).toLocaleString('zh-CN')}</span>
+                                      
+                                      <div className="flex items-center gap-2">
+                                        {/* 只有未被撤回的管理员自己的回复，才可以点击撤回 */}
+                                        {!resp.isRecalled && isAdmin && (
+                                          <button onClick={(e) => { e.stopPropagation(); handleRecallMsg(feedback._id, resp._id); }} className="text-[10px] text-red-400/80 hover:text-red-400 transition-colors">
+                                            撤回
+                                          </button>
+                                        )}
+                                        <span className="text-[10px] text-purple-200/40">{new Date(resp.createdAt).toLocaleString('zh-CN')}</span>
+                                      </div>
                                     </div>
                                     <p className="text-sm text-purple-100 whitespace-pre-wrap leading-relaxed">{resp.content}</p>
                                     <AttachmentViewer attachments={resp.attachments} />

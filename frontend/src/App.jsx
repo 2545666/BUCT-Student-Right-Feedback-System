@@ -529,6 +529,23 @@ const LoginPage = ({ onLogin, onRegister }) => {
     } catch (err) { alert('网络错误'); }
   };
 
+  // [新增] 学生撤回留言的方法
+  const handleRecallMsg = async (feedbackId, replyId) => {
+    if (!window.confirm('确定要撤回这条留言吗？')) return;
+    try {
+      const res = await fetch(`${API_BASE}/feedback/${feedbackId}/reply/${replyId}/recall`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchFeedbacks(); // 刷新数据
+      } else {
+        alert(data.message || '撤回失败');
+      }
+    } catch (err) { alert('网络错误'); }
+  };
+
   const fetchFeedbacks = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE}/feedback/my`, {
@@ -727,7 +744,7 @@ const LoginPage = ({ onLogin, onRegister }) => {
         {activeTab === 'submit' ? (
           <SubmitForm categories={categories} onSubmit={handleSubmit} loading={loading} />
         ) : (
-          <FeedbackList feedbacks={feedbacks} categories={categories} onReply={handleStudentReply} />
+          <FeedbackList feedbacks={feedbacks} categories={categories} onReply={handleStudentReply} onRecall={handleRecallMsg} />
         )}
       </main>
 
@@ -1054,6 +1071,13 @@ const FeedbackList = ({ feedbacks, categories, onReply }) => {
                       <h5 className="text-sm font-medium text-white mb-2">对话流转记录</h5>
                       {feedback.responses.map((resp, i) => {
                         const isStudent = resp.senderType === 'student';
+                      if (resp.isRecalled) {
+                          return (
+                            <div key={i} className={`p-3 rounded-xl border opacity-50 ${isStudent ? 'bg-white/5 border-white/10 ml-8' : 'bg-purple-500/10 border-purple-500/20 mr-8'}`}>
+                               <p className="text-xs text-purple-200/50 italic text-center py-2">此消息已撤回</p>
+                            </div>
+                          );
+                        }    
                         return (
                           <div key={i} className={`p-3 rounded-xl border ${isStudent ? 'bg-white/5 border-white/10 ml-8' : 'bg-purple-500/10 border-purple-500/20 mr-8'}`}>
                             <div className="flex items-center justify-between mb-1.5">

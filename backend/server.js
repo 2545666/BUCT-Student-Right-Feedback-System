@@ -224,11 +224,11 @@ const feedbackSchema = new mongoose.Schema({
   }],
  responses: [{
     content: String,
-    adminId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // 兼容旧数据
-    adminName: String, // 兼容旧数据
-    senderType: { type: String, enum: ['admin', 'student'], default: 'admin' }, // [新增] 发送者类型
-    senderName: String, // [新增] 发送者姓名
-attachments: [{ filename: String, path: String, mimetype: String }],
+    senderType: { type: String, enum: ['student', 'admin', 'superadmin'] },
+    senderName: String,
+    adminName: String,
+    attachments: Array,
+    isRecalled: { type: Boolean, default: false }, // [新增] 撤回状态标记
     createdAt: { type: Date, default: Date.now }
   }],
   createdAt: { type: Date, default: Date.now },
@@ -366,6 +366,27 @@ app.post('/api/upload', authenticate, upload.array('files', 10), (req, res) => {
   } catch (error) {
     console.error('上传失败:', error);
     res.status(500).json({ success: false, message: '文件上传失败' });
+  }
+});
+
+// [新增] 消息撤回接口 (修复 authMiddleware 为 authenticate)
+app.patch('/api/feedback/:id/reply/:replyId/recall', authenticate, async (req, res) => {
+  try {
+    const feedback = await Feedback.findById(req.params.id);
+    if (!feedback) return res.status(404).json({ success: false, message: '反馈不存在' });
+
+    // 使用 Mongoose 的 id() 方法提取特定的子文档
+    const reply = feedback.responses.id(req.params.replyId);
+    if (!reply) return res.status(404).json({ success: false, message: '回复不存在' });
+
+    // 标记为已撤回
+    reply.isRecalled = true;
+    await feedback.save();
+    
+    res.json({ success: true, message: '撤回成功' });
+  } catch (error) {
+    console.error('撤回失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
   }
 });
 
