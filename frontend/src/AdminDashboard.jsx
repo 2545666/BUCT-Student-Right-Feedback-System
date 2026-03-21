@@ -58,6 +58,42 @@ export const AttachmentViewer = ({ attachments }) => {
   );
 };
 
+const PERF_DIMENSIONS = {
+  routine: { label: '日常履职', max: 40, color: 'purple', base: 40 },
+  activity: { label: '活动执行', max: 30, color: 'blue', base: 30 },
+  teamwork: { label: '团队协作', max: 15, color: 'green', base: 15 },
+  attitude: { label: '态度纪律', max: 15, color: 'yellow', base: 15 },
+  bonus: { label: '附加加分', max: '上不封顶', color: 'red', base: 0 }
+};
+
+// [新增] 绩效考核制度折叠面板组件 (新版)
+const PerformanceRulesAccordion = () => (
+  <div className="mb-6 p-1 rounded-2xl bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-500/30">
+    <details className="group">
+      <summary className="flex items-center justify-between p-4 cursor-pointer list-none text-white font-medium outline-none">
+        <div className="flex items-center gap-3">
+          <span className="text-xl">📜</span>
+          <span>点击查看《权益部考核制度及细则》</span>
+        </div>
+        <span className="text-purple-300 transition-transform duration-300 group-open:-rotate-180">▼</span>
+      </summary>
+      <div className="p-5 pt-0 text-sm text-purple-200/80 border-t border-white/10 mt-2 space-y-4 max-h-96 overflow-y-auto custom-scrollbar">
+        <p className="text-xs text-yellow-400/80">学期基准分为 100 分。四大基础板块以扣分为主（扣完为止），附加板块为纯加分项。</p>
+        <table className="w-full text-left border-collapse mt-2 text-xs">
+          <thead><tr className="border-b border-white/10 text-white/60"><th className="py-2">考核维度</th><th>满分</th><th>指标与计分建议</th></tr></thead>
+          <tbody className="divide-y divide-white/5">
+            <tr><td className="py-2 text-purple-300">日常履职</td><td>40分</td><td>例会缺勤扣3分；未完成任务扣2分。</td></tr>
+            <tr><td className="py-2 text-blue-300">活动执行</td><td>30分</td><td>提案/活动失职扣1~5分；(突出贡献可补加1~3分，封顶30)</td></tr>
+            <tr><td className="py-2 text-green-300">团队协作</td><td>15分</td><td>推诿扯皮、拒绝配合单次扣2分。</td></tr>
+            <tr><td className="py-2 text-yellow-300">态度纪律</td><td>15分</td><td>态度遭投诉扣2分；未佩戴工作牌扣1分。</td></tr>
+            <tr><td className="py-2 text-red-400 font-bold">附加加分</td><td>纯加分</td><td>校级荣誉+3~5分；被采纳大提案+2~4分；优秀新闻稿+1~2分。</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </details>
+  </div>
+);
+
 // ===================== 账号管理子组件 =====================
 const AccountManagement = ({ token, user: currentUser }) => {
   const [users, setUsers] = useState([]);
@@ -345,6 +381,59 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
   const [pwdData, setPwdData] = useState({ current: '', new: '' });
   const [profileData, setProfileData] = useState({ name: '', studentId: '', email: '', phone: '' });
 
+  // [新增] 绩效模块专属状态
+  const [showPerformanceManagement, setShowPerformanceManagement] = useState(false);
+  const [performanceRecords, setPerformanceRecords] = useState([]);
+  const [perfForm, setPerfForm] = useState({ volunteerIds: [], dimension: 'routine', score: '', reason: '', occurrenceDate: '', activityName: '' });
+  const [volunteers, setVolunteers] = useState([]); // 存超管拉取的子管理员列表用于打分
+
+  // [新增] 拉取绩效与人员
+  const fetchPerformanceAndUsers = useCallback(async () => {
+    try {
+      // 1. 获取绩效流水 (超管获取所有，普通 admin 走 /my 获取自己)
+      const endpoint = user.role === 'superadmin' ? '/admin/performance' : '/admin/performance/my';
+      const res = await fetch(`${API_BASE}${endpoint}`, { headers: { 'Authorization': `Bearer ${token}` } });
+      const data = await res.json();
+      if (data.success) setPerformanceRecords(data.records);
+
+      // 2. 超管需额外拉取人员列表供打分使用
+      if (user.role === 'superadmin') {
+        const uRes = await fetch(`${API_BASE}/admin/users`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const uData = await uRes.json();
+        if (uData.success) setVolunteers(uData.users.filter(u => u.role === 'admin')); // 只给志愿者打分
+      }
+    } catch (err) {}
+  }, [token, user.role]);
+
+  // [新增] 计算个人总分的纯函数引擎 (核心)
+  const calculateScore = (records) => {
+    let scores = { routine: 0, activity: 0, teamwork: 0, attitude: 0, bonus: 0 };
+    records.forEach(r => { if (scores[r.dimension] !== undefined) scores[r.dimension] += r.score; });
+    // 基础分 100 拆解到 4 个维度，扣完为止(最小为0)，加分封顶(最大为原满分)
+    const routine = Math.max(0, Math.min(40, 40 + scores.routine));
+    const activity = Math.max(0, Math.min(30, 30 + scores.activity));
+    const teamwork = Math.max(0, Math.min(15, 15 + scores.teamwork));
+    const attitude = Math.max(0, Math.min(15, 15 + scores.attitude));
+    const bonus = Math.max(0, scores.bonus); // 附加分为纯加分
+    return { routine, activity, teamwork, attitude, bonus, total: routine + activity + teamwork + attitude + bonus };
+  };
+
+  // [新增] 超管提交绩效
+  const handlePerfSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`${API_BASE}/admin/performance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(perfForm)
+      });
+      if ((await res.json()).success) {
+        alert('绩效录入成功');
+        setPerfForm({ volunteerIds: [], dimension: 'routine', score: '', reason: '', occurrenceDate: '', activityName: '' });
+        fetchPerformanceAndUsers(); // 刷新
+      }
+    } catch (err) { alert('提交失败'); }
+  };
   // [新增] 消息通知状态
   const [notifications, setNotifications] = useState([]);
   const [showNotifs, setShowNotifs] = useState(false);
@@ -440,15 +529,17 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
  // 补回丢失的生命周期钩子
   useEffect(() => {
     fetchStats();
-    fetchFeedbacks(true); // 首次进入页面，显示 loading 骨架屏
+    fetchFeedbacks(true); 
     fetchNotifications(); 
+    fetchPerformanceAndUsers(); // [修复] 增加绩效数据的初次拉取
     const interval = setInterval(() => {
       fetchStats();
-      fetchFeedbacks(false); // [修改] 心跳轮询使用静默刷新，传入 false
+      fetchFeedbacks(false); 
       fetchNotifications(); 
+      fetchPerformanceAndUsers(); // [修复] 加入心跳轮询
     }, 15000);
     return () => clearInterval(interval);
-  }, [fetchStats, fetchFeedbacks, fetchNotifications]);
+  }, [fetchStats, fetchFeedbacks, fetchNotifications, fetchPerformanceAndUsers]); // [修复] 补充依赖
   // [新增] 管理端撤回回复方法
   const handleRecallMsg = async (feedbackId, replyId) => {
     if (!window.confirm('确定要撤回这条回复吗？（撤回后学生和普通管理员将无法查看具体内容）')) return;
@@ -600,28 +691,163 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
 
       {/* 主体内容区 */}
       <main className="max-w-7xl mx-auto px-6 py-8">
-        {user?.role === 'superadmin' && (
-          <div className="mb-8 flex gap-2 p-1 bg-white/5 rounded-xl w-fit">
+        {/* 全局业务导航条 (区分超管和子管的可见项) */}
+        <div className="mb-8 flex flex-wrap gap-2 p-1 bg-white/5 rounded-xl w-fit">
+          <button
+            onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(false); }}
+            className={`px-6 py-2 rounded-lg flex items-center gap-2 transition-all ${!showAccountManagement && !showPerformanceManagement ? 'bg-purple-600 text-white' : 'text-purple-200/60 hover:text-white'}`}
+          >
+            <span>📋</span> 业务反馈处理
+          </button>
+          
+          {user?.role === 'superadmin' && (
             <button
-              onClick={() => setShowAccountManagement(false)}
-              className={`px-6 py-2 rounded-lg flex items-center gap-2 transition-all ${
-                !showAccountManagement ? 'bg-purple-600 text-white' : 'text-purple-200/60 hover:text-white'
-              }`}
-            >
-              <span>📋</span> 业务处理面板
-            </button>
-            <button
-              onClick={() => setShowAccountManagement(true)}
-              className={`px-6 py-2 rounded-lg flex items-center gap-2 transition-all ${
-                showAccountManagement ? 'bg-purple-600 text-white' : 'text-purple-200/60 hover:text-white'
-              }`}
+              onClick={() => { setShowAccountManagement(true); setShowPerformanceManagement(false); }}
+              className={`px-6 py-2 rounded-lg flex items-center gap-2 transition-all ${showAccountManagement ? 'bg-purple-600 text-white' : 'text-purple-200/60 hover:text-white'}`}
             >
               <span>👥</span> 账号管理面板
             </button>
-          </div>
-        )}
+          )}
 
-        {showAccountManagement && user?.role === 'superadmin' ? (
+          <button
+            onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(true); }}
+            className={`px-6 py-2 rounded-lg flex items-center gap-2 transition-all ${showPerformanceManagement ? 'bg-purple-600 text-white' : 'text-purple-200/60 hover:text-white'}`}
+          >
+            <span>📊</span> {user?.role === 'superadmin' ? '部门绩效管理' : '我的绩效档案'}
+          </button>
+        </div>
+
+        {/* 动态渲染对应的主视图 */}
+        {showPerformanceManagement ? (
+          <div className="animate-fadeIn space-y-6">
+            <PerformanceRulesAccordion />
+            
+            {user?.role === 'superadmin' ? (
+              /* 超管视图：快捷录入表单 + 全局流水账 */
+              <div className="grid md:grid-cols-3 gap-6">
+                <div className="md:col-span-1 p-6 bg-white/5 border border-white/10 rounded-2xl h-fit">
+                  <h3 className="text-lg font-bold text-white mb-4">✍️ 快捷赋分录入</h3>
+                  <form onSubmit={handlePerfSubmit} className="space-y-4">
+                    <div>
+                      <label className="text-xs text-purple-200/60 mb-1 block">考核维度</label>
+                      <select value={perfForm.dimension} onChange={e => setPerfForm({...perfForm, dimension: e.target.value})} className="w-full px-3 py-2 bg-slate-900 rounded-lg text-white border border-white/10 outline-none">
+                        {Object.entries(PERF_DIMENSIONS).map(([k, v]) => <option key={k} value={k}>{v.label} (满分{v.max})</option>)}
+                      </select>
+                    </div>
+                    {(perfForm.dimension === 'activity' || perfForm.dimension === 'bonus') && (
+                      <div>
+                        <label className="text-xs text-purple-200/60 mb-1 block">活动名称 (可选)</label>
+                        <input type="text" placeholder="例: 春季权益座谈会" value={perfForm.activityName} onChange={e => setPerfForm({...perfForm, activityName: e.target.value})} className="w-full px-3 py-2 bg-slate-900 rounded-lg text-white border border-white/10 outline-none" />
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs text-purple-200/60 mb-1 block">发生日期</label>
+                        <input type="date" required value={perfForm.occurrenceDate} onChange={e => setPerfForm({...perfForm, occurrenceDate: e.target.value})} className="w-full px-3 py-2 bg-slate-900 rounded-lg text-white border border-white/10 outline-none [color-scheme:dark]" />
+                      </div>
+                      <div>
+                        <label className="text-xs text-purple-200/60 mb-1 block">变动分值</label>
+                        <input type="number" step="0.5" required placeholder="-2 或 1.5" value={perfForm.score} onChange={e => setPerfForm({...perfForm, score: e.target.value})} className="w-full px-3 py-2 bg-slate-900 rounded-lg text-white border border-white/10 outline-none" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-purple-200/60 mb-1 block">具体事由</label>
+                      <textarea required rows="2" placeholder="例: 例会迟到 / 统筹工作表现突出" value={perfForm.reason} onChange={e => setPerfForm({...perfForm, reason: e.target.value})} className="w-full px-3 py-2 bg-slate-900 rounded-lg text-white border border-white/10 outline-none resize-none" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-purple-200/60 mb-1 block">选择志愿者 (可多选)</label>
+                      <div className="max-h-32 overflow-y-auto bg-slate-900 rounded-lg border border-white/10 p-2 space-y-1 custom-scrollbar">
+                        {volunteers.map(v => (
+                          <label key={v._id} className="flex items-center gap-2 text-sm text-white hover:bg-white/5 p-1 rounded cursor-pointer">
+                            <input type="checkbox" checked={perfForm.volunteerIds.includes(v._id)} onChange={(e) => {
+                              const ids = e.target.checked ? [...perfForm.volunteerIds, v._id] : perfForm.volunteerIds.filter(id => id !== v._id);
+                              setPerfForm({...perfForm, volunteerIds: ids});
+                            }} className="accent-purple-500" />
+                            {v.name} <span className="text-xs text-white/40">{v.studentId}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <button type="submit" className="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-medium shadow-lg">确认提交记录</button>
+                  </form>
+                </div>
+
+                <div className="md:col-span-2 p-6 bg-white/5 border border-white/10 rounded-2xl h-fit">
+                  <h3 className="text-lg font-bold text-white mb-4">🗂 全局绩效流水账</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm whitespace-nowrap">
+                      <thead className="border-b border-white/10 text-purple-200/60">
+                        <tr><th className="pb-3 pr-4">日期</th><th className="pb-3 pr-4">对象</th><th className="pb-3 pr-4">分值</th><th className="pb-3 pr-4">维度</th><th className="pb-3">事由</th></tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5 text-purple-100">
+                        {performanceRecords.map(r => (
+                          <tr key={r._id} className="hover:bg-white/5 transition-colors">
+                            <td className="py-3 pr-4 text-xs">{new Date(r.occurrenceDate).toLocaleDateString('zh-CN')}</td>
+                            <td className="py-3 pr-4">{r.volunteer?.name}</td>
+                            <td className={`py-3 pr-4 font-bold ${r.score > 0 ? 'text-green-400' : 'text-red-400'}`}>{r.score > 0 ? `+${r.score}` : r.score}</td>
+                            <td className="py-3 pr-4"><span className={`px-2 py-0.5 rounded text-[10px] bg-${PERF_DIMENSIONS[r.dimension].color}-500/20 text-${PERF_DIMENSIONS[r.dimension].color}-300`}>{PERF_DIMENSIONS[r.dimension].label}</span></td>
+                            <td className="py-3 text-xs truncate max-w-[200px]" title={r.reason}>{r.activityName ? `[${r.activityName}] ` : ''}{r.reason}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* 子管(志愿者)视图：个人表盘 + 履历时间轴 */
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-6">
+                  <div className="p-6 bg-gradient-to-br from-purple-900/40 to-blue-900/40 border border-purple-500/30 rounded-2xl text-center">
+                    <p className="text-purple-200/80 mb-2">本学期考核当前总分</p>
+                    <p className="text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-purple-200 drop-shadow-lg mb-4">
+                      {calculateScore(performanceRecords).total} <span className="text-xl font-normal text-white/50">/100+</span>
+                    </p>
+                    <div className="grid grid-cols-2 gap-3 text-left border-t border-white/10 pt-4 mt-4">
+                      {['routine', 'activity', 'teamwork', 'attitude'].map(k => {
+                        const s = calculateScore(performanceRecords)[k];
+                        const d = PERF_DIMENSIONS[k];
+                        return (
+                          <div key={k} className="bg-black/20 p-2.5 rounded-xl border border-white/5">
+                            <div className="flex justify-between text-xs mb-1.5"><span className={`text-${d.color}-300`}>{d.label}</span><span className="text-white font-bold">{s}/{d.max}</span></div>
+                            <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden"><div className={`h-full bg-${d.color}-500`} style={{ width: `${(s/d.max)*100}%` }}></div></div>
+                          </div>
+                        );
+                      })}
+                      <div className="col-span-2 bg-red-900/20 p-2.5 rounded-xl border border-red-500/20 flex justify-between items-center">
+                        <span className="text-xs text-red-300">🎉 附加贡献加分</span><span className="text-lg font-bold text-red-400">+{calculateScore(performanceRecords).bonus}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-6 bg-white/5 border border-white/10 rounded-2xl max-h-[600px] flex flex-col">
+                  <h3 className="text-lg font-bold text-white mb-4 shrink-0">📈 我的履历档案</h3>
+                  <div className="overflow-y-auto flex-1 pr-2 custom-scrollbar space-y-4">
+                    {performanceRecords.length === 0 ? <p className="text-center text-purple-200/50 py-10 text-sm">暂无绩效记录</p> : 
+                      performanceRecords.map(r => (
+                        <div key={r._id} className="relative pl-6 border-l-2 border-purple-500/30 pb-4 last:pb-0">
+                          <span className="absolute left-[-5px] top-0 w-2 h-2 rounded-full bg-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.8)]"></span>
+                          <div className="text-[10px] text-purple-200/50 mb-1">{new Date(r.occurrenceDate).toLocaleDateString('zh-CN')} · 由 {r.recordedBy?.name} 记录</div>
+                          <div className="bg-white/5 border border-white/10 p-3 rounded-xl flex items-start justify-between gap-3">
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] bg-${PERF_DIMENSIONS[r.dimension].color}-500/20 text-${PERF_DIMENSIONS[r.dimension].color}-300`}>{PERF_DIMENSIONS[r.dimension].label}</span>
+                                {r.activityName && <span className="text-xs font-bold text-white">[{r.activityName}]</span>}
+                              </div>
+                              <p className="text-sm text-purple-100">{r.reason}</p>
+                            </div>
+                            <span className={`shrink-0 text-lg font-bold ${r.score > 0 ? 'text-green-400' : 'text-red-400'}`}>{r.score > 0 ? `+${r.score}` : r.score}</span>
+                          </div>
+                        </div>
+                      ))
+                    }
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : showAccountManagement && user?.role === 'superadmin' ? (
            <AccountManagement token={token} user={user} />
         ) : (
           <>

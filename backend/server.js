@@ -272,7 +272,21 @@ const auditLogSchema = new mongoose.Schema({
 });
 
 const AuditLog = mongoose.model('AuditLog', auditLogSchema);
+const performanceRecordSchema = new mongoose.Schema({
+  volunteer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  dimension: { 
+    type: String, 
+    enum: ['routine', 'activity', 'teamwork', 'attitude', 'bonus'], 
+    required: true 
+  },
+  score: { type: Number, required: true }, // 正数为加分，负数为扣分
+  reason: { type: String, required: true },
+  occurrenceDate: { type: Date, required: true },
+  activityName: { type: String } // 选填
+}, { timestamps: true });
 
+const PerformanceRecord = mongoose.model('PerformanceRecord', performanceRecordSchema);
 // ============================================
 // 中间件
 // ============================================
@@ -1048,6 +1062,51 @@ app.get('/api/admin/stats', authenticate, adminOnly, async (req, res) => {
   }
 });
 
+// ================== 部门绩效考核 API ==================
+
+// 1. [超管] 批量录入绩效记录
+app.post('/api/admin/performance', authenticate, adminOnly, async (req, res) => {
+  if (req.user.role !== 'superadmin') return res.status(403).json({ success: false, message: '仅负责人可用' });
+  try {
+    const { volunteerIds, dimension, score, reason, occurrenceDate, activityName } = req.body;
+    if (!volunteerIds || volunteerIds.length === 0) return res.status(400).json({ success: false, message: '请选择人员' });
+    
+    const records = volunteerIds.map(vid => ({
+      volunteer: vid,
+      recordedBy: req.user._id,
+      dimension,
+      score: Number(score),
+      reason,
+      occurrenceDate,
+      activityName
+    }));
+    await PerformanceRecord.insertMany(records);
+    res.json({ success: true, message: '绩效录入成功' });
+  } catch (error) { res.status(500).json({ success: false, message: '录入失败' }); }
+});
+
+// 2. [超管] 获取全员绩效流水
+app.get('/api/admin/performance', authenticate, adminOnly, async (req, res) => {
+  if (req.user.role !== 'superadmin') return res.status(403).json({ success: false });
+  try {
+    const records = await PerformanceRecord.find()
+      .populate('volunteer', 'name studentId')
+      .populate('recordedBy', 'name')
+      .sort({ occurrenceDate: -1, createdAt: -1 });
+    res.json({ success: true, records });
+  } catch (error) { res.status(500).json({ success: false }); }
+});
+
+// 3. [子管理员/志愿者] 获取本人的绩效流水
+app.get('/api/admin/performance/my', authenticate, adminOnly, async (req, res) => {
+  try {
+    // 强制使用当前 token 中的 user._id，绝对隔离
+    const records = await PerformanceRecord.find({ volunteer: req.user._id })
+      .populate('recordedBy', 'name')
+      .sort({ occurrenceDate: -1, createdAt: -1 });
+    res.json({ success: true, records });
+  } catch (error) { res.status(500).json({ success: false }); }
+});
 // ============================================
 // 错误处理
 // ============================================
