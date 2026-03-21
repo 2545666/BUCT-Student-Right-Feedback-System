@@ -416,8 +416,9 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
     } catch (err) { console.error('获取统计数据失败:', err); }
   }, [token]);
 
-  const fetchFeedbacks = useCallback(async () => {
-    setLoading(true);
+  // [修改] 增加 showLoading 参数，默认为 true
+  const fetchFeedbacks = useCallback(async (showLoading = true) => {
+    if (showLoading) setLoading(true); // 只有显式要求时才展示全局 Loading
     try {
       const params = new URLSearchParams();
       if (filters.status) params.append('status', filters.status);
@@ -431,20 +432,20 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
-      if (data.success) setFeedbacks(data.feedbacks);
+      if (data.success) setFeedbacks(data.feedbacks); // 直接原地替换数据，不会丢失滚动条
     } catch (err) { console.error('获取反馈失败:', err); }
-    setLoading(false);
+    if (showLoading) setLoading(false);
   }, [token, filters, searchQuery, dateRange]);
 
  // 补回丢失的生命周期钩子
   useEffect(() => {
     fetchStats();
-    fetchFeedbacks();
-    fetchNotifications(); // [新增]
+    fetchFeedbacks(true); // 首次进入页面，显示 loading 骨架屏
+    fetchNotifications(); 
     const interval = setInterval(() => {
       fetchStats();
-      fetchFeedbacks();
-      fetchNotifications(); // [新增]
+      fetchFeedbacks(false); // [修改] 心跳轮询使用静默刷新，传入 false
+      fetchNotifications(); 
     }, 15000);
     return () => clearInterval(interval);
   }, [fetchStats, fetchFeedbacks, fetchNotifications]);
@@ -474,7 +475,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
         setResponseText('');
         setSelectedReplyFiles([]);
         setSelectedFeedback(null);
-        fetchFeedbacks();
+        fetchFeedbacks(false); // [修改] 操作成功后执行静默刷新，不打断用户当前的视图
         fetchStats();
       } else {
         alert(data.message || '更新失败');
