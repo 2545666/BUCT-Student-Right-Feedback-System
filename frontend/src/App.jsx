@@ -744,7 +744,12 @@ const LoginPage = ({ onLogin, onRegister }) => {
         {activeTab === 'submit' ? (
           <SubmitForm categories={categories} onSubmit={handleSubmit} loading={loading} />
         ) : (
-          <FeedbackList feedbacks={feedbacks} categories={categories} onReply={handleStudentReply} onRecall={handleRecallMsg} />
+        <FeedbackList 
+          feedbacks={feedbacks} 
+          categories={categories} 
+          onReply={handleStudentReply} 
+          onRecall={handleRecallMsg}  // [新增] 显式传递方法
+        />
         )}
       </main>
 
@@ -1007,7 +1012,7 @@ const SubmitForm = ({ categories, onSubmit, loading }) => {
     </div>
   );
 };
-const FeedbackList = ({ feedbacks, categories, onReply }) => {
+const FeedbackList = ({ feedbacks, categories, onReply, onRecall }) => { // [新增] onRecall
   const [expandedId, setExpandedId] = useState(null);
   const [replyText, setReplyText] = useState(''); // [新增]
   const getCategoryInfo = (cat) => categories.find(c => c.value === cat) || { label: cat, icon: '📋' };
@@ -1084,7 +1089,18 @@ const FeedbackList = ({ feedbacks, categories, onReply }) => {
                               <span className={`text-xs font-bold ${isStudent ? 'text-white/70' : 'text-purple-300'}`}>
                                 {isStudent ? '我的留言' : (resp.adminName || resp.senderName || '系统管理员')}
                               </span>
-                              <span className="text-[10px] text-purple-200/40">{new Date(resp.createdAt).toLocaleString('zh-CN')}</span>
+                              {/* [新增] 按钮容器，包含撤回按钮和时间 */}
+                              <div className="flex items-center gap-2">
+                                {isStudent && !resp.isRecalled && (
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); onRecall(feedback._id, resp._id); }} 
+                                    className="text-[10px] text-red-400/80 hover:text-red-400 transition-colors"
+                                  >
+                                   撤回
+                                 </button>
+                                 )}
+                                <span className="text-[10px] text-purple-200/40">{new Date(resp.createdAt).toLocaleString('zh-CN')}</span>
+                              </div>
                             </div>
                             <p className="text-sm text-purple-100 whitespace-pre-wrap">{resp.content}</p>
                             <AttachmentViewer attachments={resp.attachments} />
