@@ -77,7 +77,7 @@ const PerformanceRulesAccordion = () => (
         <span className="text-purple-300 transition-transform duration-300 group-open:-rotate-180">▼</span>
       </summary>
       <div className="p-4 md:p-5 pt-0 text-sm text-purple-200/80 border-t border-white/10 mt-2 space-y-4 max-h-96 overflow-y-auto custom-scrollbar">
-        <p className="text-xs text-yellow-400/80 font-bold">【通关模式】全员初始为 0 分。通过完成任务积攒分数，各模块达到上限后即封顶，期末满分 100 分及以上。</p>
+        <p className="text-xs text-yellow-400/80 font-bold">全员初始为 0 分。通过完成任务积攒分数，各模块达到上限后即封顶，期末满分 100 分及以上。</p>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse mt-2 text-xs min-w-[500px]">
             <thead><tr className="border-b border-white/10 text-white/60"><th className="py-2">考核维度</th><th className="w-16">封顶分</th><th>加分标准 (每次/每周)</th></tr></thead>
@@ -925,7 +925,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
               <div className="grid md:grid-cols-2 gap-4 md:gap-6">
                 <div className="space-y-4 md:space-y-6">
                   <div className="p-4 md:p-6 bg-gradient-to-br from-purple-900/40 to-blue-900/40 border border-purple-500/30 rounded-2xl text-center">
-                    <p className="text-sm md:text-base text-purple-200/80 mb-2">【{selectedSemester || '当前学期'}】通关得分</p>
+                    <p className="text-sm md:text-base text-purple-200/80 mb-2">【{selectedSemester || '当前学期'}】绩效得分</p>
                     <p className="text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-purple-200 drop-shadow-lg mb-4">
                       {calculateScore(performanceRecords).total} <span className="text-lg md:text-xl font-normal text-white/50">/100</span>
                     </p>
@@ -950,7 +950,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                 </div>
 
                 <div className="p-4 md:p-6 bg-white/5 border border-white/10 rounded-2xl max-h-[600px] flex flex-col">
-                  <h3 className="text-base md:text-lg font-bold text-white mb-4 shrink-0">📈 我的通关履历档案</h3>
+                  <h3 className="text-base md:text-lg font-bold text-white mb-4 shrink-0">📈 我的绩效履历档案</h3>
                   <div className="overflow-y-auto flex-1 pr-2 custom-scrollbar space-y-4">
                     {performanceRecords.length === 0 ? <p className="text-center text-purple-200/50 py-10 text-sm">该学期暂未获取积分</p> : 
                       performanceRecords.map(r => (
