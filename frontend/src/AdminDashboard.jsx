@@ -73,7 +73,7 @@ const PerformanceRulesAccordion = () => (
   <div className="mb-6 p-1 rounded-2xl bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-500/30">
     <details className="group">
       <summary className="flex items-center justify-between p-4 cursor-pointer list-none text-white font-medium outline-none">
-        <div className="flex items-center gap-3"><span className="text-xl">📜</span><span className="text-sm md:text-base">点击查看《权益部纯加分制考核细则》</span></div>
+        <div className="flex items-center gap-3"><span className="text-xl">📜</span><span className="text-sm md:text-base">点击查看《SIE学生权益部志愿者考核细则》</span></div>
         <span className="text-purple-300 transition-transform duration-300 group-open:-rotate-180">▼</span>
       </summary>
       <div className="p-4 md:p-5 pt-0 text-sm text-purple-200/80 border-t border-white/10 mt-2 space-y-4 max-h-96 overflow-y-auto custom-scrollbar">
@@ -791,7 +791,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                     <table className="w-full text-left text-sm whitespace-nowrap">
                       <thead className="border-b border-white/10 text-purple-200/60">
                         <tr>
-                          <th className="pb-3 pr-4">干事姓名</th>
+                          <th className="pb-3 pr-4">志愿者姓名</th>
                           <th className="pb-3 pr-4 text-purple-300">考勤(20)</th>
                           <th className="pb-3 pr-4 text-blue-300">活动(35)</th>
                           <th className="pb-3 pr-4 text-green-300">跟进(25)</th>
@@ -877,7 +877,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                         <textarea required rows="2" placeholder="例: 按时全勤出勤 / 独立撰写大型策划案" value={perfForm.reason} onChange={e => setPerfForm({...perfForm, reason: e.target.value})} className="w-full px-3 py-2 bg-slate-900 rounded-lg text-white border border-white/10 outline-none resize-none" />
                       </div>
                       <div>
-                        <label className="text-xs text-purple-200/60 mb-1 block">选择干事 (可批量勾选)</label>
+                        <label className="text-xs text-purple-200/60 mb-1 block">选择志愿者 (可批量勾选)</label>
                         <div className="max-h-32 overflow-y-auto bg-slate-900 rounded-lg border border-white/10 p-2 space-y-1 custom-scrollbar">
                           {volunteers.map(v => (
                             <label key={v._id} className="flex items-center gap-2 text-sm text-white hover:bg-white/5 p-1 rounded cursor-pointer">
@@ -902,7 +902,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-sm whitespace-nowrap">
                         <thead className="border-b border-white/10 text-purple-200/60">
-                          <tr><th className="pb-3 pr-4">日期</th><th className="pb-3 pr-4">干事</th><th className="pb-3 pr-4">分值</th><th className="pb-3 pr-4">维度</th><th className="pb-3">事由明细</th></tr>
+                          <tr><th className="pb-3 pr-4">日期</th><th className="pb-3 pr-4">志愿者</th><th className="pb-3 pr-4">分值</th><th className="pb-3 pr-4">维度</th><th className="pb-3">事由明细</th></tr>
                         </thead>
                         <tbody className="divide-y divide-white/5 text-purple-100">
                           {performanceRecords.map(r => (
