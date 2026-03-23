@@ -272,21 +272,32 @@ const auditLogSchema = new mongoose.Schema({
 });
 
 const AuditLog = mongoose.model('AuditLog', auditLogSchema);
+
+// [修改] 纯加分制绩效考核流水模型
 const performanceRecordSchema = new mongoose.Schema({
   volunteer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   dimension: { 
     type: String, 
-    enum: ['routine', 'activity', 'teamwork', 'attitude', 'bonus'], 
+    enum: ['attendance', 'activity', 'feedback', 'copywriting', 'others', 'bonus'], // [修改] 纯加分维度
     required: true 
   },
-  score: { type: Number, required: true }, // 正数为加分，负数为扣分
+  score: { type: Number, required: true }, 
   reason: { type: String, required: true },
   occurrenceDate: { type: Date, required: true },
-  activityName: { type: String } // 选填
+  activityName: { type: String },
+  semester: { type: String, required: true } // [新增] 学期归档标签
 }, { timestamps: true });
 
 const PerformanceRecord = mongoose.model('PerformanceRecord', performanceRecordSchema);
+
+// [新增] 系统配置模型 (用于存储当前运行的学期)
+const systemConfigSchema = new mongoose.Schema({
+  key: { type: String, required: true, unique: true },
+  value: { type: String, required: true }
+});
+const SystemConfig = mongoose.model('SystemConfig', systemConfigSchema);
+
 // ============================================
 // 中间件
 // ============================================
@@ -1062,34 +1073,53 @@ app.get('/api/admin/stats', authenticate, adminOnly, async (req, res) => {
   }
 });
 
-// ================== 部门绩效考核 API ==================
+// ================== 部门绩效与系统学期 API ==================
 
-// 1. [超管] 批量录入绩效记录
+// [新增] 获取当前运行学期及历史学期列表
+app.get('/api/admin/system/config', async (req, res) => {
+  try {
+    let config = await SystemConfig.findOne({ key: 'currentSemester' });
+    if (!config) config = await SystemConfig.create({ key: 'currentSemester', value: '2025-2026学年 第二学期' });
+    const semesters = await PerformanceRecord.distinct('semester');
+    if (!semesters.includes(config.value)) semesters.push(config.value);
+    res.json({ success: true, currentSemester: config.value, semesters });
+  } catch (error) { res.status(500).json({ success: false }); }
+});
+
+// [新增] 归档并开启新学期 (仅超管)
+app.post('/api/admin/system/semester', authenticate, adminOnly, async (req, res) => {
+  if (req.user.role !== 'superadmin') return res.status(403).json({ success: false });
+  try {
+    await SystemConfig.findOneAndUpdate({ key: 'currentSemester' }, { value: req.body.semester }, { upsert: true });
+    res.json({ success: true, message: '新学期已开启' });
+  } catch (error) { res.status(500).json({ success: false }); }
+});
+
+// 1. [超管] 批量录入绩效记录 (自动打上当前学期标签)
 app.post('/api/admin/performance', authenticate, adminOnly, async (req, res) => {
   if (req.user.role !== 'superadmin') return res.status(403).json({ success: false, message: '仅负责人可用' });
   try {
     const { volunteerIds, dimension, score, reason, occurrenceDate, activityName } = req.body;
     if (!volunteerIds || volunteerIds.length === 0) return res.status(400).json({ success: false, message: '请选择人员' });
     
+    const config = await SystemConfig.findOne({ key: 'currentSemester' });
+    const currentSemester = config ? config.value : '2025-2026学年 第二学期';
+
     const records = volunteerIds.map(vid => ({
-      volunteer: vid,
-      recordedBy: req.user._id,
-      dimension,
-      score: Number(score),
-      reason,
-      occurrenceDate,
-      activityName
+      volunteer: vid, recordedBy: req.user._id, dimension, score: Number(score), reason, occurrenceDate, activityName,
+      semester: currentSemester // [绑定学期]
     }));
     await PerformanceRecord.insertMany(records);
     res.json({ success: true, message: '绩效录入成功' });
   } catch (error) { res.status(500).json({ success: false, message: '录入失败' }); }
 });
 
-// 2. [超管] 获取全员绩效流水
+// 2. [超管] 获取全员绩效流水 (按学期筛选)
 app.get('/api/admin/performance', authenticate, adminOnly, async (req, res) => {
   if (req.user.role !== 'superadmin') return res.status(403).json({ success: false });
   try {
-    const records = await PerformanceRecord.find()
+    const query = req.query.semester ? { semester: req.query.semester } : {};
+    const records = await PerformanceRecord.find(query)
       .populate('volunteer', 'name studentId')
       .populate('recordedBy', 'name')
       .sort({ occurrenceDate: -1, createdAt: -1 });
@@ -1097,11 +1127,12 @@ app.get('/api/admin/performance', authenticate, adminOnly, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false }); }
 });
 
-// 3. [子管理员/志愿者] 获取本人的绩效流水
+// 3. [子管理员/志愿者] 获取本人的绩效流水 (按学期筛选)
 app.get('/api/admin/performance/my', authenticate, adminOnly, async (req, res) => {
   try {
-    // 强制使用当前 token 中的 user._id，绝对隔离
-    const records = await PerformanceRecord.find({ volunteer: req.user._id })
+    const query = { volunteer: req.user._id };
+    if (req.query.semester) query.semester = req.query.semester;
+    const records = await PerformanceRecord.find(query)
       .populate('recordedBy', 'name')
       .sort({ occurrenceDate: -1, createdAt: -1 });
     res.json({ success: true, records });

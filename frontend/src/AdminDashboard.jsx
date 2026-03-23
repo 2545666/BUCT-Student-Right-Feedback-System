@@ -58,35 +58,35 @@ export const AttachmentViewer = ({ attachments }) => {
   );
 };
 
+// [修改] 全新纯加分制维度配置字典
 const PERF_DIMENSIONS = {
-  routine: { label: '日常履职', max: 40, color: 'purple', base: 40 },
-  activity: { label: '活动执行', max: 30, color: 'blue', base: 30 },
-  teamwork: { label: '团队协作', max: 15, color: 'green', base: 15 },
-  attitude: { label: '态度纪律', max: 15, color: 'yellow', base: 15 },
-  bonus: { label: '附加加分', max: '上不封顶', color: 'red', base: 0 }
+  attendance: { label: '考勤积分', max: 20, color: 'purple' },
+  activity: { label: '活动贡献', max: 35, color: 'blue' },
+  feedback: { label: '权益跟进', max: 25, color: 'green' },
+  copywriting: { label: '文案与策划', max: 15, color: 'yellow' },
+  others: { label: '其他常规', max: 5, color: 'gray' },
+  bonus: { label: '特别加分', max: '附加', color: 'red' }
 };
 
-// [新增] 绩效考核制度折叠面板组件 (新版)
+// [修改] 纯加分制绩效考核制度折叠面板组件
 const PerformanceRulesAccordion = () => (
   <div className="mb-6 p-1 rounded-2xl bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-500/30">
     <details className="group">
       <summary className="flex items-center justify-between p-4 cursor-pointer list-none text-white font-medium outline-none">
-        <div className="flex items-center gap-3">
-          <span className="text-xl">📜</span>
-          <span>点击查看《权益部考核制度及细则》</span>
-        </div>
+        <div className="flex items-center gap-3"><span className="text-xl">📜</span><span>点击查看《权益部纯加分制考核细则》</span></div>
         <span className="text-purple-300 transition-transform duration-300 group-open:-rotate-180">▼</span>
       </summary>
       <div className="p-5 pt-0 text-sm text-purple-200/80 border-t border-white/10 mt-2 space-y-4 max-h-96 overflow-y-auto custom-scrollbar">
-        <p className="text-xs text-yellow-400/80">学期基准分为 100 分。四大基础板块以扣分为主（扣完为止），附加板块为纯加分项。</p>
+        <p className="text-xs text-yellow-400/80 font-bold">【通关模式】全员初始为 0 分。通过完成任务积攒分数，各模块达到上限后即封顶，期末满分 100 分及以上。</p>
         <table className="w-full text-left border-collapse mt-2 text-xs">
-          <thead><tr className="border-b border-white/10 text-white/60"><th className="py-2">考核维度</th><th>满分</th><th>指标与计分建议</th></tr></thead>
+          <thead><tr className="border-b border-white/10 text-white/60"><th className="py-2">考核维度</th><th>封顶分</th><th>加分标准 (每次/每周)</th></tr></thead>
           <tbody className="divide-y divide-white/5">
-            <tr><td className="py-2 text-purple-300">日常履职</td><td>40分</td><td>例会缺勤扣3分；未完成任务扣2分。</td></tr>
-            <tr><td className="py-2 text-blue-300">活动执行</td><td>30分</td><td>提案/活动失职扣1~5分；(突出贡献可补加1~3分，封顶30)</td></tr>
-            <tr><td className="py-2 text-green-300">团队协作</td><td>15分</td><td>推诿扯皮、拒绝配合单次扣2分。</td></tr>
-            <tr><td className="py-2 text-yellow-300">态度纪律</td><td>15分</td><td>态度遭投诉扣2分；未佩戴工作牌扣1分。</td></tr>
-            <tr><td className="py-2 text-red-400 font-bold">附加加分</td><td>纯加分</td><td>校级荣誉+3~5分；被采纳大提案+2~4分；优秀新闻稿+1~2分。</td></tr>
+            <tr><td className="py-2 text-purple-300">考勤积分</td><td>20分</td><td>准时出勤/合规请假 +2 分；迟到早退 +1 分；无故缺席 0 分。</td></tr>
+            <tr><td className="py-2 text-blue-300">活动贡献</td><td>35分</td><td>核心统筹策划 +4~5 分；主要骨干 +2~3 分；普通参与 +1 分。</td></tr>
+            <tr><td className="py-2 text-green-300">权益跟进</td><td>25分</td><td>按时巡检系统与规范回复留言 +2分/周；全月账号无违规 +1.25分/月。</td></tr>
+            <tr><td className="py-2 text-yellow-300">文案与策划</td><td>15分</td><td>主笔大型活动策划案 +4~5分；主笔推送文案 +2~3分；参与辅助 +1分。</td></tr>
+            <tr><td className="py-2 text-gray-300">其他常规</td><td>5分</td><td>完成物资管理、资料整理或跨部门对接 +1分/次。</td></tr>
+            <tr><td className="py-2 text-red-400 font-bold">特别加分</td><td>附加</td><td>获校级表彰、突出建设性贡献直接 +2~5 分，计入总分。</td></tr>
           </tbody>
         </table>
       </div>
@@ -381,58 +381,91 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
   const [pwdData, setPwdData] = useState({ current: '', new: '' });
   const [profileData, setProfileData] = useState({ name: '', studentId: '', email: '', phone: '' });
 
-  // [新增] 绩效模块专属状态
+  // [新增] 绩效模块与学期专属状态
   const [showPerformanceManagement, setShowPerformanceManagement] = useState(false);
   const [performanceRecords, setPerformanceRecords] = useState([]);
-  const [perfForm, setPerfForm] = useState({ volunteerIds: [], dimension: 'routine', score: '', reason: '', occurrenceDate: '', activityName: '' });
-  const [volunteers, setVolunteers] = useState([]); // 存超管拉取的子管理员列表用于打分
+  const [perfForm, setPerfForm] = useState({ volunteerIds: [], dimension: 'attendance', score: '', reason: '', occurrenceDate: '', activityName: '' });
+  const [volunteers, setVolunteers] = useState([]); 
+  
+  // -- 新增学期控制状态 --
+  const [currentSemester, setCurrentSemester] = useState('');
+  const [selectedSemester, setSelectedSemester] = useState('');
+  const [availableSemesters, setAvailableSemesters] = useState([]);
 
-  // [新增] 拉取绩效与人员
-  const fetchPerformanceAndUsers = useCallback(async () => {
+  // [修改] 拉取绩效与学期配置
+  const fetchPerformanceAndUsers = useCallback(async (targetSemester = '') => {
     try {
-      // 1. 获取绩效流水 (超管获取所有，普通 admin 走 /my 获取自己)
+      const sysRes = await fetch(`${API_BASE}/admin/system/config`, { headers: { 'Authorization': `Bearer ${token}` } });
+      const sysData = await sysRes.json();
+      let querySemester = targetSemester;
+      if (sysData.success) {
+        setCurrentSemester(sysData.currentSemester);
+        setAvailableSemesters(sysData.semesters);
+        if (!querySemester) {
+            querySemester = sysData.currentSemester;
+            setSelectedSemester(sysData.currentSemester);
+        }
+      }
+
       const endpoint = user.role === 'superadmin' ? '/admin/performance' : '/admin/performance/my';
-      const res = await fetch(`${API_BASE}${endpoint}`, { headers: { 'Authorization': `Bearer ${token}` } });
+      const res = await fetch(`${API_BASE}${endpoint}?semester=${encodeURIComponent(querySemester)}`, { headers: { 'Authorization': `Bearer ${token}` } });
       const data = await res.json();
       if (data.success) setPerformanceRecords(data.records);
 
-      // 2. 超管需额外拉取人员列表供打分使用
       if (user.role === 'superadmin') {
         const uRes = await fetch(`${API_BASE}/admin/users`, { headers: { 'Authorization': `Bearer ${token}` } });
-        const uData = await uRes.json();
-        if (uData.success) setVolunteers(uData.users.filter(u => u.role === 'admin')); // 只给志愿者打分
+        if ((await uRes.clone().json()).success) setVolunteers((await uRes.json()).users.filter(u => u.role === 'admin'));
       }
     } catch (err) {}
   }, [token, user.role]);
 
-  // [新增] 计算个人总分的纯函数引擎 (核心)
-  const calculateScore = (records) => {
-    let scores = { routine: 0, activity: 0, teamwork: 0, attitude: 0, bonus: 0 };
+  // [修改] 纯加分制算分引擎 (从0起步，上限封顶)
+  const calculateScore = useCallback((records) => {
+    let scores = { attendance: 0, activity: 0, feedback: 0, copywriting: 0, others: 0, bonus: 0 };
     records.forEach(r => { if (scores[r.dimension] !== undefined) scores[r.dimension] += r.score; });
-    // 基础分 100 拆解到 4 个维度，扣完为止(最小为0)，加分封顶(最大为原满分)
-    const routine = Math.max(0, Math.min(40, 40 + scores.routine));
-    const activity = Math.max(0, Math.min(30, 30 + scores.activity));
-    const teamwork = Math.max(0, Math.min(15, 15 + scores.teamwork));
-    const attitude = Math.max(0, Math.min(15, 15 + scores.attitude));
-    const bonus = Math.max(0, scores.bonus); // 附加分为纯加分
-    return { routine, activity, teamwork, attitude, bonus, total: routine + activity + teamwork + attitude + bonus };
-  };
+    
+    const attendance = Math.min(PERF_DIMENSIONS.attendance.max, Math.max(0, scores.attendance));
+    const activity = Math.min(PERF_DIMENSIONS.activity.max, Math.max(0, scores.activity));
+    const feedback = Math.min(PERF_DIMENSIONS.feedback.max, Math.max(0, scores.feedback));
+    const copywriting = Math.min(PERF_DIMENSIONS.copywriting.max, Math.max(0, scores.copywriting));
+    const others = Math.min(PERF_DIMENSIONS.others.max, Math.max(0, scores.others));
+    const bonus = Math.max(0, scores.bonus);
+    
+    const total = attendance + activity + feedback + copywriting + others + bonus;
+    return { attendance, activity, feedback, copywriting, others, bonus, total };
+  }, []);
 
-  // [新增] 超管提交绩效
   const handlePerfSubmit = async (e) => {
     e.preventDefault();
     try {
       const res = await fetch(`${API_BASE}/admin/performance`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(perfForm)
       });
       if ((await res.json()).success) {
         alert('绩效录入成功');
-        setPerfForm({ volunteerIds: [], dimension: 'routine', score: '', reason: '', occurrenceDate: '', activityName: '' });
-        fetchPerformanceAndUsers(); // 刷新
+        setPerfForm({ volunteerIds: [], dimension: 'attendance', score: '', reason: '', occurrenceDate: '', activityName: '' });
+        fetchPerformanceAndUsers(selectedSemester);
       }
     } catch (err) { alert('提交失败'); }
+  };
+
+  // [新增] 超管归档学期功能
+  const handleArchiveSemester = async () => {
+    const newSemester = prompt(`当前运行学期为：${currentSemester}\n请输入新学期的名称以进行归档重置（例如：2025-2026学年 第二学期）：`);
+    if (!newSemester || newSemester === currentSemester) return;
+    if (!window.confirm(`警告：确认开启新学期 [${newSemester}] 吗？\n开启后全员当期积分将重新从 0 累计，旧学期数据将被永久归档！`)) return;
+    
+    try {
+      const res = await fetch(`${API_BASE}/admin/system/semester`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ semester: newSemester })
+      });
+      if ((await res.json()).success) {
+        alert('新学期已成功开启！全员积分已重置。');
+        fetchPerformanceAndUsers(newSemester);
+      }
+    } catch(err) { alert('操作失败'); }
   };
   // [新增] 消息通知状态
   const [notifications, setNotifications] = useState([]);
@@ -717,80 +750,139 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
           </button>
         </div>
 
-        {/* 动态渲染对应的主视图 */}
+       {/* 动态渲染对应的主视图 */}
         {showPerformanceManagement ? (
           <div className="animate-fadeIn space-y-6">
             <PerformanceRulesAccordion />
             
+            {/* [新增] 顶层学期归档控制台 */}
+            <div className="flex flex-wrap items-center justify-between bg-slate-900/80 p-4 rounded-2xl border border-white/10 mb-6 shadow-lg">
+               <div className="flex items-center gap-4">
+                 <span className="text-white font-bold">查看学期：</span>
+                 <select 
+                   value={selectedSemester} 
+                   onChange={(e) => { setSelectedSemester(e.target.value); fetchPerformanceAndUsers(e.target.value); }}
+                   className="px-4 py-2 bg-slate-800 rounded-lg text-white border border-white/10 outline-none"
+                 >
+                   {availableSemesters.map(s => <option key={s} value={s}>{s} {s === currentSemester ? '(当前运行中)' : '(已归档历史)'}</option>)}
+                 </select>
+               </div>
+               {user?.role === 'superadmin' && (
+                 <button onClick={handleArchiveSemester} className="px-4 py-2 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white border border-red-500/30 rounded-lg transition-all text-sm font-medium">
+                   📦 归档本学期并开启新学期
+                 </button>
+               )}
+            </div>
+            
             {user?.role === 'superadmin' ? (
-              /* 超管视图：快捷录入表单 + 全局流水账 */
-              <div className="grid md:grid-cols-3 gap-6">
-                <div className="md:col-span-1 p-6 bg-white/5 border border-white/10 rounded-2xl h-fit">
-                  <h3 className="text-lg font-bold text-white mb-4">✍️ 快捷赋分录入</h3>
-                  <form onSubmit={handlePerfSubmit} className="space-y-4">
-                    <div>
-                      <label className="text-xs text-purple-200/60 mb-1 block">考核维度</label>
-                      <select value={perfForm.dimension} onChange={e => setPerfForm({...perfForm, dimension: e.target.value})} className="w-full px-3 py-2 bg-slate-900 rounded-lg text-white border border-white/10 outline-none">
-                        {Object.entries(PERF_DIMENSIONS).map(([k, v]) => <option key={k} value={k}>{v.label} (满分{v.max})</option>)}
-                      </select>
-                    </div>
-                    {(perfForm.dimension === 'activity' || perfForm.dimension === 'bonus') && (
-                      <div>
-                        <label className="text-xs text-purple-200/60 mb-1 block">活动名称 (可选)</label>
-                        <input type="text" placeholder="例: 春季权益座谈会" value={perfForm.activityName} onChange={e => setPerfForm({...perfForm, activityName: e.target.value})} className="w-full px-3 py-2 bg-slate-900 rounded-lg text-white border border-white/10 outline-none" />
-                      </div>
-                    )}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-xs text-purple-200/60 mb-1 block">发生日期</label>
-                        <input type="date" required value={perfForm.occurrenceDate} onChange={e => setPerfForm({...perfForm, occurrenceDate: e.target.value})} className="w-full px-3 py-2 bg-slate-900 rounded-lg text-white border border-white/10 outline-none [color-scheme:dark]" />
-                      </div>
-                      <div>
-                        <label className="text-xs text-purple-200/60 mb-1 block">变动分值</label>
-                        <input type="number" step="0.5" required placeholder="-2 或 1.5" value={perfForm.score} onChange={e => setPerfForm({...perfForm, score: e.target.value})} className="w-full px-3 py-2 bg-slate-900 rounded-lg text-white border border-white/10 outline-none" />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs text-purple-200/60 mb-1 block">具体事由</label>
-                      <textarea required rows="2" placeholder="例: 例会迟到 / 统筹工作表现突出" value={perfForm.reason} onChange={e => setPerfForm({...perfForm, reason: e.target.value})} className="w-full px-3 py-2 bg-slate-900 rounded-lg text-white border border-white/10 outline-none resize-none" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-purple-200/60 mb-1 block">选择志愿者 (可多选)</label>
-                      <div className="max-h-32 overflow-y-auto bg-slate-900 rounded-lg border border-white/10 p-2 space-y-1 custom-scrollbar">
-                        {volunteers.map(v => (
-                          <label key={v._id} className="flex items-center gap-2 text-sm text-white hover:bg-white/5 p-1 rounded cursor-pointer">
-                            <input type="checkbox" checked={perfForm.volunteerIds.includes(v._id)} onChange={(e) => {
-                              const ids = e.target.checked ? [...perfForm.volunteerIds, v._id] : perfForm.volunteerIds.filter(id => id !== v._id);
-                              setPerfForm({...perfForm, volunteerIds: ids});
-                            }} className="accent-purple-500" />
-                            {v.name} <span className="text-xs text-white/40">{v.studentId}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                    <button type="submit" className="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-medium shadow-lg">确认提交记录</button>
-                  </form>
-                </div>
-
-                <div className="md:col-span-2 p-6 bg-white/5 border border-white/10 rounded-2xl h-fit">
-                  <h3 className="text-lg font-bold text-white mb-4">🗂 全局绩效流水账</h3>
+              <div className="space-y-6">
+                {/* [新增] 赋分核算汇总排行榜 */}
+                <div className="p-6 bg-gradient-to-br from-slate-900 to-purple-950/50 border border-purple-500/30 rounded-2xl">
+                  <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><span>🏆</span> 部门全员期末核算总榜单</h3>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm whitespace-nowrap">
                       <thead className="border-b border-white/10 text-purple-200/60">
-                        <tr><th className="pb-3 pr-4">日期</th><th className="pb-3 pr-4">对象</th><th className="pb-3 pr-4">分值</th><th className="pb-3 pr-4">维度</th><th className="pb-3">事由</th></tr>
+                        <tr>
+                          <th className="pb-3 pr-4">干事姓名</th>
+                          <th className="pb-3 pr-4 text-purple-300">考勤(20)</th>
+                          <th className="pb-3 pr-4 text-blue-300">活动(35)</th>
+                          <th className="pb-3 pr-4 text-green-300">跟进(25)</th>
+                          <th className="pb-3 pr-4 text-yellow-300">文案(15)</th>
+                          <th className="pb-3 pr-4 text-gray-300">常规(5)</th>
+                          <th className="pb-3 pr-4 text-red-300">+附加</th>
+                          <th className="pb-3 font-bold text-white">总计得分</th>
+                        </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5 text-purple-100">
-                        {performanceRecords.map(r => (
-                          <tr key={r._id} className="hover:bg-white/5 transition-colors">
-                            <td className="py-3 pr-4 text-xs">{new Date(r.occurrenceDate).toLocaleDateString('zh-CN')}</td>
-                            <td className="py-3 pr-4">{r.volunteer?.name}</td>
-                            <td className={`py-3 pr-4 font-bold ${r.score > 0 ? 'text-green-400' : 'text-red-400'}`}>{r.score > 0 ? `+${r.score}` : r.score}</td>
-                            <td className="py-3 pr-4"><span className={`px-2 py-0.5 rounded text-[10px] bg-${PERF_DIMENSIONS[r.dimension].color}-500/20 text-${PERF_DIMENSIONS[r.dimension].color}-300`}>{PERF_DIMENSIONS[r.dimension].label}</span></td>
-                            <td className="py-3 text-xs truncate max-w-[200px]" title={r.reason}>{r.activityName ? `[${r.activityName}] ` : ''}{r.reason}</td>
+                        {volunteers.map(v => {
+                          const personalRecords = performanceRecords.filter(r => r.volunteer?._id === v._id);
+                          return { user: v, scoreObj: calculateScore(personalRecords) };
+                        }).sort((a, b) => b.scoreObj.total - a.scoreObj.total).map(({ user: v, scoreObj: s }) => (
+                          <tr key={v._id} className="hover:bg-white/5 transition-colors">
+                            <td className="py-3 pr-4 font-medium text-white">{v.name}</td>
+                            <td className="py-3 pr-4">{s.attendance}</td>
+                            <td className="py-3 pr-4">{s.activity}</td>
+                            <td className="py-3 pr-4">{s.feedback}</td>
+                            <td className="py-3 pr-4">{s.copywriting}</td>
+                            <td className="py-3 pr-4">{s.others}</td>
+                            <td className="py-3 pr-4 text-red-400">{s.bonus > 0 ? `+${s.bonus}` : '-'}</td>
+                            <td className="py-3 text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">{s.total}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                </div>
+
+                {/* 快捷录入表单 + 全局流水账 */}
+                <div className="grid md:grid-cols-3 gap-6">
+                  <div className="md:col-span-1 p-6 bg-white/5 border border-white/10 rounded-2xl h-fit">
+                    <h3 className="text-lg font-bold text-white mb-4">✍️ 快捷赋分录入</h3>
+                    <form onSubmit={handlePerfSubmit} className="space-y-4">
+                      <div>
+                        <label className="text-xs text-purple-200/60 mb-1 block">考核维度</label>
+                        <select value={perfForm.dimension} onChange={e => setPerfForm({...perfForm, dimension: e.target.value})} className="w-full px-3 py-2 bg-slate-900 rounded-lg text-white border border-white/10 outline-none">
+                          {Object.entries(PERF_DIMENSIONS).map(([k, v]) => <option key={k} value={k}>{v.label} (封顶{v.max}分)</option>)}
+                        </select>
+                      </div>
+                      {(perfForm.dimension === 'activity' || perfForm.dimension === 'copywriting' || perfForm.dimension === 'bonus') && (
+                        <div>
+                          <label className="text-xs text-purple-200/60 mb-1 block">具体项目名称 (可选)</label>
+                          <input type="text" placeholder="例: 迎新晚会统筹 / 普法推文主笔" value={perfForm.activityName} onChange={e => setPerfForm({...perfForm, activityName: e.target.value})} className="w-full px-3 py-2 bg-slate-900 rounded-lg text-white border border-white/10 outline-none" />
+                        </div>
+                      )}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-xs text-purple-200/60 mb-1 block">发生日期</label>
+                          <input type="date" required value={perfForm.occurrenceDate} onChange={e => setPerfForm({...perfForm, occurrenceDate: e.target.value})} className="w-full px-3 py-2 bg-slate-900 rounded-lg text-white border border-white/10 outline-none [color-scheme:dark]" />
+                        </div>
+                        <div>
+                          <label className="text-xs text-purple-200/60 mb-1 block">获得积分数</label>
+                          <input type="number" step="0.5" required placeholder="如 2 或 4.5" value={perfForm.score} onChange={e => setPerfForm({...perfForm, score: e.target.value})} className="w-full px-3 py-2 bg-slate-900 rounded-lg text-white border border-white/10 outline-none" />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs text-purple-200/60 mb-1 block">详细加分事由</label>
+                        <textarea required rows="2" placeholder="例: 按时全勤出勤 / 独立撰写大型策划案" value={perfForm.reason} onChange={e => setPerfForm({...perfForm, reason: e.target.value})} className="w-full px-3 py-2 bg-slate-900 rounded-lg text-white border border-white/10 outline-none resize-none" />
+                      </div>
+                      <div>
+                        <label className="text-xs text-purple-200/60 mb-1 block">选择干事 (可批量勾选)</label>
+                        <div className="max-h-32 overflow-y-auto bg-slate-900 rounded-lg border border-white/10 p-2 space-y-1 custom-scrollbar">
+                          {volunteers.map(v => (
+                            <label key={v._id} className="flex items-center gap-2 text-sm text-white hover:bg-white/5 p-1 rounded cursor-pointer">
+                              <input type="checkbox" checked={perfForm.volunteerIds.includes(v._id)} onChange={(e) => {
+                                const ids = e.target.checked ? [...perfForm.volunteerIds, v._id] : perfForm.volunteerIds.filter(id => id !== v._id);
+                                setPerfForm({...perfForm, volunteerIds: ids});
+                              }} className="accent-purple-500" />
+                              {v.name}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                      <button type="submit" className="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-medium shadow-lg">确认发放积分</button>
+                    </form>
+                  </div>
+
+                  <div className="md:col-span-2 p-6 bg-white/5 border border-white/10 rounded-2xl h-fit">
+                    <h3 className="text-lg font-bold text-white mb-4">🗂 部门打分流水账库</h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-sm whitespace-nowrap">
+                        <thead className="border-b border-white/10 text-purple-200/60">
+                          <tr><th className="pb-3 pr-4">日期</th><th className="pb-3 pr-4">干事</th><th className="pb-3 pr-4">分值</th><th className="pb-3 pr-4">维度</th><th className="pb-3">事由明细</th></tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5 text-purple-100">
+                          {performanceRecords.map(r => (
+                            <tr key={r._id} className="hover:bg-white/5 transition-colors">
+                              <td className="py-3 pr-4 text-xs">{new Date(r.occurrenceDate).toLocaleDateString('zh-CN')}</td>
+                              <td className="py-3 pr-4">{r.volunteer?.name}</td>
+                              <td className={`py-3 pr-4 font-bold text-green-400`}>+{r.score}</td>
+                              <td className="py-3 pr-4"><span className={`px-2 py-0.5 rounded text-[10px] bg-${PERF_DIMENSIONS[r.dimension].color}-500/20 text-${PERF_DIMENSIONS[r.dimension].color}-300`}>{PERF_DIMENSIONS[r.dimension].label}</span></td>
+                              <td className="py-3 text-xs truncate max-w-[200px]" title={r.reason}>{r.activityName ? `[${r.activityName}] ` : ''}{r.reason}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -799,36 +891,37 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-6">
                   <div className="p-6 bg-gradient-to-br from-purple-900/40 to-blue-900/40 border border-purple-500/30 rounded-2xl text-center">
-                    <p className="text-purple-200/80 mb-2">本学期考核当前总分</p>
+                    <p className="text-purple-200/80 mb-2">【{selectedSemester || '当前学期'}】通关得分</p>
                     <p className="text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-purple-200 drop-shadow-lg mb-4">
-                      {calculateScore(performanceRecords).total} <span className="text-xl font-normal text-white/50">/100+</span>
+                      {calculateScore(performanceRecords).total} <span className="text-xl font-normal text-white/50">/100</span>
                     </p>
                     <div className="grid grid-cols-2 gap-3 text-left border-t border-white/10 pt-4 mt-4">
-                      {['routine', 'activity', 'teamwork', 'attitude'].map(k => {
+                      {['attendance', 'activity', 'feedback', 'copywriting', 'others'].map(k => {
                         const s = calculateScore(performanceRecords)[k];
                         const d = PERF_DIMENSIONS[k];
+                        const isMax = s >= d.max;
                         return (
-                          <div key={k} className="bg-black/20 p-2.5 rounded-xl border border-white/5">
-                            <div className="flex justify-between text-xs mb-1.5"><span className={`text-${d.color}-300`}>{d.label}</span><span className="text-white font-bold">{s}/{d.max}</span></div>
-                            <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden"><div className={`h-full bg-${d.color}-500`} style={{ width: `${(s/d.max)*100}%` }}></div></div>
+                          <div key={k} className={`p-2.5 rounded-xl border ${isMax ? 'bg-yellow-500/10 border-yellow-500/30' : 'bg-black/20 border-white/5'}`}>
+                            <div className="flex justify-between text-xs mb-1.5"><span className={`text-${isMax ? 'yellow' : d.color}-300`}>{d.label}</span><span className={`font-bold ${isMax ? 'text-yellow-400' : 'text-white'}`}>{isMax ? '已满MAX' : `${s}/${d.max}`}</span></div>
+                            <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden"><div className={`h-full ${isMax ? 'bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.8)]' : `bg-${d.color}-500`}`} style={{ width: `${(s/d.max)*100}%` }}></div></div>
                           </div>
                         );
                       })}
                       <div className="col-span-2 bg-red-900/20 p-2.5 rounded-xl border border-red-500/20 flex justify-between items-center">
-                        <span className="text-xs text-red-300">🎉 附加贡献加分</span><span className="text-lg font-bold text-red-400">+{calculateScore(performanceRecords).bonus}</span>
+                        <span className="text-xs text-red-300">🎉 特殊附加奖励</span><span className="text-lg font-bold text-red-400">+{calculateScore(performanceRecords).bonus}</span>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 <div className="p-6 bg-white/5 border border-white/10 rounded-2xl max-h-[600px] flex flex-col">
-                  <h3 className="text-lg font-bold text-white mb-4 shrink-0">📈 我的履历档案</h3>
+                  <h3 className="text-lg font-bold text-white mb-4 shrink-0">📈 我的通关履历档案</h3>
                   <div className="overflow-y-auto flex-1 pr-2 custom-scrollbar space-y-4">
-                    {performanceRecords.length === 0 ? <p className="text-center text-purple-200/50 py-10 text-sm">暂无绩效记录</p> : 
+                    {performanceRecords.length === 0 ? <p className="text-center text-purple-200/50 py-10 text-sm">该学期暂未获取积分</p> : 
                       performanceRecords.map(r => (
                         <div key={r._id} className="relative pl-6 border-l-2 border-purple-500/30 pb-4 last:pb-0">
                           <span className="absolute left-[-5px] top-0 w-2 h-2 rounded-full bg-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.8)]"></span>
-                          <div className="text-[10px] text-purple-200/50 mb-1">{new Date(r.occurrenceDate).toLocaleDateString('zh-CN')} · 由 {r.recordedBy?.name} 记录</div>
+                          <div className="text-[10px] text-purple-200/50 mb-1">{new Date(r.occurrenceDate).toLocaleDateString('zh-CN')} · 由 {r.recordedBy?.name} 授予</div>
                           <div className="bg-white/5 border border-white/10 p-3 rounded-xl flex items-start justify-between gap-3">
                             <div>
                               <div className="flex items-center gap-2 mb-1">
@@ -837,7 +930,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                               </div>
                               <p className="text-sm text-purple-100">{r.reason}</p>
                             </div>
-                            <span className={`shrink-0 text-lg font-bold ${r.score > 0 ? 'text-green-400' : 'text-red-400'}`}>{r.score > 0 ? `+${r.score}` : r.score}</span>
+                            <span className={`shrink-0 text-lg font-bold text-green-400`}>+{r.score}</span>
                           </div>
                         </div>
                       ))
