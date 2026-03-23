@@ -4,6 +4,15 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  // [新增] 将系统中用到的动态颜色加入安全名单，防止 build 打包时被清除
+  safelist: [
+    {
+      pattern: /(bg|text|border)-(purple|blue|green|yellow|gray|red)-(300|400|500)/,
+    },
+    {
+      pattern: /bg-(purple|blue|green|yellow|gray|red)-500\/20/,
+    }
+  ],
   theme: {
     extend: {
       colors: {
@@ -24,6 +33,7 @@ export default {
       animation: {
         'float': 'float 6s ease-in-out infinite',
         'glow': 'glow 2s ease-in-out infinite alternate',
+        fadeIn: 'fadeIn 0.5s ease-out forwards', // 建议补上绩效模块用到的渐显动画
       },
       keyframes: {
         float: {
@@ -34,6 +44,10 @@ export default {
           '0%': { opacity: '0.5', transform: 'scale(1)' },
           '100%': { opacity: '0.8', transform: 'scale(1.05)' },
         },
+        fadeIn: {
+          '0%': { opacity: '0', transform: 'translateY(-10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        }
       },
     },
   },

@@ -31,8 +31,8 @@ export const AttachmentViewer = ({ attachments }) => {
   if (!attachments || attachments.length === 0) return null;
   return (
     <div className="flex flex-wrap gap-3 mt-3 mb-2">
-      {attachments.map((file, i) => {
-        const url = file.path.startsWith('/api') ? file.path : `/api${file.path}`;
+     {attachments.map((file, i) => {
+        const url = (file.path || '').startsWith('/api') ? file.path : `/api${file.path || ''}`;
         const isImage = file.mimetype?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp)$/i.test(file.path || file.filename);
         const isVideo = file.mimetype?.startsWith('video/') || /\.(mp4|webm|ogg)$/i.test(file.path || file.filename);
 
@@ -73,14 +73,15 @@ const PerformanceRulesAccordion = () => (
   <div className="mb-6 p-1 rounded-2xl bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-500/30">
     <details className="group">
       <summary className="flex items-center justify-between p-4 cursor-pointer list-none text-white font-medium outline-none">
-        <div className="flex items-center gap-3"><span className="text-xl">📜</span><span>点击查看《权益部纯加分制考核细则》</span></div>
+        <div className="flex items-center gap-3"><span className="text-xl">📜</span><span className="text-sm md:text-base">点击查看《权益部纯加分制考核细则》</span></div>
         <span className="text-purple-300 transition-transform duration-300 group-open:-rotate-180">▼</span>
       </summary>
-      <div className="p-5 pt-0 text-sm text-purple-200/80 border-t border-white/10 mt-2 space-y-4 max-h-96 overflow-y-auto custom-scrollbar">
+      <div className="p-4 md:p-5 pt-0 text-sm text-purple-200/80 border-t border-white/10 mt-2 space-y-4 max-h-96 overflow-y-auto custom-scrollbar">
         <p className="text-xs text-yellow-400/80 font-bold">【通关模式】全员初始为 0 分。通过完成任务积攒分数，各模块达到上限后即封顶，期末满分 100 分及以上。</p>
-        <table className="w-full text-left border-collapse mt-2 text-xs">
-          <thead><tr className="border-b border-white/10 text-white/60"><th className="py-2">考核维度</th><th>封顶分</th><th>加分标准 (每次/每周)</th></tr></thead>
-          <tbody className="divide-y divide-white/5">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse mt-2 text-xs min-w-[500px]">
+            <thead><tr className="border-b border-white/10 text-white/60"><th className="py-2">考核维度</th><th className="w-16">封顶分</th><th>加分标准 (每次/每周)</th></tr></thead>
+            <tbody className="divide-y divide-white/5">
             <tr><td className="py-2 text-purple-300">考勤积分</td><td>20分</td><td>准时出勤/合规请假 +2 分；迟到早退 +1 分；无故缺席 0 分。</td></tr>
             <tr><td className="py-2 text-blue-300">活动贡献</td><td>35分</td><td>核心统筹策划 +4~5 分；主要骨干 +2~3 分；普通参与 +1 分。</td></tr>
             <tr><td className="py-2 text-green-300">权益跟进</td><td>25分</td><td>按时巡检系统与规范回复留言 +2分/周；全月账号无违规 +1.25分/月。</td></tr>
@@ -90,6 +91,7 @@ const PerformanceRulesAccordion = () => (
           </tbody>
         </table>
       </div>
+     </div> {/* [修复] 补上缺失的 </div> 闭合标签 */}
     </details>
   </div>
 );
@@ -161,8 +163,8 @@ const AccountManagement = ({ token, user: currentUser }) => {
     } catch (err) { alert('操作失败'); }
   };
 
-  const handleResetPassword = async (studentId) => {
-    const newPwd = prompt(`请输入学号 ${studentId} 的新密码(至少6位)：`, '123456');
+ const handleResetPassword = async (studentId) => {
+    const newPwd = window.prompt(`请输入学号 ${studentId} 的新密码(至少6位)：`, '123456'); // [修复] 加上 window.
     if (!newPwd || newPwd.length < 6) return alert('密码无效或取消操作');
     try {
       const res = await fetch(`${API_BASE}/admin/users/${studentId}/reset-password`, {
@@ -381,11 +383,12 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
   const [pwdData, setPwdData] = useState({ current: '', new: '' });
   const [profileData, setProfileData] = useState({ name: '', studentId: '', email: '', phone: '' });
 
-  // [新增] 绩效模块与学期专属状态
+// [新增] 绩效模块与学期专属状态
   const [showPerformanceManagement, setShowPerformanceManagement] = useState(false);
   const [performanceRecords, setPerformanceRecords] = useState([]);
-  const [perfForm, setPerfForm] = useState({ volunteerIds: [], dimension: 'attendance', score: '', reason: '', occurrenceDate: '', activityName: '' });
-  const [volunteers, setVolunteers] = useState([]); 
+  // [修改] 在表单状态中增加 targetSemester 字段
+  const [perfForm, setPerfForm] = useState({ volunteerIds: [], dimension: 'attendance', score: '', reason: '', occurrenceDate: '', activityName: '', targetSemester: '' });
+  const [volunteers, setVolunteers] = useState([]);
   
   // -- 新增学期控制状态 --
   const [currentSemester, setCurrentSemester] = useState('');
@@ -393,11 +396,14 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
   const [availableSemesters, setAvailableSemesters] = useState([]);
 
   // [修改] 拉取绩效与学期配置
-  const fetchPerformanceAndUsers = useCallback(async (targetSemester = '') => {
+ const fetchPerformanceAndUsers = useCallback(async (targetSemester = '') => {
     try {
       const sysRes = await fetch(`${API_BASE}/admin/system/config`, { headers: { 'Authorization': `Bearer ${token}` } });
       const sysData = await sysRes.json();
-      let querySemester = targetSemester;
+      
+      // [修复关键点] 如果未传参(如定时器自动触发)，则优先使用当前下拉框选定的学期
+      let querySemester = targetSemester || selectedSemester; 
+      
       if (sysData.success) {
         setCurrentSemester(sysData.currentSemester);
         setAvailableSemesters(sysData.semesters);
@@ -405,6 +411,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
             querySemester = sysData.currentSemester;
             setSelectedSemester(sysData.currentSemester);
         }
+        setPerfForm(prev => ({ ...prev, targetSemester: querySemester }));
       }
 
       const endpoint = user.role === 'superadmin' ? '/admin/performance' : '/admin/performance/my';
@@ -417,7 +424,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
         if ((await uRes.clone().json()).success) setVolunteers((await uRes.json()).users.filter(u => u.role === 'admin'));
       }
     } catch (err) {}
-  }, [token, user.role]);
+  }, [token, user.role, selectedSemester]); // [修复] 将 selectedSemester 加入依赖数组，使外部的 useEffect 能够自动获取最新上下文
 
   // [修改] 纯加分制算分引擎 (从0起步，上限封顶)
   const calculateScore = useCallback((records) => {
@@ -435,7 +442,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
     return { attendance, activity, feedback, copywriting, others, bonus, total };
   }, []);
 
-  const handlePerfSubmit = async (e) => {
+ const handlePerfSubmit = async (e) => {
     e.preventDefault();
     try {
       const res = await fetch(`${API_BASE}/admin/performance`, {
@@ -444,15 +451,16 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
       });
       if ((await res.json()).success) {
         alert('绩效录入成功');
-        setPerfForm({ volunteerIds: [], dimension: 'attendance', score: '', reason: '', occurrenceDate: '', activityName: '' });
+        // [修改] 提交成功后清空数据，但保留当前锁定的 targetSemester
+        setPerfForm({ volunteerIds: [], dimension: 'attendance', score: '', reason: '', occurrenceDate: '', activityName: '', targetSemester: perfForm.targetSemester });
         fetchPerformanceAndUsers(selectedSemester);
       }
     } catch (err) { alert('提交失败'); }
   };
 
   // [新增] 超管归档学期功能
-  const handleArchiveSemester = async () => {
-    const newSemester = prompt(`当前运行学期为：${currentSemester}\n请输入新学期的名称以进行归档重置（例如：2025-2026学年 第二学期）：`);
+ const handleArchiveSemester = async () => {
+    const newSemester = window.prompt(`当前运行学期为：${currentSemester}\n请输入新学期的名称以进行归档重置`); // [修复] 加上 window.
     if (!newSemester || newSemester === currentSemester) return;
     if (!window.confirm(`警告：确认开启新学期 [${newSemester}] 吗？\n开启后全员当期积分将重新从 0 累计，旧学期数据将被永久归档！`)) return;
     
@@ -628,7 +636,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
       alert('请输入学号和新密码');
       return;
     }
-    if (!confirm(`确定要将学号 ${resetStudentId} 的密码重置吗？`)) return;
+    if (!window.confirm(`确定要将学号 ${resetStudentId} 的密码重置吗？`)) return;
     try {
       const res = await fetch(`${API_BASE}/admin/users/${resetStudentId}/reset-password`, {
         method: 'PATCH',
@@ -752,33 +760,33 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
 
        {/* 动态渲染对应的主视图 */}
         {showPerformanceManagement ? (
-          <div className="animate-fadeIn space-y-6">
+          <div className="animate-fadeIn space-y-4 md:space-y-6">
             <PerformanceRulesAccordion />
             
-            {/* [新增] 顶层学期归档控制台 */}
-            <div className="flex flex-wrap items-center justify-between bg-slate-900/80 p-4 rounded-2xl border border-white/10 mb-6 shadow-lg">
-               <div className="flex items-center gap-4">
-                 <span className="text-white font-bold">查看学期：</span>
+            {/* [修改] 顶层学期归档控制台 (适配手机端纵向排列) */}
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between bg-slate-900/80 p-4 rounded-2xl border border-white/10 mb-4 md:mb-6 shadow-lg gap-4">
+               <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 w-full md:w-auto">
+                 <span className="text-white font-bold shrink-0">查看学期：</span>
                  <select 
                    value={selectedSemester} 
                    onChange={(e) => { setSelectedSemester(e.target.value); fetchPerformanceAndUsers(e.target.value); }}
-                   className="px-4 py-2 bg-slate-800 rounded-lg text-white border border-white/10 outline-none"
+                   className="w-full sm:w-auto px-4 py-2 bg-slate-800 rounded-lg text-white border border-white/10 outline-none text-sm"
                  >
-                   {availableSemesters.map(s => <option key={s} value={s}>{s} {s === currentSemester ? '(当前运行中)' : '(已归档历史)'}</option>)}
+                   {availableSemesters.map(s => <option key={s} value={s}>{s} {s === currentSemester ? '(当前)' : '(归档)'}</option>)}
                  </select>
                </div>
                {user?.role === 'superadmin' && (
-                 <button onClick={handleArchiveSemester} className="px-4 py-2 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white border border-red-500/30 rounded-lg transition-all text-sm font-medium">
-                   📦 归档本学期并开启新学期
+                 <button onClick={handleArchiveSemester} className="w-full md:w-auto px-4 py-2 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white border border-red-500/30 rounded-lg transition-all text-sm font-medium shrink-0">
+                   📦 归档并开启新学期
                  </button>
                )}
             </div>
             
             {user?.role === 'superadmin' ? (
-              <div className="space-y-6">
-                {/* [新增] 赋分核算汇总排行榜 */}
-                <div className="p-6 bg-gradient-to-br from-slate-900 to-purple-950/50 border border-purple-500/30 rounded-2xl">
-                  <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><span>🏆</span> 部门全员期末核算总榜单</h3>
+              <div className="space-y-4 md:space-y-6">
+                {/* [修改] 赋分核算汇总排行榜 (减小手机端内边距 p-4 md:p-6) */}
+                <div className="p-4 md:p-6 bg-gradient-to-br from-slate-900 to-purple-950/50 border border-purple-500/30 rounded-2xl">
+                  <h3 className="text-base md:text-lg font-bold text-white mb-4 flex items-center gap-2"><span>🏆</span> 部门全员期末核算总榜单</h3>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm whitespace-nowrap">
                       <thead className="border-b border-white/10 text-purple-200/60">
@@ -815,10 +823,33 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                 </div>
 
                 {/* 快捷录入表单 + 全局流水账 */}
-                <div className="grid md:grid-cols-3 gap-6">
-                  <div className="md:col-span-1 p-6 bg-white/5 border border-white/10 rounded-2xl h-fit">
-                    <h3 className="text-lg font-bold text-white mb-4">✍️ 快捷赋分录入</h3>
+                <div className="grid md:grid-cols-3 gap-4 md:gap-6">
+                  <div className="md:col-span-1 p-4 md:p-6 bg-white/5 border border-white/10 rounded-2xl h-fit">
+                    <h3 className="text-base md:text-lg font-bold text-white mb-4">✍️ 快捷赋分录入</h3>
                     <form onSubmit={handlePerfSubmit} className="space-y-4">
+                      
+                      {/* [新增] 所属学期下拉框与补录高亮预警 */}
+                      <div>
+                        <label className="text-xs text-purple-200/60 mb-1 block">录入目标学期 (默认跟随当前视图)</label>
+                        <select 
+                          value={perfForm.targetSemester || currentSemester} 
+                          onChange={e => setPerfForm({...perfForm, targetSemester: e.target.value})} 
+                          className={`w-full px-3 py-2 rounded-lg text-white outline-none transition-colors ${
+                            perfForm.targetSemester && perfForm.targetSemester !== currentSemester 
+                              ? 'bg-orange-950/50 border border-orange-500/50 text-orange-200 shadow-[0_0_10px_rgba(249,115,22,0.2)]' 
+                              : 'bg-slate-900 border border-white/10'
+                          }`}
+                        >
+                          {availableSemesters.map(s => <option key={s} value={s}>{s} {s === currentSemester ? '(当前学期)' : '(历史归档)'}</option>)}
+                        </select>
+                        {perfForm.targetSemester && perfForm.targetSemester !== currentSemester && (
+                          <p className="text-[10px] text-orange-400 mt-1.5 flex items-start gap-1 leading-tight">
+                            <span className="shrink-0">⚠️</span>
+                            <span>注意：您当前正在向历史归档学期补录积分，此操作将改变该学期的结算总分。</span>
+                          </p>
+                        )}
+                      </div>
+
                       <div>
                         <label className="text-xs text-purple-200/60 mb-1 block">考核维度</label>
                         <select value={perfForm.dimension} onChange={e => setPerfForm({...perfForm, dimension: e.target.value})} className="w-full px-3 py-2 bg-slate-900 rounded-lg text-white border border-white/10 outline-none">
@@ -859,12 +890,15 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                           ))}
                         </div>
                       </div>
-                      <button type="submit" className="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-medium shadow-lg">确认发放积分</button>
+                      
+                      {/* [修复] 删除了多余的重复容器块，直接渲染按钮 */}
+                      <button type="submit" className="w-full py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-medium shadow-lg">确认发放积分</button>
                     </form>
                   </div>
 
-                  <div className="md:col-span-2 p-6 bg-white/5 border border-white/10 rounded-2xl h-fit">
-                    <h3 className="text-lg font-bold text-white mb-4">🗂 部门打分流水账库</h3>
+                  <div className="md:col-span-2 p-4 md:p-6 bg-white/5 border border-white/10 rounded-2xl h-fit">
+                    {/* [修复] 移除了 h3 标签末尾多余的 > 符号 */}
+                    <h3 className="text-base md:text-lg font-bold text-white mb-4">🗂 部门打分流水账库</h3>
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-sm whitespace-nowrap">
                         <thead className="border-b border-white/10 text-purple-200/60">
@@ -876,7 +910,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                               <td className="py-3 pr-4 text-xs">{new Date(r.occurrenceDate).toLocaleDateString('zh-CN')}</td>
                               <td className="py-3 pr-4">{r.volunteer?.name}</td>
                               <td className={`py-3 pr-4 font-bold text-green-400`}>+{r.score}</td>
-                              <td className="py-3 pr-4"><span className={`px-2 py-0.5 rounded text-[10px] bg-${PERF_DIMENSIONS[r.dimension].color}-500/20 text-${PERF_DIMENSIONS[r.dimension].color}-300`}>{PERF_DIMENSIONS[r.dimension].label}</span></td>
+                              <td className="py-3 pr-4"><span className={`px-2 py-0.5 rounded text-[10px] bg-${PERF_DIMENSIONS[r.dimension]?.color || 'gray'}-500/20 text-${PERF_DIMENSIONS[r.dimension]?.color || 'gray'}-300`}>{PERF_DIMENSIONS[r.dimension]?.label || '旧版归档记录'}</span></td>
                               <td className="py-3 text-xs truncate max-w-[200px]" title={r.reason}>{r.activityName ? `[${r.activityName}] ` : ''}{r.reason}</td>
                             </tr>
                           ))}
@@ -888,14 +922,14 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
               </div>
             ) : (
               /* 子管(志愿者)视图：个人表盘 + 履历时间轴 */
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-6">
-                  <div className="p-6 bg-gradient-to-br from-purple-900/40 to-blue-900/40 border border-purple-500/30 rounded-2xl text-center">
-                    <p className="text-purple-200/80 mb-2">【{selectedSemester || '当前学期'}】通关得分</p>
-                    <p className="text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-purple-200 drop-shadow-lg mb-4">
-                      {calculateScore(performanceRecords).total} <span className="text-xl font-normal text-white/50">/100</span>
+              <div className="grid md:grid-cols-2 gap-4 md:gap-6">
+                <div className="space-y-4 md:space-y-6">
+                  <div className="p-4 md:p-6 bg-gradient-to-br from-purple-900/40 to-blue-900/40 border border-purple-500/30 rounded-2xl text-center">
+                    <p className="text-sm md:text-base text-purple-200/80 mb-2">【{selectedSemester || '当前学期'}】通关得分</p>
+                    <p className="text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-purple-200 drop-shadow-lg mb-4">
+                      {calculateScore(performanceRecords).total} <span className="text-lg md:text-xl font-normal text-white/50">/100</span>
                     </p>
-                    <div className="grid grid-cols-2 gap-3 text-left border-t border-white/10 pt-4 mt-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3 text-left border-t border-white/10 pt-4 mt-4">
                       {['attendance', 'activity', 'feedback', 'copywriting', 'others'].map(k => {
                         const s = calculateScore(performanceRecords)[k];
                         const d = PERF_DIMENSIONS[k];
@@ -907,15 +941,16 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                           </div>
                         );
                       })}
-                      <div className="col-span-2 bg-red-900/20 p-2.5 rounded-xl border border-red-500/20 flex justify-between items-center">
+                      {/* [修复] 这里删除了那一大段非法多余的复制逻辑代码 */}
+                      <div className="col-span-1 sm:col-span-2 bg-red-900/20 p-2.5 rounded-xl border border-red-500/20 flex justify-between items-center">
                         <span className="text-xs text-red-300">🎉 特殊附加奖励</span><span className="text-lg font-bold text-red-400">+{calculateScore(performanceRecords).bonus}</span>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="p-6 bg-white/5 border border-white/10 rounded-2xl max-h-[600px] flex flex-col">
-                  <h3 className="text-lg font-bold text-white mb-4 shrink-0">📈 我的通关履历档案</h3>
+                <div className="p-4 md:p-6 bg-white/5 border border-white/10 rounded-2xl max-h-[600px] flex flex-col">
+                  <h3 className="text-base md:text-lg font-bold text-white mb-4 shrink-0">📈 我的通关履历档案</h3>
                   <div className="overflow-y-auto flex-1 pr-2 custom-scrollbar space-y-4">
                     {performanceRecords.length === 0 ? <p className="text-center text-purple-200/50 py-10 text-sm">该学期暂未获取积分</p> : 
                       performanceRecords.map(r => (
@@ -925,7 +960,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                           <div className="bg-white/5 border border-white/10 p-3 rounded-xl flex items-start justify-between gap-3">
                             <div>
                               <div className="flex items-center gap-2 mb-1">
-                                <span className={`px-1.5 py-0.5 rounded text-[10px] bg-${PERF_DIMENSIONS[r.dimension].color}-500/20 text-${PERF_DIMENSIONS[r.dimension].color}-300`}>{PERF_DIMENSIONS[r.dimension].label}</span>
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] bg-${PERF_DIMENSIONS[r.dimension]?.color || 'gray'}-500/20 text-${PERF_DIMENSIONS[r.dimension]?.color || 'gray'}-300`}>{PERF_DIMENSIONS[r.dimension]?.label || '旧版记录'}</span>
                                 {r.activityName && <span className="text-xs font-bold text-white">[{r.activityName}]</span>}
                               </div>
                               <p className="text-sm text-purple-100">{r.reason}</p>
