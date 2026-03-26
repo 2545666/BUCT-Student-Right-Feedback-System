@@ -583,6 +583,28 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
       }
     } catch(err) { alert('操作失败'); }
   };
+
+  // [新增] 重命名当前选中的学期
+  const handleRenameSemester = async () => {
+    if (!selectedSemester) return alert('请先选择一个需要修改的学期');
+    const newName = window.prompt(`修改学期名称\n\n原名称：${selectedSemester}\n请输入新名称：`, selectedSemester);
+    if (!newName || newName === selectedSemester) return;
+    if (!window.confirm(`确定将学期重命名为 "${newName}" 吗？\n该操作会同步更新该学期下产生的所有历史数据与加权记录。`)) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/admin/system/semester/rename`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ oldName: selectedSemester, newName })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('学期名称修改成功！');
+        fetchPerformanceAndUsers(newName); // 修改成功后自动切换视图至新名称
+      } else {
+        alert(data.message || '操作失败');
+      }
+    } catch (err) { alert('网络错误'); }
+  };
   // [新增] 消息通知状态
   const [notifications, setNotifications] = useState([]);
   const [showNotifs, setShowNotifs] = useState(false);
@@ -871,17 +893,25 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
           <div className="animate-fadeIn space-y-4 md:space-y-6">
             <PerformanceRulesAccordion />
             
-            {/* [修改] 顶层学期归档控制台 (适配手机端纵向排列) */}
+          {/* [修改] 顶层学期管理工作台 (融合学期切换、重命名、归档控制) */}
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between bg-slate-900/80 p-4 rounded-2xl border border-white/10 mb-4 md:mb-6 shadow-lg gap-4">
                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 w-full md:w-auto">
-                 <span className="text-white font-bold shrink-0">查看学期：</span>
-                 <select 
-                   value={selectedSemester} 
-                   onChange={(e) => { setSelectedSemester(e.target.value); fetchPerformanceAndUsers(e.target.value); }}
-                   className="w-full sm:w-auto px-4 py-2 bg-slate-800 rounded-lg text-white border border-white/10 outline-none text-sm"
-                 >
-                   {availableSemesters.map(s => <option key={s} value={s}>{s} {s === currentSemester ? '(当前)' : '(归档)'}</option>)}
-                 </select>
+                 <span className="text-white font-bold shrink-0">当前管理学期：</span>
+                 <div className="flex items-center gap-2 w-full sm:w-auto">
+                   <select 
+                     value={selectedSemester} 
+                     onChange={(e) => { setSelectedSemester(e.target.value); fetchPerformanceAndUsers(e.target.value); }}
+                     className="flex-1 sm:flex-none px-4 py-2 bg-slate-800 rounded-lg text-white border border-white/10 outline-none text-sm"
+                   >
+                     {availableSemesters.map(s => <option key={s} value={s}>{s} {s === currentSemester ? '(当前运行中)' : '(历史归档)'}</option>)}
+                   </select>
+                   {/* [新增] 修改当前选定学期名称的按钮 */}
+                   {user?.role === 'superadmin' && (
+                     <button onClick={handleRenameSemester} title="重命名此学期" className="p-2 shrink-0 bg-white/5 hover:bg-white/10 rounded-lg text-purple-300 hover:text-white transition-colors border border-white/5">
+                       ✏️ 
+                     </button>
+                   )}
+                 </div>
                </div>
              {user?.role === 'superadmin' && (
                  <div className="flex gap-2 w-full md:w-auto">
@@ -971,10 +1001,11 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                           {Object.entries(PERF_DIMENSIONS).map(([k, v]) => <option key={k} value={k}>{v.label} (封顶{v.max}分)</option>)}
                         </select>
                       </div>
-                      {(perfForm.dimension === 'activity' || perfForm.dimension === 'copywriting' || perfForm.dimension === 'bonus') && (
+                     {/* [修改] 将 perfForm.dimension === 'attendance' 加入条件，允许考勤填写活动名称 */}
+                      {(perfForm.dimension === 'attendance' || perfForm.dimension === 'activity' || perfForm.dimension === 'copywriting' || perfForm.dimension === 'bonus') && (
                         <div>
-                          <label className="text-xs text-purple-200/60 mb-1 block">具体项目名称 (可选)</label>
-                          <input type="text" placeholder="例: 迎新晚会统筹 / 普法推文主笔" value={perfForm.activityName} onChange={e => setPerfForm({...perfForm, activityName: e.target.value})} className="w-full px-3 py-2 bg-slate-900 rounded-lg text-white border border-white/10 outline-none" />
+                          <label className="text-xs text-purple-200/60 mb-1 block">具体项目名称 (必填才能参与加权)</label>
+                          <input type="text"  value={perfForm.activityName} onChange={e => setPerfForm({...perfForm, activityName: e.target.value})} className="w-full px-3 py-2 bg-slate-900 rounded-lg text-white border border-white/10 outline-none" />
                         </div>
                       )}
                       <div className="grid grid-cols-2 gap-2">

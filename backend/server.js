@@ -1105,6 +1105,30 @@ app.post('/api/admin/system/semester', authenticate, adminOnly, async (req, res)
   } catch (error) { res.status(500).json({ success: false }); }
 });
 
+// [新增] 重命名学期名称 (同步更新该学期下所有历史绩效流水)
+app.put('/api/admin/system/semester/rename', authenticate, adminOnly, async (req, res) => {
+  if (req.user.role !== 'superadmin') return res.status(403).json({ success: false, message: '仅负责人可用' });
+  try {
+    const { oldName, newName } = req.body;
+    if (!oldName || !newName || oldName === newName) return res.status(400).json({ success: false, message: '参数无效' });
+
+    // 1. 批量更新所有关联该旧学期名的绩效流水账
+    await PerformanceRecord.updateMany({ semester: oldName }, { semester: newName });
+
+    // 2. 如果修改的正好是当前运行中的学期，一并更新系统配置参数
+    const config = await SystemConfig.findOne({ key: 'currentSemester' });
+    if (config && config.value === oldName) {
+      config.value = newName;
+      await config.save();
+    }
+
+    res.json({ success: true, message: '学期重命名成功，历史数据已同步更新' });
+  } catch (error) {
+    console.error('学期重命名失败:', error);
+    res.status(500).json({ success: false, message: '操作失败' });
+  }
+});
+
 // 1. [超管] 批量录入绩效记录 (修复Bug：支持跨学期补录)
 app.post('/api/admin/performance', authenticate, adminOnly, async (req, res) => {
   if (req.user.role !== 'superadmin') return res.status(403).json({ success: false, message: '仅负责人可用' });
