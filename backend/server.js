@@ -226,9 +226,11 @@ const feedbackSchema = new mongoose.Schema({
     content: String,
     senderType: { type: String, enum: ['student', 'admin', 'superadmin'] },
     senderName: String,
+    adminId: mongoose.Schema.Types.ObjectId, // [新增] 记录操作者的唯一ID
     adminName: String,
     attachments: Array,
-    isRecalled: { type: Boolean, default: false }, // [新增] 撤回状态标记
+    isRecalled: { type: Boolean, default: false }, 
+    recalledByRole: String, // [新增] 记录是由谁撤回的 ('self' 或 'superadmin')
     createdAt: { type: Date, default: Date.now }
   }],
   createdAt: { type: Date, default: Date.now },
@@ -394,18 +396,26 @@ app.post('/api/upload', authenticate, upload.array('files', 10), (req, res) => {
   }
 });
 
-// [新增] 消息撤回接口 (修复 authMiddleware 为 authenticate)
+// [修改] 消息撤回接口 (限制仅本人或超管可撤回，并记录撤回人角色)
 app.patch('/api/feedback/:id/reply/:replyId/recall', authenticate, async (req, res) => {
   try {
     const feedback = await Feedback.findById(req.params.id);
     if (!feedback) return res.status(404).json({ success: false, message: '反馈不存在' });
 
-    // 使用 Mongoose 的 id() 方法提取特定的子文档
     const reply = feedback.responses.id(req.params.replyId);
     if (!reply) return res.status(404).json({ success: false, message: '回复不存在' });
 
-    // 标记为已撤回
+    // 权限校验：判断是否是发出者本人，或者是超级管理员
+    const isSender = reply.adminId && reply.adminId.toString() === req.user._id.toString();
+    const isSuperadmin = req.user.role === 'superadmin';
+
+    if (!isSender && !isSuperadmin) {
+      return res.status(403).json({ success: false, message: '权限不足：只能撤回自己发出的消息' });
+    }
+
+    // 标记为已撤回，并记录执行撤回的角色
     reply.isRecalled = true;
+    reply.recalledByRole = isSender ? 'self' : 'superadmin';
     await feedback.save();
     
     res.json({ success: true, message: '撤回成功' });
