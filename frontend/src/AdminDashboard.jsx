@@ -483,16 +483,20 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
         let existingWeightRecordId = null;
 
         userRecords.forEach(r => {
-            if (r.activityName === '期末系统加权') {
-                existingWeightRecordId = r._id; return;
-            }
-            if (r.activityName && weightConfig[r.activityName] !== undefined) {
-                attendedWeight += Number(weightConfig[r.activityName]);
-            } else if (r.score > 0) {
-                attendedWeight += 1;
-            }
-            currentScore += r.score;
-        });
+    if (r.activityName === '期末系统加权') {
+        existingWeightRecordId = r._id; return;
+    }
+    // 赋予空名称记录一个虚拟主键，确保计分严谨性
+    const nameKey = r.activityName || '未命名/常规记录';
+    if (r.score > 0) {
+        if (weightConfig[nameKey] !== undefined) {
+            attendedWeight += Number(weightConfig[nameKey]);
+        } else {
+            attendedWeight += 1;
+        }
+    }
+    currentScore += r.score;
+});
         
         const maxScore = PERF_DIMENSIONS[calcDimension]?.max || 100;
         const finalScore = (maxScore * attendedWeight) / (totalActivitiesCount || 1);
@@ -1454,23 +1458,23 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                 </div>
                 
                 <div className="pt-4 border-t border-white/10">
-                  <label className="text-xs text-blue-300 font-bold mb-2 block">3. 各活动名称及权重配置 (自动提取自流水)</label>
-                  {/* [修改] 自动剔除 '期末系统加权' 的系统校准项目 */}
-                  {[...new Set(performanceRecords.filter(r => r.dimension === calcDimension && r.activityName && r.activityName !== '期末系统加权').map(r => r.activityName))].map((activity, idx) => (
-                    <div key={idx} className="flex items-center justify-between gap-2 mb-2 p-2 bg-white/5 rounded border border-white/5">
-                      <span className="text-xs text-white truncate flex-1" title={activity}>{activity}</span>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <span className="text-[10px] text-purple-200/50">权重:</span>
-                        <input type="number" step="0.1" min="0" value={weightConfig[activity] ?? 1} 
-                          onChange={e => setWeightConfig({...weightConfig, [activity]: Number(e.target.value)})} 
-                          className="w-14 px-1 py-1 bg-slate-950 rounded text-white text-xs border border-white/10 text-center outline-none focus:border-blue-500" />
-                      </div>
-                    </div>
-                  ))}
-                  {[...new Set(performanceRecords.filter(r => r.dimension === calcDimension && r.activityName && r.activityName !== '期末系统加权').map(r => r.activityName))].length === 0 && (
-                    <p className="text-xs text-purple-200/40 text-center py-4">当前学期该板块暂无含具体名称的记录</p>
-                  )}
-                </div>
+  <label className="text-xs text-blue-300 font-bold mb-2 block">3. 各活动名称及权重配置 (自动提取自流水)</label>
+  {/* 将空名称记录映射为统一标识，暴露出界面配置项 */}
+  {[...new Set(performanceRecords.filter(r => r.dimension === calcDimension && r.activityName !== '期末系统加权').map(r => r.activityName || '未命名/常规记录'))].map((activity, idx) => (
+    <div key={idx} className="flex items-center justify-between gap-2 mb-2 p-2 bg-white/5 rounded border border-white/5">
+      <span className="text-xs text-white truncate flex-1" title={activity}>{activity}</span>
+      <div className="flex items-center gap-1 shrink-0">
+        <span className="text-[10px] text-purple-200/50">权重:</span>
+        <input type="number" step="0.1" min="0" value={weightConfig[activity] ?? 1} 
+          onChange={e => setWeightConfig({...weightConfig, [activity]: Number(e.target.value)})} 
+          className="w-14 px-1 py-1 bg-slate-950 rounded text-white text-xs border border-white/10 text-center outline-none focus:border-blue-500" />
+      </div>
+    </div>
+  ))}
+  {[...new Set(performanceRecords.filter(r => r.dimension === calcDimension && r.activityName !== '期末系统加权').map(r => r.activityName || '未命名/常规记录'))].length === 0 && (
+    <p className="text-xs text-purple-200/40 text-center py-4">当前学期该板块暂无任何有效流水记录</p>
+  )}
+</div>
               </div>
 
               {/* 右侧：实时计算结果榜单 */}
@@ -1488,10 +1492,16 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                         const userRecords = performanceRecords.filter(r => r.volunteer?._id === v._id && r.dimension === calcDimension);
                         let attendedWeight = 0;
                         userRecords.forEach(r => {
-                          if (r.activityName === '期末系统加权') return; // 预览时剔除老旧系统干扰项
-                          if (r.activityName && weightConfig[r.activityName] !== undefined) attendedWeight += Number(weightConfig[r.activityName]);
-                          else if (r.score > 0) attendedWeight += 1;
-                        });
+  if (r.activityName === '期末系统加权') return; 
+  const nameKey = r.activityName || '未命名/常规记录';
+  if (r.score > 0) {
+      if (weightConfig[nameKey] !== undefined) {
+          attendedWeight += Number(weightConfig[nameKey]);
+      } else {
+          attendedWeight += 1;
+      }
+  }
+});
                         const maxScore = PERF_DIMENSIONS[calcDimension]?.max || 100;
                         const finalScore = (maxScore * attendedWeight) / (totalActivitiesCount || 1);
                         return { user: v, count: userRecords.filter(r => r.score > 0 && r.activityName !== '期末系统加权').length, weight: attendedWeight, score: finalScore };
