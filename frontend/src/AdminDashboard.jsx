@@ -95,7 +95,65 @@ const PerformanceRulesAccordion = () => (
     </details>
   </div>
 );
+// ===================== 绩效多边形雷达图组件 (原生 SVG 绘制) =====================
+const PerformanceRadar = ({ scores, dimensions }) => {
+  const keys = ['attendance', 'activity', 'feedback', 'copywriting', 'others'];
+  const size = 220; // 画布大小
+  const center = size / 2;
+  const radius = size * 0.35; // 半径留出空间给文字标签
 
+  // 计算数据多边形的坐标点
+  const points = keys.map((key, i) => {
+    const angle = (Math.PI * 2 * i) / keys.length - Math.PI / 2;
+    const max = dimensions[key].max;
+    const score = scores[key] || 0;
+    const ratio = Math.min(1, Math.max(0, score / max));
+    return `${center + radius * ratio * Math.cos(angle)},${center + radius * ratio * Math.sin(angle)}`;
+  }).join(' ');
+
+  // 计算背景雷达网格的坐标点
+  const gridLevels = [0.2, 0.4, 0.6, 0.8, 1];
+  const grids = gridLevels.map(level => {
+    return keys.map((_, i) => {
+      const angle = (Math.PI * 2 * i) / keys.length - Math.PI / 2;
+      return `${center + radius * level * Math.cos(angle)},${center + radius * level * Math.sin(angle)}`;
+    }).join(' ');
+  });
+
+  return (
+    <div className="flex justify-center items-center py-2">
+      <svg width={size} height={size} className="overflow-visible drop-shadow-xl">
+        {/* 1. 绘制雷达底网 */}
+        {grids.map((pts, i) => <polygon key={i} points={pts} fill={i % 2 === 0 ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.05)"} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />)}
+        {/* 2. 绘制五维辐射轴线 */}
+        {keys.map((_, i) => {
+          const angle = (Math.PI * 2 * i) / keys.length - Math.PI / 2;
+          return <line key={i} x1={center} y1={center} x2={center + radius * Math.cos(angle)} y2={center + radius * Math.sin(angle)} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+        })}
+        {/* 3. 绘制学生实际得分多边形区域 */}
+        <polygon points={points} fill="rgba(168, 85, 247, 0.4)" stroke="#c084fc" strokeWidth="2" className="drop-shadow-[0_0_12px_rgba(168,85,247,0.8)] transition-all duration-700 ease-in-out" />
+        {/* 4. 绘制数据节点与维度标签 */}
+        {keys.map((key, i) => {
+          const angle = (Math.PI * 2 * i) / keys.length - Math.PI / 2;
+          const max = dimensions[key].max;
+          const ratio = Math.min(1, Math.max(0, (scores[key] || 0) / max));
+          const px = center + radius * ratio * Math.cos(angle);
+          const py = center + radius * ratio * Math.sin(angle);
+          const lx = center + (radius + 24) * Math.cos(angle); // 标签偏移量
+          const ly = center + (radius + 15) * Math.sin(angle);
+          return (
+            <g key={key}>
+              <circle cx={px} cy={py} r="4" fill="#fff" className="shadow-lg" />
+              <text x={lx} y={ly} fill="rgba(255,255,255,0.7)" fontSize="11" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">
+                {dimensions[key].label}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+};
 // ===================== 账号管理子组件 =====================
 const AccountManagement = ({ token, user: currentUser }) => {
   const [users, setUsers] = useState([]);
@@ -923,13 +981,17 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
             ) : (
               /* 子管(志愿者)视图：个人表盘 + 履历时间轴 */
               <div className="grid md:grid-cols-2 gap-4 md:gap-6">
-                <div className="space-y-4 md:space-y-6">
+                 <div className="space-y-4 md:space-y-6">
                   <div className="p-4 md:p-6 bg-gradient-to-br from-purple-900/40 to-blue-900/40 border border-purple-500/30 rounded-2xl text-center">
-                    <p className="text-sm md:text-base text-purple-200/80 mb-2">【{selectedSemester || '当前学期'}】绩效得分</p>
-                    <p className="text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-purple-200 drop-shadow-lg mb-4">
+                    <p className="text-sm md:text-base text-purple-200/80 mb-2">【{selectedSemester || '当前学期'}】通关得分</p>
+                    <p className="text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-purple-200 drop-shadow-lg mb-0">
                       {calculateScore(performanceRecords).total} <span className="text-lg md:text-xl font-normal text-white/50">/100</span>
                     </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3 text-left border-t border-white/10 pt-4 mt-4">
+                    
+                    {/* [新增] 在总分下方渲染动态雷达图 */}
+                    <PerformanceRadar scores={calculateScore(performanceRecords)} dimensions={PERF_DIMENSIONS} />
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3 text-left border-t border-white/10 pt-4 mt-2">
                       {['attendance', 'activity', 'feedback', 'copywriting', 'others'].map(k => {
                         const s = calculateScore(performanceRecords)[k];
                         const d = PERF_DIMENSIONS[k];
@@ -1168,17 +1230,21 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
 
                                 // 正常消息，或者超管视角下被撤回的消息 (利用条件类名实现样式变灰和红框)
                                 return (
-                                  <div key={i} className={`p-3 rounded-xl border ${isStudent ? 'bg-blue-500/10 border-blue-500/20 mr-8' : 'bg-purple-500/10 border-purple-500/20 ml-8'} ${resp.isRecalled ? 'opacity-60 border-red-500/30 bg-red-900/10' : ''}`}>
+                                 <div key={i} className={`p-3 rounded-xl border ${isStudent ? 'bg-blue-500/10 border-blue-500/20 mr-8' : 'bg-purple-500/10 border-purple-500/20 ml-8'} ${resp.isRecalled ? 'opacity-60 border-red-500/30 bg-red-900/10' : ''}`}>
                                     <div className="flex items-center justify-between mb-1.5">
                                       <span className={`text-xs font-bold ${isStudent ? 'text-blue-300' : 'text-purple-300'}`}>
                                         {isStudent ? (resp.senderName || '学生') : (resp.adminName || resp.senderName || '系统管理员')}
-                                        {/* 超管视角下的撤回徽标 */}
-                                        {resp.isRecalled && isSuperadmin && <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-red-500/20 text-red-400 border border-red-500/30">已撤回</span>}
+                                        {/* [修改] 撤回徽标：区分是自己撤回的还是超管强制撤回的 */}
+                                        {resp.isRecalled && isSuperadmin && (
+                                          <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] border ${resp.recalledByRole === 'superadmin' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' : 'bg-red-500/20 text-red-400 border-red-500/30'}`}>
+                                            {resp.recalledByRole === 'superadmin' ? '超管强制撤回' : '发出者已撤回'}
+                                          </span>
+                                        )}
                                       </span>
                                       
                                       <div className="flex items-center gap-2">
-                                        {/* 只有未被撤回的管理员自己的回复，才可以点击撤回 */}
-                                        {!resp.isRecalled && isAdmin && (
+                                        {/* [修改] 权限限制：只有未撤回的，且是本人发出的，或者是超管，才能看到并点击撤回按钮 */}
+                                        {!resp.isRecalled && isAdmin && (resp.adminId === user.id || isSuperadmin) && (
                                           <button onClick={(e) => { e.stopPropagation(); handleRecallMsg(feedback._id, resp._id); }} className="text-[10px] text-red-400/80 hover:text-red-400 transition-colors">
                                             撤回
                                           </button>

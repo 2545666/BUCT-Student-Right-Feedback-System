@@ -1175,12 +1175,13 @@ const startServer = async () => {
       await User.create({
         studentId: '20240901007',
         password: 'SIEVOX2026.',
-        name: '系统管理员',
+        name: '超级管理员',
         email: '2024090107@buct.edu.cn',
         role: 'superadmin'
       });
-      console.log('✅ 默认管理员账户已创建');
+      console.log('✅ 默认超级管理员账户已创建');
     }
+
     
     // [修改] 根据环境决定启动 HTTP 还是 HTTPS
     if (config.nodeEnv === 'production') {
