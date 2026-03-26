@@ -459,7 +459,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
   const [totalActivitiesCount, setTotalActivitiesCount] = useState(10); // 默认该板块活动总数
   const [weightConfig, setWeightConfig] = useState({}); // 存储 { '活动名称': 权重 }
 
-  // [新增] 撤回绩效记录方法
+// [新增] 撤回绩效记录方法
   const handleDeleteRecord = async (recordId) => {
     if (!window.confirm('警告：确定要彻底撤回这条赋分记录吗？撤回后该人员本学期的总分将自动重算！')) return;
     try {
@@ -467,12 +467,12 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
         method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
       });
       if ((await res.json()).success) {
-        fetchPerformanceAndUsers(selectedSemester); // 原地静默刷新
+        fetchPerformanceAndUsers(selectedSemester); 
       }
     } catch (err) { alert('撤回失败'); }
   };
 
-  // [新增] 执行期末加权并应用到干事真实分数中
+  // [修复致命崩溃] 补充丢失的期末加权执行函数
   const handleApplyWeighting = async () => {
     if (!window.confirm('确定应用加权吗？系统将自动校准该板块得分，并在得分处点亮“已加权”绿标。')) return;
 
@@ -484,9 +484,8 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
 
         userRecords.forEach(r => {
             if (r.activityName === '期末系统加权') {
-                existingWeightRecordId = r._id; return; // 剔除历史加权的干扰
+                existingWeightRecordId = r._id; return;
             }
-            // 累加：已参加活动的自定义权重
             if (r.activityName && weightConfig[r.activityName] !== undefined) {
                 attendedWeight += Number(weightConfig[r.activityName]);
             } else if (r.score > 0) {
@@ -495,17 +494,14 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
             currentScore += r.score;
         });
         
-        // 核心公式：该板块满分 * (已参加活动权重之和) / (该板块内所有活动总次数 * 1)
         const maxScore = PERF_DIMENSIONS[calcDimension]?.max || 100;
         const finalScore = (maxScore * attendedWeight) / (totalActivitiesCount || 1);
         const diff = finalScore - currentScore;
 
-        // 撤回旧的加权避免重叠
         if (existingWeightRecordId) {
             await fetch(`${API_BASE}/admin/performance/${existingWeightRecordId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }});
         }
 
-        // 写入新加权流水 (打上 '期末系统加权' 特殊锚点，用于前端亮绿灯)
         await fetch(`${API_BASE}/admin/performance`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -523,11 +519,36 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
   };
 
   // [修改] 拉取绩效与学期配置
- const fetchPerformanceAndUsers = useCallback(async (targetSemester = '') => {
-// ... (此处保留你本地原本的 fetchPerformanceAndUsers 函数内部代码不变，不要去动它) ...
-  }, [token, user.role, selectedSemester]); // [修复] 将 selectedSemester 加入依赖数组，使外部的 useEffect 能够自动获取最新上下文
+  const fetchPerformanceAndUsers = useCallback(async (targetSemester = '') => {
+    try {
+      const sysRes = await fetch(`${API_BASE}/admin/system/config`, { headers: { 'Authorization': `Bearer ${token}` } });
+      const sysData = await sysRes.json();
+      
+      let querySemester = targetSemester || selectedSemester; 
+      
+      if (sysData.success) {
+        setCurrentSemester(sysData.currentSemester);
+        setAvailableSemesters(sysData.semesters);
+        if (!querySemester) {
+            querySemester = sysData.currentSemester;
+            setSelectedSemester(sysData.currentSemester);
+        }
+        setPerfForm(prev => ({ ...prev, targetSemester: querySemester }));
+      }
 
-  // [修改] 算分引擎，增加绿标检测逻辑
+      const endpoint = user.role === 'superadmin' ? '/admin/performance' : '/admin/performance/my';
+      const res = await fetch(`${API_BASE}${endpoint}?semester=${encodeURIComponent(querySemester)}`, { headers: { 'Authorization': `Bearer ${token}` } });
+      const data = await res.json();
+      if (data.success) setPerformanceRecords(data.records);
+
+      if (user.role === 'superadmin') {
+        const uRes = await fetch(`${API_BASE}/admin/users`, { headers: { 'Authorization': `Bearer ${token}` } });
+        if ((await uRes.clone().json()).success) setVolunteers((await uRes.json()).users.filter(u => u.role === 'admin'));
+      }
+    } catch (err) {}
+  }, [token, user.role, selectedSemester]);
+
+  // [修复致命崩溃] 算分引擎必须返回 weightedFlags
   const calculateScore = useCallback((records) => {
     let scores = { attendance: 0, activity: 0, feedback: 0, copywriting: 0, others: 0, bonus: 0 };
     let weightedFlags = { attendance: false, activity: false, feedback: false, copywriting: false, others: false, bonus: false };
@@ -535,7 +556,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
     records.forEach(r => { 
         if (scores[r.dimension] !== undefined) {
             scores[r.dimension] += r.score; 
-            if (r.activityName === '期末系统加权') weightedFlags[r.dimension] = true; // 发现加权记录点亮绿灯
+            if (r.activityName === '期末系统加权') weightedFlags[r.dimension] = true;
         }
     });
     
@@ -550,16 +571,16 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
     return { attendance, activity, feedback, copywriting, others, bonus, total, weightedFlags };
   }, []);
 
- const handlePerfSubmit = async (e) => {
+  const handlePerfSubmit = async (e) => {
     e.preventDefault();
     try {
       const res = await fetch(`${API_BASE}/admin/performance`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(perfForm)
+        // [修复] 强制带上 targetSemester 解决跨学期补录Bug
+        body: JSON.stringify({ ...perfForm, targetSemester: selectedSemester || currentSemester })
       });
       if ((await res.json()).success) {
         alert('绩效录入成功');
-        // [修改] 提交成功后清空数据，但保留当前锁定的 targetSemester
         setPerfForm({ volunteerIds: [], dimension: 'attendance', score: '', reason: '', occurrenceDate: '', activityName: '', targetSemester: perfForm.targetSemester });
         fetchPerformanceAndUsers(selectedSemester);
       }
@@ -1001,13 +1022,15 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                           {Object.entries(PERF_DIMENSIONS).map(([k, v]) => <option key={k} value={k}>{v.label} (封顶{v.max}分)</option>)}
                         </select>
                       </div>
-                     {/* [修改] 将 perfForm.dimension === 'attendance' 加入条件，允许考勤填写活动名称 */}
+                      
+                      {/* [修复] 将 attendance(考勤) 加入显示条件，否则考勤无法填写名称，也就无法参与加权 */}
                       {(perfForm.dimension === 'attendance' || perfForm.dimension === 'activity' || perfForm.dimension === 'copywriting' || perfForm.dimension === 'bonus') && (
                         <div>
-                          <label className="text-xs text-purple-200/60 mb-1 block">具体项目名称 (必填才能参与加权)</label>
-                          <input type="text"  value={perfForm.activityName} onChange={e => setPerfForm({...perfForm, activityName: e.target.value})} className="w-full px-3 py-2 bg-slate-900 rounded-lg text-white border border-white/10 outline-none" />
+                          <label className="text-xs text-purple-200/60 mb-1 block">具体项目名称 (填写名称后方可参与期末加权)</label>
+                          <input type="text" placeholder="例: 第三周例会 / 迎新晚会统筹" value={perfForm.activityName} onChange={e => setPerfForm({...perfForm, activityName: e.target.value})} className="w-full px-3 py-2 bg-slate-900 rounded-lg text-white border border-white/10 outline-none" />
                         </div>
                       )}
+                      
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <label className="text-xs text-purple-200/60 mb-1 block">发生日期</label>
