@@ -1105,19 +1105,22 @@ app.post('/api/admin/system/semester', authenticate, adminOnly, async (req, res)
   } catch (error) { res.status(500).json({ success: false }); }
 });
 
-// 1. [超管] 批量录入绩效记录 (自动打上当前学期标签)
+// 1. [超管] 批量录入绩效记录 (支持历史学期补录)
 app.post('/api/admin/performance', authenticate, adminOnly, async (req, res) => {
   if (req.user.role !== 'superadmin') return res.status(403).json({ success: false, message: '仅负责人可用' });
   try {
-    const { volunteerIds, dimension, score, reason, occurrenceDate, activityName } = req.body;
+    // [修复] 接收 targetSemester 参数
+    const { volunteerIds, dimension, score, reason, occurrenceDate, activityName, targetSemester } = req.body;
     if (!volunteerIds || volunteerIds.length === 0) return res.status(400).json({ success: false, message: '请选择人员' });
     
     const config = await SystemConfig.findOne({ key: 'currentSemester' });
     const currentSemester = config ? config.value : '2025-2026学年 第二学期';
+    // [修复] 如果有明确的目标学期(补录)，则优先使用
+    const finalSemester = targetSemester || currentSemester;
 
     const records = volunteerIds.map(vid => ({
       volunteer: vid, recordedBy: req.user._id, dimension, score: Number(score), reason, occurrenceDate, activityName,
-      semester: currentSemester // [绑定学期]
+      semester: finalSemester // [绑定最终学期]
     }));
     await PerformanceRecord.insertMany(records);
     res.json({ success: true, message: '绩效录入成功' });
@@ -1147,6 +1150,15 @@ app.get('/api/admin/performance/my', authenticate, adminOnly, async (req, res) =
       .sort({ occurrenceDate: -1, createdAt: -1 });
     res.json({ success: true, records });
   } catch (error) { res.status(500).json({ success: false }); }
+});
+// 4. [新增] [超管] 撤回/删除一条绩效记录
+app.delete('/api/admin/performance/:id', authenticate, adminOnly, async (req, res) => {
+  if (req.user.role !== 'superadmin') return res.status(403).json({ success: false, message: '仅负责人可用' });
+  try {
+    const record = await PerformanceRecord.findByIdAndDelete(req.params.id);
+    if (!record) return res.status(404).json({ success: false, message: '记录不存在' });
+    res.json({ success: true, message: '记录已成功撤回' });
+  } catch (error) { res.status(500).json({ success: false, message: '撤回失败' }); }
 });
 // ============================================
 // 错误处理

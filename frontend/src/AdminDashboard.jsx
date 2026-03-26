@@ -453,6 +453,25 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
   const [selectedSemester, setSelectedSemester] = useState('');
   const [availableSemesters, setAvailableSemesters] = useState([]);
 
+  // -- [新增] 加权核算器专属状态 --
+  const [showWeightCalc, setShowWeightCalc] = useState(false);
+  const [calcDimension, setCalcDimension] = useState('activity');
+  const [totalActivitiesCount, setTotalActivitiesCount] = useState(10); // 默认该板块活动总数
+  const [weightConfig, setWeightConfig] = useState({}); // 存储 { '活动名称': 权重 }
+
+  // [新增] 撤回绩效记录方法
+  const handleDeleteRecord = async (recordId) => {
+    if (!window.confirm('警告：确定要彻底撤回这条赋分记录吗？撤回后该人员本学期的总分将自动重算！')) return;
+    try {
+      const res = await fetch(`${API_BASE}/admin/performance/${recordId}`, {
+        method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if ((await res.json()).success) {
+        fetchPerformanceAndUsers(selectedSemester); // 原地静默刷新
+      }
+    } catch (err) { alert('撤回失败'); }
+  };
+
   // [修改] 拉取绩效与学期配置
  const fetchPerformanceAndUsers = useCallback(async (targetSemester = '') => {
     try {
@@ -833,13 +852,17 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                    {availableSemesters.map(s => <option key={s} value={s}>{s} {s === currentSemester ? '(当前)' : '(归档)'}</option>)}
                  </select>
                </div>
-               {user?.role === 'superadmin' && (
-                 <button onClick={handleArchiveSemester} className="w-full md:w-auto px-4 py-2 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white border border-red-500/30 rounded-lg transition-all text-sm font-medium shrink-0">
-                   📦 归档并开启新学期
-                 </button>
+             {user?.role === 'superadmin' && (
+                 <div className="flex gap-2 w-full md:w-auto">
+                   <button onClick={() => setShowWeightCalc(true)} className="flex-1 md:flex-none px-4 py-2 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-500/30 rounded-lg transition-all text-sm font-medium shrink-0">
+                     🧮 期末加权核算
+                   </button>
+                   <button onClick={handleArchiveSemester} className="flex-1 md:flex-none px-4 py-2 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white border border-red-500/30 rounded-lg transition-all text-sm font-medium shrink-0">
+                     📦 归档并开启新学期
+                   </button>
+                 </div>
                )}
             </div>
-            
             {user?.role === 'superadmin' ? (
               <div className="space-y-4 md:space-y-6">
                 {/* [修改] 赋分核算汇总排行榜 (减小手机端内边距 p-4 md:p-6) */}
@@ -960,16 +983,21 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-sm whitespace-nowrap">
                         <thead className="border-b border-white/10 text-purple-200/60">
-                          <tr><th className="pb-3 pr-4">日期</th><th className="pb-3 pr-4">志愿者</th><th className="pb-3 pr-4">分值</th><th className="pb-3 pr-4">维度</th><th className="pb-3">事由明细</th></tr>
+                          {/* [新增] 操作列头 */}
+                          <tr><th className="pb-3 pr-4">日期</th><th className="pb-3 pr-4">干事</th><th className="pb-3 pr-4">分值</th><th className="pb-3 pr-4">维度</th><th className="pb-3 pr-4">事由明细</th><th className="pb-3">操作</th></tr>
                         </thead>
                         <tbody className="divide-y divide-white/5 text-purple-100">
                           {performanceRecords.map(r => (
-                            <tr key={r._id} className="hover:bg-white/5 transition-colors">
+                            <tr key={r._id} className="hover:bg-white/5 transition-colors group/row">
                               <td className="py-3 pr-4 text-xs">{new Date(r.occurrenceDate).toLocaleDateString('zh-CN')}</td>
                               <td className="py-3 pr-4">{r.volunteer?.name}</td>
                               <td className={`py-3 pr-4 font-bold text-green-400`}>+{r.score}</td>
                               <td className="py-3 pr-4"><span className={`px-2 py-0.5 rounded text-[10px] bg-${PERF_DIMENSIONS[r.dimension]?.color || 'gray'}-500/20 text-${PERF_DIMENSIONS[r.dimension]?.color || 'gray'}-300`}>{PERF_DIMENSIONS[r.dimension]?.label || '旧版归档记录'}</span></td>
-                              <td className="py-3 text-xs truncate max-w-[200px]" title={r.reason}>{r.activityName ? `[${r.activityName}] ` : ''}{r.reason}</td>
+                              <td className="py-3 pr-4 text-xs truncate max-w-[200px]" title={r.reason}>{r.activityName ? `[${r.activityName}] ` : ''}{r.reason}</td>
+                              {/* [新增] 撤回按钮列 */}
+                              <td className="py-3">
+                                <button onClick={() => handleDeleteRecord(r._id)} className="text-xs px-3 py-1 bg-red-500/10 text-red-400 rounded-md border border-red-500/20 hover:bg-red-500 hover:text-white transition-all opacity-0 group-hover/row:opacity-100">撤回</button>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -1293,7 +1321,87 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
           </a>
         </div>
       </div>
-      
+      {/* ===================== [新增] 动态加权核算器弹窗 ===================== */}
+      {showWeightCalc && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <div className="w-full max-w-4xl p-6 relative bg-slate-900 border border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
+            <button onClick={() => setShowWeightCalc(false)} className="absolute top-4 right-4 text-purple-200/50 hover:text-white text-lg z-10">✕</button>
+            <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><span>🧮</span> 期末分数动态加权结算器</h3>
+            <p className="text-xs text-purple-200/60 mb-6">公式：结算分 = 该板块满分 × (Σ 已参加活动的自定义权重) / 设定的活动总权重(总次数×1)</p>
+            
+            <div className="grid md:grid-cols-3 gap-6 flex-1 min-h-0">
+              {/* 左侧：参数配置面板 */}
+              <div className="md:col-span-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
+                <div>
+                  <label className="text-xs text-purple-200/60 mb-1 block">选择计算板块</label>
+                  <select value={calcDimension} onChange={e => setCalcDimension(e.target.value)} className="w-full px-3 py-2 bg-slate-950 rounded-lg text-white border border-white/10 outline-none focus:border-blue-500 transition-colors">
+                    {Object.entries(PERF_DIMENSIONS).map(([k, v]) => <option key={k} value={k}>{v.label} (满分 {v.max})</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-purple-200/60 mb-1 block">该板块内设定的【所有活动总次数】</label>
+                  <input type="number" min="1" value={totalActivitiesCount} onChange={e => setTotalActivitiesCount(Number(e.target.value))} className="w-full px-3 py-2 bg-slate-950 rounded-lg text-white border border-white/10 outline-none focus:border-blue-500" />
+                </div>
+                
+                <div className="pt-4 border-t border-white/10">
+                  <label className="text-xs text-blue-300 font-bold mb-2 block">本学期出现的活动名称及权重配置</label>
+                  {/* 自动从流水中提取当前维度的唯一活动名称 */}
+                  {[...new Set(performanceRecords.filter(r => r.dimension === calcDimension && r.activityName).map(r => r.activityName))].map((activity, idx) => (
+                    <div key={idx} className="flex items-center justify-between gap-2 mb-2 p-2 bg-white/5 rounded border border-white/5">
+                      <span className="text-xs text-white truncate flex-1" title={activity}>{activity}</span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className="text-[10px] text-purple-200/50">权重:</span>
+                        <input type="number" step="0.1" min="0" value={weightConfig[activity] ?? 1} 
+                          onChange={e => setWeightConfig({...weightConfig, [activity]: Number(e.target.value)})} 
+                          className="w-14 px-1 py-1 bg-slate-950 rounded text-white text-xs border border-white/10 text-center outline-none" />
+                      </div>
+                    </div>
+                  ))}
+                  {[...new Set(performanceRecords.filter(r => r.dimension === calcDimension && r.activityName).map(r => r.activityName))].length === 0 && (
+                    <p className="text-xs text-purple-200/40 text-center py-4">该板块当前学期暂无包含名称的活动记录</p>
+                  )}
+                </div>
+              </div>
+
+              {/* 右侧：实时计算结果榜单 */}
+              <div className="md:col-span-2 bg-white/5 border border-white/10 rounded-xl flex flex-col overflow-hidden">
+                <div className="p-3 bg-blue-900/20 border-b border-white/10 shrink-0">
+                  <span className="text-sm font-bold text-blue-300">📊 加权后得分解算结果大榜</span>
+                </div>
+                <div className="overflow-y-auto p-0 flex-1 custom-scrollbar">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-slate-900/50 sticky top-0 backdrop-blur text-purple-200/60 text-xs">
+                      <tr><th className="py-2 pl-4">姓名</th><th className="py-2">实际参与次数</th><th className="py-2 text-blue-300">累计所获权重</th><th className="py-2 pr-4 font-bold text-white text-right">加权后最终得分</th></tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {volunteers.map(v => {
+                        const userRecords = performanceRecords.filter(r => r.volunteer?._id === v._id && r.dimension === calcDimension);
+                        // 累加该干事参加活动的自定义权重
+                        let attendedWeight = 0;
+                        userRecords.forEach(r => {
+                          if (r.activityName) attendedWeight += (weightConfig[r.activityName] ?? 1);
+                          else attendedWeight += 1; // 如果某条记录没写活动名，默认权重计为1
+                        });
+                        // 严格套用公式: 满分 * (获得的总权重) / 设定的总次数(总权重基准)
+                        const maxScore = PERF_DIMENSIONS[calcDimension]?.max || 100;
+                        const finalScore = (maxScore * attendedWeight) / (totalActivitiesCount || 1);
+                        return { user: v, count: userRecords.length, weight: attendedWeight, score: finalScore };
+                      }).sort((a, b) => b.score - a.score).map((data, idx) => (
+                        <tr key={idx} className="hover:bg-white/5">
+                          <td className="py-3 pl-4 font-medium text-white">{data.user.name}</td>
+                          <td className="py-3 text-purple-200/60">{data.count} 次</td>
+                          <td className="py-3 font-mono text-blue-300">{data.weight.toFixed(1)}</td>
+                          <td className="py-3 pr-4 text-right text-lg font-bold text-green-400">{data.score.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {/* 全局设置弹窗 */}
       {showSettingsModal && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
