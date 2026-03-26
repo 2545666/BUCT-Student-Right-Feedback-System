@@ -472,41 +472,72 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
     } catch (err) { alert('撤回失败'); }
   };
 
+  // [新增] 执行期末加权并应用到干事真实分数中
+  const handleApplyWeighting = async () => {
+    if (!window.confirm('确定应用加权吗？系统将自动校准该板块得分，并在得分处点亮“已加权”绿标。')) return;
+
+    for (const v of volunteers) {
+        const userRecords = performanceRecords.filter(r => r.volunteer?._id === v._id && r.dimension === calcDimension);
+        let attendedWeight = 0;
+        let currentScore = 0;
+        let existingWeightRecordId = null;
+
+        userRecords.forEach(r => {
+            if (r.activityName === '期末系统加权') {
+                existingWeightRecordId = r._id; return; // 剔除历史加权的干扰
+            }
+            // 累加：已参加活动的自定义权重
+            if (r.activityName && weightConfig[r.activityName] !== undefined) {
+                attendedWeight += Number(weightConfig[r.activityName]);
+            } else if (r.score > 0) {
+                attendedWeight += 1;
+            }
+            currentScore += r.score;
+        });
+        
+        // 核心公式：该板块满分 * (已参加活动权重之和) / (该板块内所有活动总次数 * 1)
+        const maxScore = PERF_DIMENSIONS[calcDimension]?.max || 100;
+        const finalScore = (maxScore * attendedWeight) / (totalActivitiesCount || 1);
+        const diff = finalScore - currentScore;
+
+        // 撤回旧的加权避免重叠
+        if (existingWeightRecordId) {
+            await fetch(`${API_BASE}/admin/performance/${existingWeightRecordId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }});
+        }
+
+        // 写入新加权流水 (打上 '期末系统加权' 特殊锚点，用于前端亮绿灯)
+        await fetch(`${API_BASE}/admin/performance`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({
+                volunteerIds: [v._id], dimension: calcDimension, score: diff.toFixed(2),
+                reason: `期末系统动态加权 (得分占比: ${attendedWeight.toFixed(1)}/${totalActivitiesCount})`,
+                occurrenceDate: new Date().toISOString().split('T')[0], activityName: '期末系统加权', 
+                targetSemester: selectedSemester || currentSemester
+            })
+        });
+    }
+    alert('加权已成功应用！成绩右上角已点亮绿色的“已加权”。');
+    setShowWeightCalc(false);
+    fetchPerformanceAndUsers(selectedSemester);
+  };
+
   // [修改] 拉取绩效与学期配置
  const fetchPerformanceAndUsers = useCallback(async (targetSemester = '') => {
-    try {
-      const sysRes = await fetch(`${API_BASE}/admin/system/config`, { headers: { 'Authorization': `Bearer ${token}` } });
-      const sysData = await sysRes.json();
-      
-      // [修复关键点] 如果未传参(如定时器自动触发)，则优先使用当前下拉框选定的学期
-      let querySemester = targetSemester || selectedSemester; 
-      
-      if (sysData.success) {
-        setCurrentSemester(sysData.currentSemester);
-        setAvailableSemesters(sysData.semesters);
-        if (!querySemester) {
-            querySemester = sysData.currentSemester;
-            setSelectedSemester(sysData.currentSemester);
-        }
-        setPerfForm(prev => ({ ...prev, targetSemester: querySemester }));
-      }
-
-      const endpoint = user.role === 'superadmin' ? '/admin/performance' : '/admin/performance/my';
-      const res = await fetch(`${API_BASE}${endpoint}?semester=${encodeURIComponent(querySemester)}`, { headers: { 'Authorization': `Bearer ${token}` } });
-      const data = await res.json();
-      if (data.success) setPerformanceRecords(data.records);
-
-      if (user.role === 'superadmin') {
-        const uRes = await fetch(`${API_BASE}/admin/users`, { headers: { 'Authorization': `Bearer ${token}` } });
-        if ((await uRes.clone().json()).success) setVolunteers((await uRes.json()).users.filter(u => u.role === 'admin'));
-      }
-    } catch (err) {}
+// ... (此处保留你本地原本的 fetchPerformanceAndUsers 函数内部代码不变，不要去动它) ...
   }, [token, user.role, selectedSemester]); // [修复] 将 selectedSemester 加入依赖数组，使外部的 useEffect 能够自动获取最新上下文
 
-  // [修改] 纯加分制算分引擎 (从0起步，上限封顶)
+  // [修改] 算分引擎，增加绿标检测逻辑
   const calculateScore = useCallback((records) => {
     let scores = { attendance: 0, activity: 0, feedback: 0, copywriting: 0, others: 0, bonus: 0 };
-    records.forEach(r => { if (scores[r.dimension] !== undefined) scores[r.dimension] += r.score; });
+    let weightedFlags = { attendance: false, activity: false, feedback: false, copywriting: false, others: false, bonus: false };
+    
+    records.forEach(r => { 
+        if (scores[r.dimension] !== undefined) {
+            scores[r.dimension] += r.score; 
+            if (r.activityName === '期末系统加权') weightedFlags[r.dimension] = true; // 发现加权记录点亮绿灯
+        }
+    });
     
     const attendance = Math.min(PERF_DIMENSIONS.attendance.max, Math.max(0, scores.attendance));
     const activity = Math.min(PERF_DIMENSIONS.activity.max, Math.max(0, scores.activity));
@@ -516,7 +547,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
     const bonus = Math.max(0, scores.bonus);
     
     const total = attendance + activity + feedback + copywriting + others + bonus;
-    return { attendance, activity, feedback, copywriting, others, bonus, total };
+    return { attendance, activity, feedback, copywriting, others, bonus, total, weightedFlags };
   }, []);
 
  const handlePerfSubmit = async (e) => {
@@ -895,7 +926,10 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                             <td className="py-3 pr-4">{s.copywriting}</td>
                             <td className="py-3 pr-4">{s.others}</td>
                             <td className="py-3 pr-4 text-red-400">{s.bonus > 0 ? `+${s.bonus}` : '-'}</td>
-                            <td className="py-3 text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">{s.total}</td>
+                            <td className="py-3 text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 relative pr-6">
+                              {s.total}
+                              {Object.values(s.weightedFlags).some(v => v) && <span className="absolute top-1 ml-1 text-[9px] text-green-400 bg-green-500/10 border border-green-500/30 px-1 py-0.5 rounded shadow-sm whitespace-nowrap">已加权</span>}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -1010,11 +1044,19 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
               /* 子管(志愿者)视图：个人表盘 + 履历时间轴 */
               <div className="grid md:grid-cols-2 gap-4 md:gap-6">
                  <div className="space-y-4 md:space-y-6">
-                  <div className="p-4 md:p-6 bg-gradient-to-br from-purple-900/40 to-blue-900/40 border border-purple-500/30 rounded-2xl text-center">
+                  <div className="p-4 md:p-6 bg-gradient-to-br from-purple-900/40 to-blue-900/40 border border-purple-500/30 rounded-2xl text-center relative overflow-hidden">
                     <p className="text-sm md:text-base text-purple-200/80 mb-2">【{selectedSemester || '当前学期'}】绩效得分</p>
-                    <p className="text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-purple-200 drop-shadow-lg mb-0">
-                      {calculateScore(performanceRecords).total} <span className="text-lg md:text-xl font-normal text-white/50">/100</span>
-                    </p>
+                    <div className="relative inline-block">
+                      <p className="text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-purple-200 drop-shadow-lg mb-0">
+                        {calculateScore(performanceRecords).total} <span className="text-lg md:text-xl font-normal text-white/50">/100</span>
+                      </p>
+                      {/* [新增] 绿标检测，右上角醒目展示 */}
+                      {Object.values(calculateScore(performanceRecords).weightedFlags).some(v => v) && (
+                        <span className="absolute -top-3 -right-14 bg-green-500/20 border border-green-500/50 text-green-400 text-[10px] px-1.5 py-0.5 rounded shadow-[0_0_10px_rgba(34,197,94,0.3)] font-bold whitespace-nowrap">
+                          ✓ 已加权
+                        </span>
+                      )}
+                    </div>
                     
                     {/* [新增] 在总分下方渲染动态雷达图 */}
                     <PerformanceRadar scores={calculateScore(performanceRecords)} dimensions={PERF_DIMENSIONS} />
@@ -1026,7 +1068,14 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                         const isMax = s >= d.max;
                         return (
                           <div key={k} className={`p-2.5 rounded-xl border ${isMax ? 'bg-yellow-500/10 border-yellow-500/30' : 'bg-black/20 border-white/5'}`}>
-                            <div className="flex justify-between text-xs mb-1.5"><span className={`text-${isMax ? 'yellow' : d.color}-300`}>{d.label}</span><span className={`font-bold ${isMax ? 'text-yellow-400' : 'text-white'}`}>{isMax ? '已满MAX' : `${s}/${d.max}`}</span></div>
+                            <div className="flex justify-between text-xs mb-1.5">
+                              <span className={`text-${isMax ? 'yellow' : d.color}-300 flex items-center gap-1`}>
+                                {d.label}
+                                {/* [新增] 单个板块的加权绿标 */}
+                                {calculateScore(performanceRecords).weightedFlags[k] && <span className="bg-green-500/20 text-green-400 text-[8px] px-1 rounded border border-green-500/30">加权</span>}
+                              </span>
+                              <span className={`font-bold ${isMax ? 'text-yellow-400' : 'text-white'}`}>{isMax ? '已满MAX' : `${s}/${d.max}`}</span>
+                            </div>
                             <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden"><div className={`h-full ${isMax ? 'bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.8)]' : `bg-${d.color}-500`}`} style={{ width: `${(s/d.max)*100}%` }}></div></div>
                           </div>
                         );
@@ -1321,44 +1370,51 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
           </a>
         </div>
       </div>
-      {/* ===================== [新增] 动态加权核算器弹窗 ===================== */}
+      {/* ===================== [修改] 动态加权核算器弹窗 ===================== */}
       {showWeightCalc && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="w-full max-w-4xl p-6 relative bg-slate-900 border border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
+          <div className="w-full max-w-5xl p-6 relative bg-slate-900 border border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
             <button onClick={() => setShowWeightCalc(false)} className="absolute top-4 right-4 text-purple-200/50 hover:text-white text-lg z-10">✕</button>
-            <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><span>🧮</span> 期末分数动态加权结算器</h3>
-            <p className="text-xs text-purple-200/60 mb-6">公式：结算分 = 该板块满分 × (Σ 已参加活动的自定义权重) / 设定的活动总权重(总次数×1)</p>
+            
+            <div className="flex flex-wrap items-center justify-between mb-4 pr-8">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2"><span>🧮</span> 期末分数动态加权结算器</h3>
+              <button onClick={handleApplyWeighting} className="px-5 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg font-bold shadow-[0_0_15px_rgba(34,197,94,0.4)]">
+                ✓ 确认并应用加权到总分
+              </button>
+            </div>
+            
+            <p className="text-xs text-purple-200/60 mb-6">公式：该板块结算分 = 该板块满分 × (已参加活动对应设定的权重之和) / 该板块内设定所有活动总次数(×1)</p>
             
             <div className="grid md:grid-cols-3 gap-6 flex-1 min-h-0">
               {/* 左侧：参数配置面板 */}
               <div className="md:col-span-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
                 <div>
-                  <label className="text-xs text-purple-200/60 mb-1 block">选择计算板块</label>
+                  <label className="text-xs text-purple-200/60 mb-1 block">1. 选择需加权结算的板块</label>
                   <select value={calcDimension} onChange={e => setCalcDimension(e.target.value)} className="w-full px-3 py-2 bg-slate-950 rounded-lg text-white border border-white/10 outline-none focus:border-blue-500 transition-colors">
                     {Object.entries(PERF_DIMENSIONS).map(([k, v]) => <option key={k} value={k}>{v.label} (满分 {v.max})</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-purple-200/60 mb-1 block">该板块内设定的【所有活动总次数】</label>
+                  <label className="text-xs text-purple-200/60 mb-1 block">2. 设定【该板块内所有活动总次数】分母</label>
                   <input type="number" min="1" value={totalActivitiesCount} onChange={e => setTotalActivitiesCount(Number(e.target.value))} className="w-full px-3 py-2 bg-slate-950 rounded-lg text-white border border-white/10 outline-none focus:border-blue-500" />
                 </div>
                 
                 <div className="pt-4 border-t border-white/10">
-                  <label className="text-xs text-blue-300 font-bold mb-2 block">本学期出现的活动名称及权重配置</label>
-                  {/* 自动从流水中提取当前维度的唯一活动名称 */}
-                  {[...new Set(performanceRecords.filter(r => r.dimension === calcDimension && r.activityName).map(r => r.activityName))].map((activity, idx) => (
+                  <label className="text-xs text-blue-300 font-bold mb-2 block">3. 各活动名称及权重配置 (自动提取自流水)</label>
+                  {/* [修改] 自动剔除 '期末系统加权' 的系统校准项目 */}
+                  {[...new Set(performanceRecords.filter(r => r.dimension === calcDimension && r.activityName && r.activityName !== '期末系统加权').map(r => r.activityName))].map((activity, idx) => (
                     <div key={idx} className="flex items-center justify-between gap-2 mb-2 p-2 bg-white/5 rounded border border-white/5">
                       <span className="text-xs text-white truncate flex-1" title={activity}>{activity}</span>
                       <div className="flex items-center gap-1 shrink-0">
                         <span className="text-[10px] text-purple-200/50">权重:</span>
                         <input type="number" step="0.1" min="0" value={weightConfig[activity] ?? 1} 
                           onChange={e => setWeightConfig({...weightConfig, [activity]: Number(e.target.value)})} 
-                          className="w-14 px-1 py-1 bg-slate-950 rounded text-white text-xs border border-white/10 text-center outline-none" />
+                          className="w-14 px-1 py-1 bg-slate-950 rounded text-white text-xs border border-white/10 text-center outline-none focus:border-blue-500" />
                       </div>
                     </div>
                   ))}
-                  {[...new Set(performanceRecords.filter(r => r.dimension === calcDimension && r.activityName).map(r => r.activityName))].length === 0 && (
-                    <p className="text-xs text-purple-200/40 text-center py-4">该板块当前学期暂无包含名称的活动记录</p>
+                  {[...new Set(performanceRecords.filter(r => r.dimension === calcDimension && r.activityName && r.activityName !== '期末系统加权').map(r => r.activityName))].length === 0 && (
+                    <p className="text-xs text-purple-200/40 text-center py-4">当前学期该板块暂无含具体名称的记录</p>
                   )}
                 </div>
               </div>
@@ -1366,30 +1422,29 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
               {/* 右侧：实时计算结果榜单 */}
               <div className="md:col-span-2 bg-white/5 border border-white/10 rounded-xl flex flex-col overflow-hidden">
                 <div className="p-3 bg-blue-900/20 border-b border-white/10 shrink-0">
-                  <span className="text-sm font-bold text-blue-300">📊 加权后得分解算结果大榜</span>
+                  <span className="text-sm font-bold text-blue-300">📊 加权后预览榜单 (点击应用前仅作预览)</span>
                 </div>
                 <div className="overflow-y-auto p-0 flex-1 custom-scrollbar">
                   <table className="w-full text-left text-sm">
                     <thead className="bg-slate-900/50 sticky top-0 backdrop-blur text-purple-200/60 text-xs">
-                      <tr><th className="py-2 pl-4">姓名</th><th className="py-2">实际参与次数</th><th className="py-2 text-blue-300">累计所获权重</th><th className="py-2 pr-4 font-bold text-white text-right">加权后最终得分</th></tr>
+                      <tr><th className="py-2 pl-4">干事姓名</th><th className="py-2">有效参次记录</th><th className="py-2 text-blue-300">累计获得权重</th><th className="py-2 pr-4 font-bold text-white text-right">加权后覆盖得分</th></tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
                       {volunteers.map(v => {
                         const userRecords = performanceRecords.filter(r => r.volunteer?._id === v._id && r.dimension === calcDimension);
-                        // 累加该干事参加活动的自定义权重
                         let attendedWeight = 0;
                         userRecords.forEach(r => {
-                          if (r.activityName) attendedWeight += (weightConfig[r.activityName] ?? 1);
-                          else attendedWeight += 1; // 如果某条记录没写活动名，默认权重计为1
+                          if (r.activityName === '期末系统加权') return; // 预览时剔除老旧系统干扰项
+                          if (r.activityName && weightConfig[r.activityName] !== undefined) attendedWeight += Number(weightConfig[r.activityName]);
+                          else if (r.score > 0) attendedWeight += 1;
                         });
-                        // 严格套用公式: 满分 * (获得的总权重) / 设定的总次数(总权重基准)
                         const maxScore = PERF_DIMENSIONS[calcDimension]?.max || 100;
                         const finalScore = (maxScore * attendedWeight) / (totalActivitiesCount || 1);
-                        return { user: v, count: userRecords.length, weight: attendedWeight, score: finalScore };
+                        return { user: v, count: userRecords.filter(r => r.score > 0 && r.activityName !== '期末系统加权').length, weight: attendedWeight, score: finalScore };
                       }).sort((a, b) => b.score - a.score).map((data, idx) => (
                         <tr key={idx} className="hover:bg-white/5">
                           <td className="py-3 pl-4 font-medium text-white">{data.user.name}</td>
-                          <td className="py-3 text-purple-200/60">{data.count} 次</td>
+                          <td className="py-3 text-purple-200/60">{data.count} 条记录</td>
                           <td className="py-3 font-mono text-blue-300">{data.weight.toFixed(1)}</td>
                           <td className="py-3 pr-4 text-right text-lg font-bold text-green-400">{data.score.toFixed(2)}</td>
                         </tr>

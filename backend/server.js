@@ -1105,17 +1105,18 @@ app.post('/api/admin/system/semester', authenticate, adminOnly, async (req, res)
   } catch (error) { res.status(500).json({ success: false }); }
 });
 
-// 1. [超管] 批量录入绩效记录 (支持历史学期补录)
+// 1. [超管] 批量录入绩效记录 (修复Bug：支持跨学期补录)
 app.post('/api/admin/performance', authenticate, adminOnly, async (req, res) => {
   if (req.user.role !== 'superadmin') return res.status(403).json({ success: false, message: '仅负责人可用' });
   try {
-    // [修复] 接收 targetSemester 参数
+    // [修复] 接收前端传来的 targetSemester
     const { volunteerIds, dimension, score, reason, occurrenceDate, activityName, targetSemester } = req.body;
     if (!volunteerIds || volunteerIds.length === 0) return res.status(400).json({ success: false, message: '请选择人员' });
     
     const config = await SystemConfig.findOne({ key: 'currentSemester' });
     const currentSemester = config ? config.value : '2025-2026学年 第二学期';
-    // [修复] 如果有明确的目标学期(补录)，则优先使用
+    
+    // [修复] 补录时优先使用指定的学期，否则默认使用当前学期
     const finalSemester = targetSemester || currentSemester;
 
     const records = volunteerIds.map(vid => ({
@@ -1151,7 +1152,7 @@ app.get('/api/admin/performance/my', authenticate, adminOnly, async (req, res) =
     res.json({ success: true, records });
   } catch (error) { res.status(500).json({ success: false }); }
 });
-// 4. [新增] [超管] 撤回/删除一条绩效记录
+// 4. [新增] [超管] 撤回/删除任意一条绩效记录
 app.delete('/api/admin/performance/:id', authenticate, adminOnly, async (req, res) => {
   if (req.user.role !== 'superadmin') return res.status(403).json({ success: false, message: '仅负责人可用' });
   try {
