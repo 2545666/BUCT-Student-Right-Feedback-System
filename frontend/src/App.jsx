@@ -1042,26 +1042,29 @@ const FeedbackList = ({ feedbacks, categories, onReply, onRecall }) => { // [新
               setReplyText(''); // 切换面板时清空输入框
             }}
           >
-            <div className="p-4 cursor-pointer">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
-                    <span className="text-xl">{catInfo.icon}</span>
+           <div className="p-4 cursor-pointer">
+              {/* 修复移动端列表挤压：增加 min-w-0 和 shrink-0，小屏幕下允许信息列自动折行 */}
+              <div className="flex items-start justify-between gap-2 md:gap-4">
+                <div className="flex items-start gap-3 md:gap-4 flex-1 min-w-0">
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+                    <span className="text-lg md:text-xl">{catInfo.icon}</span>
                   </div>
-                  <div>
-                    <h4 className="text-white font-medium">{feedback.title}</h4>
-                    <div className="flex items-center gap-3 mt-1">
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-white font-medium truncate max-w-full mb-1">{feedback.title}</h4>
+                    <div className="flex flex-wrap items-center gap-2 md:gap-3">
                       {/* 显示一级分类与二级分类 */}
-                      <span className="text-xs text-purple-200/60">
+                      <span className="shrink-0 text-[10px] md:text-xs text-purple-200/60">
                         {catInfo.label} {feedback.subCategory ? ` > ${feedback.subCategory}` : ''}
                       </span>
-                      <span className="text-xs text-purple-200/40">
+                      <span className="shrink-0 text-[10px] md:text-xs text-purple-200/40">
                         {new Date(feedback.createdAt).toLocaleDateString('zh-CN')}
                       </span>
                     </div>
                   </div>
                 </div>
-                <StatusBadge status={feedback.status} />
+                <div className="shrink-0 mt-0.5">
+                  <StatusBadge status={feedback.status} />
+                </div>
               </div>
 
               {isExpanded && (
