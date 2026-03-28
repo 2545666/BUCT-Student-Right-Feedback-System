@@ -58,7 +58,7 @@ export const AttachmentViewer = ({ attachments }) => {
   );
 };
 
-// [修改] 全新纯加分制维度配置字典
+// ===================== 绩效维度配置 =====================
 const PERF_DIMENSIONS = {
   attendance: { label: '考勤积分', max: 20, color: 'purple' },
   activity: { label: '活动贡献', max: 35, color: 'blue' },
@@ -68,7 +68,7 @@ const PERF_DIMENSIONS = {
   bonus: { label: '特别加分', max: '附加', color: 'red' }
 };
 
-// [修改] 纯加分制绩效考核制度折叠面板组件
+// ===================== 考核细则面板 =====================
 const PerformanceRulesAccordion = () => (
   <div className="mb-6 p-1 rounded-2xl bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-500/30">
     <details className="group">
@@ -91,18 +91,18 @@ const PerformanceRulesAccordion = () => (
           </tbody>
         </table>
       </div>
-     </div> {/* [修复] 补上缺失的 </div> 闭合标签 */}
+     </div>
     </details>
   </div>
 );
-// ===================== 绩效多边形雷达图组件 (原生 SVG 绘制) =====================
+
+// ===================== 绩效多边形雷达图组件 =====================
 const PerformanceRadar = ({ scores, dimensions }) => {
   const keys = ['attendance', 'activity', 'feedback', 'copywriting', 'others'];
-  const size = 220; // 画布大小
+  const size = 220; 
   const center = size / 2;
-  const radius = size * 0.35; // 半径留出空间给文字标签
+  const radius = size * 0.35; 
 
-  // 计算数据多边形的坐标点
   const points = keys.map((key, i) => {
     const angle = (Math.PI * 2 * i) / keys.length - Math.PI / 2;
     const max = dimensions[key].max;
@@ -111,7 +111,6 @@ const PerformanceRadar = ({ scores, dimensions }) => {
     return `${center + radius * ratio * Math.cos(angle)},${center + radius * ratio * Math.sin(angle)}`;
   }).join(' ');
 
-  // 计算背景雷达网格的坐标点
   const gridLevels = [0.2, 0.4, 0.6, 0.8, 1];
   const grids = gridLevels.map(level => {
     return keys.map((_, i) => {
@@ -123,23 +122,19 @@ const PerformanceRadar = ({ scores, dimensions }) => {
   return (
     <div className="flex justify-center items-center py-2">
       <svg width={size} height={size} className="overflow-visible drop-shadow-xl">
-        {/* 1. 绘制雷达底网 */}
         {grids.map((pts, i) => <polygon key={i} points={pts} fill={i % 2 === 0 ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.05)"} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />)}
-        {/* 2. 绘制五维辐射轴线 */}
         {keys.map((_, i) => {
           const angle = (Math.PI * 2 * i) / keys.length - Math.PI / 2;
-          return <line key={i} x1={center} y1={center} x2={center + radius * Math.cos(angle)} y2={center + radius * Math.sin(angle)} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+          return <line key={`line-${i}`} x1={center} y1={center} x2={center + radius * Math.cos(angle)} y2={center + radius * Math.sin(angle)} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
         })}
-        {/* 3. 绘制学生实际得分多边形区域 */}
         <polygon points={points} fill="rgba(168, 85, 247, 0.4)" stroke="#c084fc" strokeWidth="2" className="drop-shadow-[0_0_12px_rgba(168,85,247,0.8)] transition-all duration-700 ease-in-out" />
-        {/* 4. 绘制数据节点与维度标签 */}
         {keys.map((key, i) => {
           const angle = (Math.PI * 2 * i) / keys.length - Math.PI / 2;
           const max = dimensions[key].max;
           const ratio = Math.min(1, Math.max(0, (scores[key] || 0) / max));
           const px = center + radius * ratio * Math.cos(angle);
           const py = center + radius * ratio * Math.sin(angle);
-          const lx = center + (radius + 24) * Math.cos(angle); // 标签偏移量
+          const lx = center + (radius + 24) * Math.cos(angle); 
           const ly = center + (radius + 15) * Math.sin(angle);
           return (
             <g key={key}>
@@ -154,6 +149,7 @@ const PerformanceRadar = ({ scores, dimensions }) => {
     </div>
   );
 };
+
 // ===================== 账号管理子组件 =====================
 const AccountManagement = ({ token, user: currentUser }) => {
   const [users, setUsers] = useState([]);
@@ -166,7 +162,7 @@ const AccountManagement = ({ token, user: currentUser }) => {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
-      if (data.success) setUsers(data.users);
+      if (data.success) setUsers(data.users || []);
     } catch (err) { alert('获取用户列表失败'); }
   }, [token]);
 
@@ -222,7 +218,7 @@ const AccountManagement = ({ token, user: currentUser }) => {
   };
 
  const handleResetPassword = async (studentId) => {
-    const newPwd = window.prompt(`请输入学号 ${studentId} 的新密码(至少6位)：`, '123456'); // [修复] 加上 window.
+    const newPwd = window.prompt(`请输入学号 ${studentId} 的新密码(至少6位)：`, '123456'); 
     if (!newPwd || newPwd.length < 6) return alert('密码无效或取消操作');
     try {
       const res = await fetch(`${API_BASE}/admin/users/${studentId}/reset-password`, {
@@ -241,7 +237,7 @@ const AccountManagement = ({ token, user: currentUser }) => {
       });
       const data = await res.json();
       if (data.success) {
-        setDetailsModal({ isOpen: true, type: 'feedback', title: `${userName} 提交的问题 (含匿名)`, data: data.feedbacks });
+        setDetailsModal({ isOpen: true, type: 'feedback', title: `${userName} 提交的问题 (含匿名)`, data: data.feedbacks || [] });
       }
     } catch (err) { alert('获取记录失败'); }
   };
@@ -253,7 +249,7 @@ const AccountManagement = ({ token, user: currentUser }) => {
       });
       const data = await res.json();
       if (data.success) {
-        setDetailsModal({ isOpen: true, type: 'log', title: `${userName} 的处理操作日志`, data: data.logs });
+        setDetailsModal({ isOpen: true, type: 'log', title: `${userName} 的处理操作日志`, data: data.logs || [] });
       }
     } catch (err) { alert('获取日志失败'); }
   };
@@ -336,7 +332,7 @@ const AccountManagement = ({ token, user: currentUser }) => {
             <button onClick={() => setDetailsModal({ isOpen: false, type: '', data: [], title: '' })} className="absolute top-4 right-4 text-white/50 hover:text-white text-xl z-10">✕</button>
             <h3 className="text-xl font-bold text-white mb-4 shrink-0 pr-8">{detailsModal.title}</h3>
             <div className="space-y-3 overflow-y-auto flex-1 pr-2 custom-scrollbar">
-              {detailsModal.data.length === 0 ? (
+              {(!detailsModal.data || detailsModal.data.length === 0) ? (
                 <p className="text-purple-200/50 py-4 text-center">暂无记录</p>
               ) : (
                 detailsModal.data.map((item, index) => (
@@ -357,7 +353,6 @@ const AccountManagement = ({ token, user: currentUser }) => {
                             <span className="text-blue-300 px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded text-xs">
                               {item.action === 'update_status' ? '处理了问题' : (item.action === 'create' ? '提交了问题' : item.action)}
                             </span>
-                            {/* 显示具体将状态改为了什么 */}
                             {item.details?.status && (
                               <span className="text-purple-300 text-xs font-bold">
                                 将状态变更为: {statusConfig[item.details.status]?.label || item.details.status}
@@ -367,13 +362,11 @@ const AccountManagement = ({ token, user: currentUser }) => {
                           <span className="text-xs text-purple-200/50 shrink-0">{new Date(item.createdAt).toLocaleString('zh-CN')}</span>
                         </div>
                         
-                        {/* 渲染关联的问题摘要与流转记录 */}
                         {item.feedbackInfo ? (
                           <div className="mt-2 bg-slate-950/50 rounded-lg p-3 border border-white/5">
                             <div className="text-sm text-white font-medium mb-1">处理目标：{item.feedbackInfo.title}</div>
                             <p className="text-xs text-purple-200/60 mb-3 line-clamp-2">问题描述：{item.feedbackInfo.content}</p>
                             
-                            {/* 利用 details 标签实现原生的点击折叠展开，不污染外部 state */}
                             <details className="group cursor-pointer">
                               <summary className="text-xs text-purple-400 hover:text-purple-300 outline-none select-none font-medium pb-1 transition-colors">
                                 ▶ 点击查看完整对话流转记录 ({item.feedbackInfo.responses?.length || 0} 条互动)
@@ -402,7 +395,6 @@ const AccountManagement = ({ token, user: currentUser }) => {
                             </details>
                           </div>
                         ) : (
-                          // 如果不是反馈类日志或反馈已被彻底删除，退级显示基础日志
                           <div className="mt-2 text-xs opacity-70 bg-black/20 p-2 rounded break-all font-mono">
                             {JSON.stringify(item.details)}
                           </div>
@@ -422,7 +414,6 @@ const AccountManagement = ({ token, user: currentUser }) => {
 
 // ===================== 主页面: AdminDashboard =====================
 export default function AdminDashboard({ user, token, onLogout, onRefreshUser }) {
-  // 恢复丢失的所有状态变量
   const [feedbacks, setFeedbacks] = useState([]);
   const [stats, setStats] = useState(null);
   const [selectedFeedback, setSelectedFeedback] = useState(null);
@@ -441,25 +432,22 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
   const [pwdData, setPwdData] = useState({ current: '', new: '' });
   const [profileData, setProfileData] = useState({ name: '', studentId: '', email: '', phone: '' });
 
-// [新增] 绩效模块与学期专属状态
+  // 绩效与学期专属状态
   const [showPerformanceManagement, setShowPerformanceManagement] = useState(false);
   const [performanceRecords, setPerformanceRecords] = useState([]);
-  // [修改] 在表单状态中增加 targetSemester 字段
   const [perfForm, setPerfForm] = useState({ volunteerIds: [], dimension: 'attendance', score: '', reason: '', occurrenceDate: '', activityName: '', targetSemester: '' });
   const [volunteers, setVolunteers] = useState([]);
-  
-  // -- 新增学期控制状态 --
   const [currentSemester, setCurrentSemester] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('');
   const [availableSemesters, setAvailableSemesters] = useState([]);
 
-  // -- [新增] 加权核算器专属状态 --
+  // 加权核算器专属状态
   const [showWeightCalc, setShowWeightCalc] = useState(false);
   const [calcDimension, setCalcDimension] = useState('activity');
-  const [totalActivitiesCount, setTotalActivitiesCount] = useState(10); // 默认该板块活动总数
-  const [weightConfig, setWeightConfig] = useState({}); // 存储 { '活动名称': 权重 }
+  const [totalActivitiesCount, setTotalActivitiesCount] = useState(10); 
+  const [weightConfig, setWeightConfig] = useState({}); 
 
-// [新增] 撤回绩效记录方法
+  // 撤回绩效记录
   const handleDeleteRecord = async (recordId) => {
     if (!window.confirm('警告：确定要彻底撤回这条赋分记录吗？撤回后该人员本学期的总分将自动重算！')) return;
     try {
@@ -472,7 +460,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
     } catch (err) { alert('撤回失败'); }
   };
 
-  // [修复致命崩溃] 补充丢失的期末加权执行函数
+  // 应用加权计算
   const handleApplyWeighting = async () => {
     if (!window.confirm('确定应用加权吗？系统将自动校准该板块得分，并在得分处点亮“已加权”绿标。')) return;
 
@@ -483,20 +471,19 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
         let existingWeightRecordId = null;
 
         userRecords.forEach(r => {
-    if (r.activityName === '期末系统加权') {
-        existingWeightRecordId = r._id; return;
-    }
-    // 赋予空名称记录一个虚拟主键，确保计分严谨性
-    const nameKey = r.activityName || '未命名/常规记录';
-    if (r.score > 0) {
-        if (weightConfig[nameKey] !== undefined) {
-            attendedWeight += Number(weightConfig[nameKey]);
-        } else {
-            attendedWeight += 1;
-        }
-    }
-    currentScore += r.score;
-});
+            if (r.activityName === '期末系统加权') {
+                existingWeightRecordId = r._id; return;
+            }
+            const nameKey = r.activityName || '未命名/常规记录';
+            if (r.score > 0) {
+                if (weightConfig[nameKey] !== undefined) {
+                    attendedWeight += Number(weightConfig[nameKey]);
+                } else {
+                    attendedWeight += 1;
+                }
+            }
+            currentScore += r.score;
+        });
         
         const maxScore = PERF_DIMENSIONS[calcDimension]?.max || 100;
         const finalScore = (maxScore * attendedWeight) / (totalActivitiesCount || 1);
@@ -522,7 +509,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
     fetchPerformanceAndUsers(selectedSemester);
   };
 
-  // [修改] 拉取绩效与学期配置
+  // [修改修复] 彻底解决由于多次 .json() 读取流或 undefined 引起的崩溃隐患
   const fetchPerformanceAndUsers = useCallback(async (targetSemester = '') => {
     try {
       const sysRes = await fetch(`${API_BASE}/admin/system/config`, { headers: { 'Authorization': `Bearer ${token}` } });
@@ -532,7 +519,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
       
       if (sysData.success) {
         setCurrentSemester(sysData.currentSemester);
-        setAvailableSemesters(sysData.semesters);
+        setAvailableSemesters(sysData.semesters || []);
         if (!querySemester) {
             querySemester = sysData.currentSemester;
             setSelectedSemester(sysData.currentSemester);
@@ -540,24 +527,24 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
         setPerfForm(prev => ({ ...prev, targetSemester: querySemester }));
       }
 
-      const endpoint = user.role === 'superadmin' ? '/admin/performance' : '/admin/performance/my';
+      const endpoint = user?.role === 'superadmin' ? '/admin/performance' : '/admin/performance/my';
       const res = await fetch(`${API_BASE}${endpoint}?semester=${encodeURIComponent(querySemester)}`, { headers: { 'Authorization': `Bearer ${token}` } });
       const data = await res.json();
-      if (data.success) setPerformanceRecords(data.records);
+      if (data.success) setPerformanceRecords(data.records || []);
 
-      if (user.role === 'superadmin') {
+      if (user?.role === 'superadmin') {
         const uRes = await fetch(`${API_BASE}/admin/users`, { headers: { 'Authorization': `Bearer ${token}` } });
-        if ((await uRes.clone().json()).success) setVolunteers((await uRes.json()).users.filter(u => u.role === 'admin'));
+        const uData = await uRes.json(); // 安全的单次读取
+        if (uData.success) setVolunteers((uData.users || []).filter(u => u.role === 'admin'));
       }
-    } catch (err) {}
-  }, [token, user.role, selectedSemester]);
+    } catch (err) { console.error('获取绩效信息失败:', err); }
+  }, [token, user?.role, selectedSemester]);
 
-  // [修复致命崩溃] 算分引擎必须返回 weightedFlags
   const calculateScore = useCallback((records) => {
     let scores = { attendance: 0, activity: 0, feedback: 0, copywriting: 0, others: 0, bonus: 0 };
     let weightedFlags = { attendance: false, activity: false, feedback: false, copywriting: false, others: false, bonus: false };
     
-    records.forEach(r => { 
+    (records || []).forEach(r => { 
         if (scores[r.dimension] !== undefined) {
             scores[r.dimension] += r.score; 
             if (r.activityName === '期末系统加权') weightedFlags[r.dimension] = true;
@@ -580,20 +567,18 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
     try {
       const res = await fetch(`${API_BASE}/admin/performance`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        // [修复] 强制带上 targetSemester 解决跨学期补录Bug
         body: JSON.stringify({ ...perfForm, targetSemester: selectedSemester || currentSemester })
       });
       if ((await res.json()).success) {
         alert('绩效录入成功');
-        setPerfForm({ volunteerIds: [], dimension: 'attendance', score: '', reason: '', occurrenceDate: '', activityName: '', targetSemester: perfForm.targetSemester });
+        setPerfForm({ volunteerIds: [], dimension: 'attendance', score: '', reason: '', occurrenceDate: '', activityName: '', targetSemester: selectedSemester || currentSemester });
         fetchPerformanceAndUsers(selectedSemester);
       }
     } catch (err) { alert('提交失败'); }
   };
 
-  // [新增] 超管归档学期功能
- const handleArchiveSemester = async () => {
-    const newSemester = window.prompt(`当前运行学期为：${currentSemester}\n请输入新学期的名称以进行归档重置`); // [修复] 加上 window.
+  const handleArchiveSemester = async () => {
+    const newSemester = window.prompt(`当前运行学期为：${currentSemester}\n请输入新学期的名称以进行归档重置`); 
     if (!newSemester || newSemester === currentSemester) return;
     if (!window.confirm(`警告：确认开启新学期 [${newSemester}] 吗？\n开启后全员当期积分将重新从 0 累计，旧学期数据将被永久归档！`)) return;
     
@@ -609,7 +594,6 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
     } catch(err) { alert('操作失败'); }
   };
 
-  // [新增] 重命名当前选中的学期
   const handleRenameSemester = async () => {
     if (!selectedSemester) return alert('请先选择一个需要修改的学期');
     const newName = window.prompt(`修改学期名称\n\n原名称：${selectedSemester}\n请输入新名称：`, selectedSemester);
@@ -624,22 +608,21 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
       const data = await res.json();
       if (data.success) {
         alert('学期名称修改成功！');
-        fetchPerformanceAndUsers(newName); // 修改成功后自动切换视图至新名称
+        fetchPerformanceAndUsers(newName);
       } else {
         alert(data.message || '操作失败');
       }
     } catch (err) { alert('网络错误'); }
   };
-  // [新增] 消息通知状态
+
   const [notifications, setNotifications] = useState([]);
   const [showNotifs, setShowNotifs] = useState(false);
 
-  // [新增] 获取与清空通知方法
   const fetchNotifications = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE}/notifications`, { headers: { 'Authorization': `Bearer ${token}` } });
       const data = await res.json();
-      if (data.success) setNotifications(data.notifications);
+      if (data.success) setNotifications(data.notifications || []);
     } catch (err) {}
   }, [token]);
 
@@ -651,7 +634,6 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
     } catch (err) {}
   };
 
-  // ------------------ API 请求函数 ------------------
   const handleChangePassword = async (e) => {
     e.preventDefault();
     if (pwdData.new.length < 6) return alert('新密码至少需要6位');
@@ -701,9 +683,8 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
     } catch (err) { console.error('获取统计数据失败:', err); }
   }, [token]);
 
-  // [修改] 增加 showLoading 参数，默认为 true
   const fetchFeedbacks = useCallback(async (showLoading = true) => {
-    if (showLoading) setLoading(true); // 只有显式要求时才展示全局 Loading
+    if (showLoading) setLoading(true); 
     try {
       const params = new URLSearchParams();
       if (filters.status) params.append('status', filters.status);
@@ -717,26 +698,25 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
-      if (data.success) setFeedbacks(data.feedbacks); // 直接原地替换数据，不会丢失滚动条
+      if (data.success) setFeedbacks(data.feedbacks || []); 
     } catch (err) { console.error('获取反馈失败:', err); }
     if (showLoading) setLoading(false);
   }, [token, filters, searchQuery, dateRange]);
 
- // 补回丢失的生命周期钩子
   useEffect(() => {
     fetchStats();
     fetchFeedbacks(true); 
     fetchNotifications(); 
-    fetchPerformanceAndUsers(); // [修复] 增加绩效数据的初次拉取
+    fetchPerformanceAndUsers(); 
     const interval = setInterval(() => {
       fetchStats();
       fetchFeedbacks(false); 
       fetchNotifications(); 
-      fetchPerformanceAndUsers(); // [修复] 加入心跳轮询
+      fetchPerformanceAndUsers(); 
     }, 15000);
     return () => clearInterval(interval);
-  }, [fetchStats, fetchFeedbacks, fetchNotifications, fetchPerformanceAndUsers]); // [修复] 补充依赖
-  // [新增] 管理端撤回回复方法
+  }, [fetchStats, fetchFeedbacks, fetchNotifications, fetchPerformanceAndUsers]);
+
   const handleRecallMsg = async (feedbackId, replyId) => {
     if (!window.confirm('确定要撤回这条回复吗？（撤回后学生和普通管理员将无法查看具体内容）')) return;
     try {
@@ -746,12 +726,13 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
       });
       const data = await res.json();
       if (data.success) {
-        fetchFeedbacks(false); // 成功后静默刷新列表
+        fetchFeedbacks(false); 
       } else {
         alert(data.message || '撤回失败');
       }
     } catch (err) { alert('网络错误'); }
   };
+
   const updateStatus = async (feedbackId, status) => {
     try {
       let uploadedFiles = [];
@@ -778,7 +759,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
         setResponseText('');
         setSelectedReplyFiles([]);
         setSelectedFeedback(null);
-        fetchFeedbacks(false); // [修改] 操作成功后执行静默刷新，不打断用户当前的视图
+        fetchFeedbacks(false); 
         fetchStats();
       } else {
         alert(data.message || '更新失败');
@@ -825,7 +806,6 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
           </div>
           
         <div className="flex items-center gap-4">
-            {/* [新增] 消息通知信箱 */}
             <div className="relative">
               <button onClick={() => setShowNotifs(!showNotifs)} className="p-2 text-xl hover:bg-white/10 rounded-full transition-all relative">
                 📬
@@ -854,7 +834,6 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
             </div>
 
             <div className="text-right hidden sm:block">
-         
              <div className="text-sm font-bold text-white">{user?.name}</div>
               <div className="text-xs text-purple-200/60 font-mono mt-0.5">{user?.studentId}</div>
             </div>
@@ -887,11 +866,10 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
 
       {/* 主体内容区 */}
       <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* 全局业务导航条 (区分超管和子管的可见项) */}
-        <div className="mb-8 flex flex-wrap gap-2 p-1 bg-white/5 rounded-xl w-fit">
+        <div className="mb-8 flex flex-nowrap gap-1 md:gap-2 p-1 bg-white/5 rounded-xl w-full md:w-fit overflow-x-auto custom-scrollbar">
           <button
             onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(false); }}
-            className={`px-6 py-2 rounded-lg flex items-center gap-2 transition-all ${!showAccountManagement && !showPerformanceManagement ? 'bg-purple-600 text-white' : 'text-purple-200/60 hover:text-white'}`}
+            className={`px-3 md:px-6 py-2 rounded-lg flex items-center gap-1 md:gap-2 transition-all text-xs md:text-sm whitespace-nowrap shrink-0 ${!showAccountManagement && !showPerformanceManagement ? 'bg-purple-600 text-white' : 'text-purple-200/60 hover:text-white'}`}
           >
             <span>📋</span> 业务反馈处理
           </button>
@@ -899,7 +877,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
           {user?.role === 'superadmin' && (
             <button
               onClick={() => { setShowAccountManagement(true); setShowPerformanceManagement(false); }}
-              className={`px-6 py-2 rounded-lg flex items-center gap-2 transition-all ${showAccountManagement ? 'bg-purple-600 text-white' : 'text-purple-200/60 hover:text-white'}`}
+              className={`px-3 md:px-6 py-2 rounded-lg flex items-center gap-1 md:gap-2 transition-all text-xs md:text-sm whitespace-nowrap shrink-0 ${showAccountManagement ? 'bg-purple-600 text-white' : 'text-purple-200/60 hover:text-white'}`}
             >
               <span>👥</span> 账号管理面板
             </button>
@@ -907,18 +885,16 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
 
           <button
             onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(true); }}
-            className={`px-6 py-2 rounded-lg flex items-center gap-2 transition-all ${showPerformanceManagement ? 'bg-purple-600 text-white' : 'text-purple-200/60 hover:text-white'}`}
+            className={`px-3 md:px-6 py-2 rounded-lg flex items-center gap-1 md:gap-2 transition-all text-xs md:text-sm whitespace-nowrap shrink-0 ${showPerformanceManagement ? 'bg-purple-600 text-white' : 'text-purple-200/60 hover:text-white'}`}
           >
             <span>📊</span> {user?.role === 'superadmin' ? '部门绩效管理' : '我的绩效档案'}
           </button>
         </div>
 
-       {/* 动态渲染对应的主视图 */}
         {showPerformanceManagement ? (
           <div className="animate-fadeIn space-y-4 md:space-y-6">
             <PerformanceRulesAccordion />
             
-          {/* [修改] 顶层学期管理工作台 (融合学期切换、重命名、归档控制) */}
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between bg-slate-900/80 p-4 rounded-2xl border border-white/10 mb-4 md:mb-6 shadow-lg gap-4">
                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 w-full md:w-auto">
                  <span className="text-white font-bold shrink-0">当前管理学期：</span>
@@ -930,7 +906,6 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                    >
                      {availableSemesters.map(s => <option key={s} value={s}>{s} {s === currentSemester ? '(当前运行中)' : '(历史归档)'}</option>)}
                    </select>
-                   {/* [新增] 修改当前选定学期名称的按钮 */}
                    {user?.role === 'superadmin' && (
                      <button onClick={handleRenameSemester} title="重命名此学期" className="p-2 shrink-0 bg-white/5 hover:bg-white/10 rounded-lg text-purple-300 hover:text-white transition-colors border border-white/5">
                        ✏️ 
@@ -938,22 +913,25 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                    )}
                  </div>
                </div>
-             {user?.role === 'superadmin' && (
-                 <div className="flex gap-2 w-full md:w-auto">
-                   <button onClick={() => setShowWeightCalc(true)} className="flex-1 md:flex-none px-4 py-2 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-500/30 rounded-lg transition-all text-sm font-medium shrink-0">
-                     🧮 期末加权核算
-                   </button>
-                   <button onClick={handleArchiveSemester} className="flex-1 md:flex-none px-4 py-2 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white border border-red-500/30 rounded-lg transition-all text-sm font-medium shrink-0">
-                     📦 归档并开启新学期
-                   </button>
-                 </div>
+               {user?.role === 'superadmin' && (
+                 <button onClick={handleArchiveSemester} className="w-full md:w-auto px-4 py-2 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white border border-red-500/30 rounded-lg transition-all text-sm font-medium shrink-0">
+                   📦 归档并开启新学期
+                 </button>
                )}
             </div>
+            
             {user?.role === 'superadmin' ? (
               <div className="space-y-4 md:space-y-6">
-                {/* [修改] 赋分核算汇总排行榜 (减小手机端内边距 p-4 md:p-6) */}
                 <div className="p-4 md:p-6 bg-gradient-to-br from-slate-900 to-purple-950/50 border border-purple-500/30 rounded-2xl">
-                  <h3 className="text-base md:text-lg font-bold text-white mb-4 flex items-center gap-2"><span>🏆</span> 部门全员期末核算总榜单</h3>
+                  {/* [修复] 在这里加回了呼出“加权核算器”的按钮！ */}
+                  <h3 className="text-base md:text-lg font-bold text-white mb-4 flex items-center justify-between">
+                    <div className="flex items-center gap-2"><span>🏆</span> 部门全员期末核算总榜单</div>
+                    {user?.role === 'superadmin' && (
+                      <button onClick={() => setShowWeightCalc(true)} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-lg shadow-md transition-colors flex items-center gap-1">
+                        <span>🧮</span> 期末动态加权结算
+                      </button>
+                    )}
+                  </h3>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm whitespace-nowrap">
                       <thead className="border-b border-white/10 text-purple-200/60">
@@ -983,7 +961,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                             <td className="py-3 pr-4 text-red-400">{s.bonus > 0 ? `+${s.bonus}` : '-'}</td>
                             <td className="py-3 text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 relative pr-6">
                               {s.total}
-                              {Object.values(s.weightedFlags).some(v => v) && <span className="absolute top-1 ml-1 text-[9px] text-green-400 bg-green-500/10 border border-green-500/30 px-1 py-0.5 rounded shadow-sm whitespace-nowrap">已加权</span>}
+                              {Object.values(s.weightedFlags).some(val => val) && <span className="absolute top-1 ml-1 text-[9px] text-green-400 bg-green-500/10 border border-green-500/30 px-1 py-0.5 rounded shadow-sm whitespace-nowrap">已加权</span>}
                             </td>
                           </tr>
                         ))}
@@ -992,13 +970,11 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                   </div>
                 </div>
 
-                {/* 快捷录入表单 + 全局流水账 */}
                 <div className="grid md:grid-cols-3 gap-4 md:gap-6">
                   <div className="md:col-span-1 p-4 md:p-6 bg-white/5 border border-white/10 rounded-2xl h-fit">
                     <h3 className="text-base md:text-lg font-bold text-white mb-4">✍️ 快捷赋分录入</h3>
                     <form onSubmit={handlePerfSubmit} className="space-y-4">
                       
-                      {/* [新增] 所属学期下拉框与补录高亮预警 */}
                       <div>
                         <label className="text-xs text-purple-200/60 mb-1 block">录入目标学期 (默认跟随当前视图)</label>
                         <select 
@@ -1027,7 +1003,6 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                         </select>
                       </div>
                       
-                      {/* [修复] 将 attendance(考勤) 加入显示条件，否则考勤无法填写名称，也就无法参与加权 */}
                       {(perfForm.dimension === 'attendance' || perfForm.dimension === 'activity' || perfForm.dimension === 'copywriting' || perfForm.dimension === 'bonus') && (
                         <div>
                           <label className="text-xs text-purple-200/60 mb-1 block">具体项目名称 (填写名称后方可参与期末加权)</label>
@@ -1064,32 +1039,25 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                         </div>
                       </div>
                       
-                      {/* [修复] 删除了多余的重复容器块，直接渲染按钮 */}
                       <button type="submit" className="w-full py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-medium shadow-lg">确认发放积分</button>
                     </form>
                   </div>
 
                   <div className="md:col-span-2 p-4 md:p-6 bg-white/5 border border-white/10 rounded-2xl h-fit">
-                    {/* [修复] 移除了 h3 标签末尾多余的 > 符号 */}
                     <h3 className="text-base md:text-lg font-bold text-white mb-4">🗂 部门打分流水账库</h3>
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-sm whitespace-nowrap">
                         <thead className="border-b border-white/10 text-purple-200/60">
-                          {/* [新增] 操作列头 */}
-                          <tr><th className="pb-3 pr-4">日期</th><th className="pb-3 pr-4">干事</th><th className="pb-3 pr-4">分值</th><th className="pb-3 pr-4">维度</th><th className="pb-3 pr-4">事由明细</th><th className="pb-3">操作</th></tr>
+                          <tr><th className="pb-3 pr-4">日期</th><th className="pb-3 pr-4">志愿者</th><th className="pb-3 pr-4">分值</th><th className="pb-3 pr-4">维度</th><th className="pb-3">事由明细</th></tr>
                         </thead>
                         <tbody className="divide-y divide-white/5 text-purple-100">
                           {performanceRecords.map(r => (
-                            <tr key={r._id} className="hover:bg-white/5 transition-colors group/row">
+                            <tr key={r._id} className="hover:bg-white/5 transition-colors">
                               <td className="py-3 pr-4 text-xs">{new Date(r.occurrenceDate).toLocaleDateString('zh-CN')}</td>
                               <td className="py-3 pr-4">{r.volunteer?.name}</td>
                               <td className={`py-3 pr-4 font-bold text-green-400`}>+{r.score}</td>
                               <td className="py-3 pr-4"><span className={`px-2 py-0.5 rounded text-[10px] bg-${PERF_DIMENSIONS[r.dimension]?.color || 'gray'}-500/20 text-${PERF_DIMENSIONS[r.dimension]?.color || 'gray'}-300`}>{PERF_DIMENSIONS[r.dimension]?.label || '旧版归档记录'}</span></td>
-                              <td className="py-3 pr-4 text-xs truncate max-w-[200px]" title={r.reason}>{r.activityName ? `[${r.activityName}] ` : ''}{r.reason}</td>
-                              {/* [新增] 撤回按钮列 */}
-                              <td className="py-3">
-                                <button onClick={() => handleDeleteRecord(r._id)} className="text-xs px-3 py-1 bg-red-500/10 text-red-400 rounded-md border border-red-500/20 hover:bg-red-500 hover:text-white transition-all opacity-0 group-hover/row:opacity-100">撤回</button>
-                              </td>
+                              <td className="py-3 text-xs truncate max-w-[200px]" title={r.reason}>{r.activityName ? `[${r.activityName}] ` : ''}{r.reason}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -1099,7 +1067,6 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                 </div>
               </div>
             ) : (
-              /* 子管(志愿者)视图：个人表盘 + 履历时间轴 */
               <div className="grid md:grid-cols-2 gap-4 md:gap-6">
                  <div className="space-y-4 md:space-y-6">
                   <div className="p-4 md:p-6 bg-gradient-to-br from-purple-900/40 to-blue-900/40 border border-purple-500/30 rounded-2xl text-center relative overflow-hidden">
@@ -1108,7 +1075,6 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                       <p className="text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-purple-200 drop-shadow-lg mb-0">
                         {calculateScore(performanceRecords).total} <span className="text-lg md:text-xl font-normal text-white/50">/100</span>
                       </p>
-                      {/* [新增] 绿标检测，右上角醒目展示 */}
                       {Object.values(calculateScore(performanceRecords).weightedFlags).some(v => v) && (
                         <span className="absolute -top-3 -right-14 bg-green-500/20 border border-green-500/50 text-green-400 text-[10px] px-1.5 py-0.5 rounded shadow-[0_0_10px_rgba(34,197,94,0.3)] font-bold whitespace-nowrap">
                           ✓ 已加权
@@ -1116,7 +1082,6 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                       )}
                     </div>
                     
-                    {/* [新增] 在总分下方渲染动态雷达图 */}
                     <PerformanceRadar scores={calculateScore(performanceRecords)} dimensions={PERF_DIMENSIONS} />
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3 text-left border-t border-white/10 pt-4 mt-2">
@@ -1129,7 +1094,6 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                             <div className="flex justify-between text-xs mb-1.5">
                               <span className={`text-${isMax ? 'yellow' : d.color}-300 flex items-center gap-1`}>
                                 {d.label}
-                                {/* [新增] 单个板块的加权绿标 */}
                                 {calculateScore(performanceRecords).weightedFlags[k] && <span className="bg-green-500/20 text-green-400 text-[8px] px-1 rounded border border-green-500/30">加权</span>}
                               </span>
                               <span className={`font-bold ${isMax ? 'text-yellow-400' : 'text-white'}`}>{isMax ? '已满MAX' : `${s}/${d.max}`}</span>
@@ -1138,7 +1102,6 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                           </div>
                         );
                       })}
-                      {/* [修复] 这里删除了那一大段非法多余的复制逻辑代码 */}
                       <div className="col-span-1 sm:col-span-2 bg-red-900/20 p-2.5 rounded-xl border border-red-500/20 flex justify-between items-center">
                         <span className="text-xs text-red-300">🎉 特殊附加奖励</span><span className="text-lg font-bold text-red-400">+{calculateScore(performanceRecords).bonus}</span>
                       </div>
@@ -1320,24 +1283,24 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                   
                   return (
                     <div key={feedback._id} className={`p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all cursor-pointer ${selectedFeedback?._id === feedback._id ? 'border-purple-500 bg-purple-500/10' : ''}`} onClick={() => setSelectedFeedback(selectedFeedback?._id === feedback._id ? null : feedback)}>
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-start gap-4 flex-1">
-                          <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
-                            <span className="text-xl">{cat.icon}</span>
+                      <div className="flex items-start justify-between gap-2 md:gap-4">
+                        <div className="flex items-start gap-3 md:gap-4 flex-1 min-w-0">
+                          <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+                            <span className="text-lg md:text-xl">{cat.icon}</span>
                           </div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-1">
-                              <h4 className="text-white font-medium">{feedback.title}</h4>
-                              <span className={`px-2 py-0.5 rounded text-xs bg-${priority.color}-500/20 text-${priority.color}-400`}>{priority.label}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-1">
+                              <h4 className="text-white font-medium truncate max-w-full">{feedback.title}</h4>
+                              <span className={`shrink-0 px-2 py-0.5 rounded text-[10px] md:text-xs bg-${priority.color}-500/20 text-${priority.color}-400`}>{priority.label}</span>
                             </div>
-                            <div className="flex items-center gap-4 text-sm text-purple-200/60">
-                              <span>{cat.label}{feedback.subCategory ? ` > ${feedback.subCategory}` : ''}</span>
-                              <span>{feedback.isAnonymous ? '匿名用户' : feedback.user?.name}</span>
-                              <span>{new Date(feedback.createdAt).toLocaleString('zh-CN')}</span>
+                            <div className="flex flex-wrap items-center gap-2 md:gap-4 text-[10px] md:text-sm text-purple-200/60">
+                              <span className="shrink-0">{cat.label}{feedback.subCategory ? ` > ${feedback.subCategory}` : ''}</span>
+                              <span className="shrink-0">{feedback.isAnonymous ? '匿名用户' : feedback.user?.name}</span>
+                              <span className="shrink-0">{new Date(feedback.createdAt).toLocaleString('zh-CN')}</span>
                             </div>
                           </div>
                         </div>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium bg-${status.color}-500/20 text-${status.color}-400`}>{status.label}</span>
+                        <span className={`shrink-0 px-2 py-1 md:px-3 md:py-1 rounded-full text-[10px] md:text-xs font-medium bg-${status.color}-500/20 text-${status.color}-400`}>{status.label}</span>
                       </div>
                       
                       {selectedFeedback?._id === feedback._id && (
@@ -1347,14 +1310,12 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                           
                           {feedback.responses?.length > 0 && (
                             <div className="mb-4 space-y-3">
-              
-                <h5 className="text-sm font-medium text-white mb-2">流转与对话记录</h5>
+                              <h5 className="text-sm font-medium text-white mb-2">流转与对话记录</h5>
                               {feedback.responses.map((resp, i) => {
                                 const isStudent = resp.senderType === 'student';
                                 const isAdmin = !isStudent;
-                                const isSuperadmin = user.role === 'superadmin';
+                                const isSuperadmin = user?.role === 'superadmin';
 
-                                // [新增] 如果消息已被撤回，且当前身份不是超管 (只是子管理员)，则隐藏内容
                                 if (resp.isRecalled && !isSuperadmin) {
                                   return (
                                     <div key={i} className={`p-3 rounded-xl border opacity-50 ${isStudent ? 'bg-blue-500/10 border-blue-500/20 mr-8' : 'bg-purple-500/10 border-purple-500/20 ml-8'}`}>
@@ -1363,13 +1324,11 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                                   );
                                 }
 
-                                // 正常消息，或者超管视角下被撤回的消息 (利用条件类名实现样式变灰和红框)
                                 return (
                                  <div key={i} className={`p-3 rounded-xl border ${isStudent ? 'bg-blue-500/10 border-blue-500/20 mr-8' : 'bg-purple-500/10 border-purple-500/20 ml-8'} ${resp.isRecalled ? 'opacity-60 border-red-500/30 bg-red-900/10' : ''}`}>
                                     <div className="flex items-center justify-between mb-1.5">
                                       <span className={`text-xs font-bold ${isStudent ? 'text-blue-300' : 'text-purple-300'}`}>
                                         {isStudent ? (resp.senderName || '学生') : (resp.adminName || resp.senderName || '系统管理员')}
-                                        {/* [修改] 撤回徽标：区分是自己撤回的还是超管强制撤回的 */}
                                         {resp.isRecalled && isSuperadmin && (
                                           <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] border ${resp.recalledByRole === 'superadmin' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' : 'bg-red-500/20 text-red-400 border-red-500/30'}`}>
                                             {resp.recalledByRole === 'superadmin' ? '超管强制撤回' : '发出者已撤回'}
@@ -1378,8 +1337,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                                       </span>
                                       
                                       <div className="flex items-center gap-2">
-                                        {/* [修改] 权限限制：只有未撤回的，且是本人发出的，或者是超管，才能看到并点击撤回按钮 */}
-                                        {!resp.isRecalled && isAdmin && (resp.adminId === user.id || isSuperadmin) && (
+                                        {!resp.isRecalled && isAdmin && (resp.adminId === user?.id || isSuperadmin) && (
                                           <button onClick={(e) => { e.stopPropagation(); handleRecallMsg(feedback._id, resp._id); }} className="text-[10px] text-red-400/80 hover:text-red-400 transition-colors">
                                             撤回
                                           </button>
@@ -1393,7 +1351,6 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                                 );
                               })}
                             </div>
-         
                          )}
                           
                           <div className="space-y-3">
@@ -1428,7 +1385,8 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
           </a>
         </div>
       </div>
-      {/* ===================== [修改] 动态加权核算器弹窗 ===================== */}
+
+      {/* 动态加权核算器弹窗 */}
       {showWeightCalc && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
           <div className="w-full max-w-5xl p-6 relative bg-slate-900 border border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
@@ -1444,7 +1402,6 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
             <p className="text-xs text-purple-200/60 mb-6">公式：该板块结算分 = 该板块满分 × (已参加活动对应设定的权重之和) / 该板块内设定所有活动总次数(×1)</p>
             
             <div className="grid md:grid-cols-3 gap-6 flex-1 min-h-0">
-              {/* 左侧：参数配置面板 */}
               <div className="md:col-span-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
                 <div>
                   <label className="text-xs text-purple-200/60 mb-1 block">1. 选择需加权结算的板块</label>
@@ -1458,26 +1415,24 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                 </div>
                 
                 <div className="pt-4 border-t border-white/10">
-  <label className="text-xs text-blue-300 font-bold mb-2 block">3. 各活动名称及权重配置 (自动提取自流水)</label>
-  {/* 将空名称记录映射为统一标识，暴露出界面配置项 */}
-  {[...new Set(performanceRecords.filter(r => r.dimension === calcDimension && r.activityName !== '期末系统加权').map(r => r.activityName || '未命名/常规记录'))].map((activity, idx) => (
-    <div key={idx} className="flex items-center justify-between gap-2 mb-2 p-2 bg-white/5 rounded border border-white/5">
-      <span className="text-xs text-white truncate flex-1" title={activity}>{activity}</span>
-      <div className="flex items-center gap-1 shrink-0">
-        <span className="text-[10px] text-purple-200/50">权重:</span>
-        <input type="number" step="0.1" min="0" value={weightConfig[activity] ?? 1} 
-          onChange={e => setWeightConfig({...weightConfig, [activity]: Number(e.target.value)})} 
-          className="w-14 px-1 py-1 bg-slate-950 rounded text-white text-xs border border-white/10 text-center outline-none focus:border-blue-500" />
-      </div>
-    </div>
-  ))}
-  {[...new Set(performanceRecords.filter(r => r.dimension === calcDimension && r.activityName !== '期末系统加权').map(r => r.activityName || '未命名/常规记录'))].length === 0 && (
-    <p className="text-xs text-purple-200/40 text-center py-4">当前学期该板块暂无任何有效流水记录</p>
-  )}
-</div>
+                  <label className="text-xs text-blue-300 font-bold mb-2 block">3. 各活动名称及权重配置 (自动提取自流水)</label>
+                  {[...new Set(performanceRecords.filter(r => r.dimension === calcDimension && r.activityName !== '期末系统加权').map(r => r.activityName || '未命名/常规记录'))].map((activity, idx) => (
+                    <div key={idx} className="flex items-center justify-between gap-2 mb-2 p-2 bg-white/5 rounded border border-white/5">
+                      <span className="text-xs text-white truncate flex-1" title={activity}>{activity}</span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className="text-[10px] text-purple-200/50">权重:</span>
+                        <input type="number" step="0.1" min="0" value={weightConfig[activity] ?? 1} 
+                          onChange={e => setWeightConfig({...weightConfig, [activity]: Number(e.target.value)})} 
+                          className="w-14 px-1 py-1 bg-slate-950 rounded text-white text-xs border border-white/10 text-center outline-none focus:border-blue-500" />
+                      </div>
+                    </div>
+                  ))}
+                  {[...new Set(performanceRecords.filter(r => r.dimension === calcDimension && r.activityName !== '期末系统加权').map(r => r.activityName || '未命名/常规记录'))].length === 0 && (
+                    <p className="text-xs text-purple-200/40 text-center py-4">当前学期该板块暂无任何有效流水记录</p>
+                  )}
+                </div>
               </div>
 
-              {/* 右侧：实时计算结果榜单 */}
               <div className="md:col-span-2 bg-white/5 border border-white/10 rounded-xl flex flex-col overflow-hidden">
                 <div className="p-3 bg-blue-900/20 border-b border-white/10 shrink-0">
                   <span className="text-sm font-bold text-blue-300">📊 加权后预览榜单 (点击应用前仅作预览)</span>
@@ -1492,16 +1447,16 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                         const userRecords = performanceRecords.filter(r => r.volunteer?._id === v._id && r.dimension === calcDimension);
                         let attendedWeight = 0;
                         userRecords.forEach(r => {
-  if (r.activityName === '期末系统加权') return; 
-  const nameKey = r.activityName || '未命名/常规记录';
-  if (r.score > 0) {
-      if (weightConfig[nameKey] !== undefined) {
-          attendedWeight += Number(weightConfig[nameKey]);
-      } else {
-          attendedWeight += 1;
-      }
-  }
-});
+                          if (r.activityName === '期末系统加权') return; 
+                          const nameKey = r.activityName || '未命名/常规记录';
+                          if (r.score > 0) {
+                              if (weightConfig[nameKey] !== undefined) {
+                                  attendedWeight += Number(weightConfig[nameKey]);
+                              } else {
+                                  attendedWeight += 1;
+                              }
+                          }
+                        });
                         const maxScore = PERF_DIMENSIONS[calcDimension]?.max || 100;
                         const finalScore = (maxScore * attendedWeight) / (totalActivitiesCount || 1);
                         return { user: v, count: userRecords.filter(r => r.score > 0 && r.activityName !== '期末系统加权').length, weight: attendedWeight, score: finalScore };
@@ -1521,6 +1476,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
           </div>
         </div>
       )}
+
       {/* 全局设置弹窗 */}
       {showSettingsModal && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
