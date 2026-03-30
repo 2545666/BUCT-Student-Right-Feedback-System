@@ -2,7 +2,7 @@ import AdminDashboard from './AdminDashboard'; // [!code ++]
 import React, { useState, useEffect, useCallback } from 'react';
 import sieLogo from './assets/LOGO_1.png';
 import beian from './assets/beian.png';
-
+import collegeLogo from './assets/SIE_LOGO.png';
 // API Configuration
 // 开发环境使用完整地址，生产环境使用相对路径（通过 Nginx 代理）
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3001/api' : '/api';
@@ -308,14 +308,23 @@ const LoginPage = ({ onLogin, onRegister }) => {
     <div className="min-h-screen flex items-center justify-center p-4">
       <Background />
       
-      <Card className="w-full max-w-md p-8 relative z-10" hover={false}>
-     {/* 使用 flex 布局垂直居中，并大幅增加图片尺寸 */}
+     <Card className="w-full max-w-md p-8 relative z-10" hover={false}>
         <div className="text-center mb-8 flex flex-col items-center justify-center">
-          <img 
-            src={sieLogo} 
-            alt="系统LOGO" 
-            className="w-32 h-32 md:w-40 md:h-40 object-contain mb-2 hover:scale-105 transition-transform duration-300" 
-          />
+          {/* [方案一修改] 使用 flex-row 将两个 LOGO 横向并排居中 */}
+          <div className="flex flex-row items-center justify-center gap-6 mb-4">
+            <img 
+              src={collegeLogo} 
+              alt="学院LOGO" 
+              className="w-24 h-24 md:w-32 md:h-32 object-contain hover:scale-105 transition-transform duration-300" 
+            />
+            {/* 中间可以加一条细线分隔（可选） */}
+            <div className="h-16 w-[1px] bg-white/20 hidden md:block"></div>
+            <img 
+              src={sieLogo} 
+              alt="系统LOGO" 
+              className="w-24 h-24 md:w-32 md:h-32 object-contain hover:scale-105 transition-transform duration-300" 
+            />
+          </div>
           <h1 className="text-xl font-medium text-purple-200/80 mb-2">
               北京化工大学国际教育学院
          </h1>
@@ -617,13 +626,21 @@ const LoginPage = ({ onLogin, onRegister }) => {
       
       {/* Header */}
       <header className="relative z-50 border-b border-white/10 backdrop-blur-xl bg-slate-950/50">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">    
-          <div className="flex items-center gap-4">
-           <img 
-             src={sieLogo} 
-             alt="系统LOGO" 
-             className="w-12 h-12 object-contain" // object-contain 保证图片完整显示不被裁剪
-           />
+       <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">    
+          <div className="flex items-center gap-3 md:gap-4">
+            {/* 新增一个 flex 容器，将两个 LOGO 横向并排，间距设为 gap-2 */}
+            <div className="flex items-center gap-2 shrink-0">
+              <img 
+                src={collegeLogo} 
+                alt="学院LOGO" 
+                className="w-10 h-10 md:w-12 md:h-12 object-contain" 
+              />
+              <img 
+                src={sieLogo} 
+                alt="系统LOGO" 
+                className="w-10 h-10 md:w-12 md:h-12 object-contain" 
+              />
+            </div>
             <div>
               <h1 className="text-base md:text-2xl font-bold text-white whitespace-nowrap">
                   学生权益反馈系统

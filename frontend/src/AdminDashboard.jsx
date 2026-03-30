@@ -797,8 +797,12 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
       {/* 顶部导航 */}
       <header className="border-b border-white/10 backdrop-blur-xl bg-slate-950/50 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <img src={sieLogo} alt="系统LOGO" className="w-12 h-12 object-contain" />
+          <div className="flex items-center gap-3 md:gap-4">
+            {/* 同样新增 flex 容器将双 LOGO 并排 */}
+            <div className="flex items-center gap-2 shrink-0">
+              <img src={collegeLogo} alt="学院LOGO" className="w-10 h-10 md:w-12 md:h-12 object-contain" />
+              <img src={sieLogo} alt="系统LOGO" className="w-10 h-10 md:w-12 md:h-12 object-contain" />
+            </div>
             <div>
               <h1 className="text-base md:text-2xl font-bold text-white whitespace-nowrap">管理控制台</h1>
               <p className="text-xs text-purple-200/60">学生权益反馈系统</p>
