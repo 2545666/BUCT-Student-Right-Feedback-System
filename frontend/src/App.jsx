@@ -141,14 +141,15 @@ const FloatingShape = ({ delay, className }) => (
 );
 
 export const useTheme = () => {
-  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
+  // 更换 localStorage Key (sievox_theme_v2)，清除浏览器旧版浅色缓存，彻底强制初始化为 dark
+  const [theme, setTheme] = useState(localStorage.getItem('sievox_theme_v2') || 'dark');
   useEffect(() => {
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
-    localStorage.setItem('theme', theme);
+    localStorage.setItem('sievox_theme_v2', theme);
   }, [theme]);
   
   const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
@@ -157,7 +158,8 @@ export const useTheme = () => {
 
 const Background = () => (
   <div className="fixed inset-0 overflow-hidden pointer-events-none">
-    <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-blue-100 to-white dark:from-slate-950 dark:via-purple-950/50 dark:to-slate-950 transition-colors duration-500" />
+    {/* 浅色模式渐变更改为香芋紫过渡系 */}
+    <div className="absolute inset-0 bg-gradient-to-br from-[#f3e8ff] via-[#faf5ff] to-[#f3e8ff] dark:from-slate-950 dark:via-purple-950/50 dark:to-slate-950 transition-colors duration-500" />
     <GlowOrb className="w-96 h-96 bg-purple-600 -top-48 -left-48" />
     <GlowOrb className="w-80 h-80 bg-blue-600 top-1/3 -right-40" />
     <GlowOrb className="w-64 h-64 bg-violet-500 bottom-20 left-1/4" />
@@ -691,7 +693,10 @@ const LoginPage = ({ onLogin, onRegister }) => {
           <div className="flex flex-col items-end justify-center">
             <div className="flex items-center gap-3 mb-1">
               <button 
-                onClick={() => document.documentElement.classList.toggle('dark')} 
+                onClick={() => {
+                  const isDark = document.documentElement.classList.toggle('dark');
+                  localStorage.setItem('sievox_theme_v2', isDark ? 'dark' : 'light');
+                }} 
                 className="p-1 text-lg md:text-xl hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-all"
                 title="切换深浅色主题"
               >

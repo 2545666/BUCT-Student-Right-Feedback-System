@@ -794,7 +794,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
 
 // ------------------ 视图渲染 ------------------
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-100 to-white dark:from-slate-950 dark:via-purple-950/30 dark:to-slate-950 transition-colors duration-500">
+    <div className="min-h-screen bg-gradient-to-br from-[#f3e8ff] via-[#faf5ff] to-[#f3e8ff] dark:from-slate-950 dark:via-purple-950/30 dark:to-slate-950 transition-colors duration-500">
       
       {/* 顶部导航 */}
       <header className="border-b border-white/10 backdrop-blur-xl bg-slate-950/50 sticky top-0 z-50">
@@ -812,7 +812,10 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
           
         <div className="flex items-center gap-4">
             <button 
-              onClick={() => document.documentElement.classList.toggle('dark')} 
+              onClick={() => {
+                const isDark = document.documentElement.classList.toggle('dark');
+                localStorage.setItem('sievox_theme_v2', isDark ? 'dark' : 'light');
+              }} 
               className="p-2 text-xl hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-all"
               title="切换深浅色主题"
             >
