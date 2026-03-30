@@ -662,6 +662,29 @@ app.put('/api/notifications/read', authenticate, async (req, res) => {
   }
 });
 
+// [新增] 学生撤销(删除)整条反馈接口
+app.delete('/api/feedback/:id', authenticate, async (req, res) => {
+  try {
+    const feedback = await Feedback.findById(req.params.id);
+    if (!feedback) {
+      return res.status(404).json({ success: false, message: '反馈不存在' });
+    }
+    
+    // 权限校验：仅允许发帖人本人（或超管）删除
+    if (feedback.user.toString() !== req.user._id.toString() && req.user.role !== 'superadmin') {
+      return res.status(403).json({ success: false, message: '权限不足：只能撤销自己的反馈' });
+    }
+
+    await Feedback.findByIdAndDelete(req.params.id);
+    await logAction(req.user._id, 'delete', 'feedback', feedback._id, { action: 'student_revoke' }, req);
+
+    res.json({ success: true, message: '反馈已成功撤销' });
+  } catch (error) {
+    console.error('撤销反馈失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误，撤销失败' });
+  }
+});
+
 // [新增] 学生对反馈问题添加补充留言
 app.post('/api/feedback/:id/reply', authenticate, async (req, res) => {
   try {

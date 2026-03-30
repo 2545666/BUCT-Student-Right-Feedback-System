@@ -140,9 +140,24 @@ const FloatingShape = ({ delay, className }) => (
   />
 );
 
+export const useTheme = () => {
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+  
+  const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  return { theme, toggleTheme };
+};
+
 const Background = () => (
   <div className="fixed inset-0 overflow-hidden pointer-events-none">
-    <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-purple-950/50 to-slate-950" />
+    <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-blue-100 to-white dark:from-slate-950 dark:via-purple-950/50 dark:to-slate-950 transition-colors duration-500" />
     <GlowOrb className="w-96 h-96 bg-purple-600 -top-48 -left-48" />
     <GlowOrb className="w-80 h-80 bg-blue-600 top-1/3 -right-40" />
     <GlowOrb className="w-64 h-64 bg-violet-500 bottom-20 left-1/4" />
@@ -272,6 +287,7 @@ const LoginPage = ({ onLogin, onRegister }) => {
   const [formData, setFormData] = useState({
     studentId: '',
     password: '',
+    confirmPassword: '',
     name: '',
     email: '',
     phone: ''
@@ -282,6 +298,11 @@ const LoginPage = ({ onLogin, onRegister }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    
+    if (!isLogin && formData.password !== formData.confirmPassword) {
+      return setError('两次输入的密码不一致，请重新输入');
+    }
+
     setLoading(true);
     
     try {
@@ -310,14 +331,12 @@ const LoginPage = ({ onLogin, onRegister }) => {
       
      <Card className="w-full max-w-md p-8 relative z-10" hover={false}>
         <div className="text-center mb-8 flex flex-col items-center justify-center">
-          {/* [方案一修改] 使用 flex-row 将两个 LOGO 横向并排居中 */}
           <div className="flex flex-row items-center justify-center gap-6 mb-4">
             <img 
               src={collegeLogo} 
               alt="学院LOGO" 
               className="w-24 h-24 md:w-32 md:h-32 object-contain hover:scale-105 transition-transform duration-300" 
             />
-            {/* 中间可以加一条细线分隔（可选） */}
             <div className="h-16 w-[1px] bg-white/20 hidden md:block"></div>
             <img 
               src={sieLogo} 
@@ -403,7 +422,19 @@ const LoginPage = ({ onLogin, onRegister }) => {
             icon="🔒"
             required
           />
-         {/* [新增] 忘记密码提示 */}
+          
+          {!isLogin && (
+            <Input
+              label="确认密码"
+              type="password"
+              placeholder="请再次输入密码"
+              value={formData.confirmPassword}
+              onChange={e => setFormData({...formData, confirmPassword: e.target.value})}
+              icon="🔒"
+              required
+            />
+          )}
+
         <div className="flex justify-end">
           <button
             type="button"
@@ -417,7 +448,6 @@ const LoginPage = ({ onLogin, onRegister }) => {
             {loading ? '处理中...' : (isLogin ? '登录系统' : '注册账户')}
           </Button>
         </form>
-       {/* [修改] 底部双备案信息 */}
         <div className="mt-6 text-center text-[10px] md:text-xs text-purple-200/40 px-4 transform scale-90 origin-center space-y-2">
           <p>Copyright© 2026 赵启涵. </p>
           <div className="flex flex-col md:flex-row items-center justify-center gap-2 md:gap-4 mt-1">
@@ -451,11 +481,9 @@ const LoginPage = ({ onLogin, onRegister }) => {
   const [stats, setStats] = useState({ total: 0, pending: 0, processing: 0, resolved: 0 });
   const [loading, setLoading] = useState(false);
   
-  // [修改] 整合为“修改信息”的综合状态
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [settingsTab, setSettingsTab] = useState('profile');
 
-  // [新增] 通知状态
   const [notifications, setNotifications] = useState([]);
   const [showNotifs, setShowNotifs] = useState(false);
   const [pwdData, setPwdData] = useState({ current: '', new: '' });
@@ -482,7 +510,6 @@ const LoginPage = ({ onLogin, onRegister }) => {
     } catch (err) { alert('网络错误'); }
   };
 
-  // [新增] 提交修改个人信息
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     try {
@@ -494,18 +521,18 @@ const LoginPage = ({ onLogin, onRegister }) => {
       const data = await res.json();
       if (data.success) {
         alert('个人信息修改成功！');
-        if (onRefreshUser) onRefreshUser(); // 调用刷新让名字/学号实时更新
+        if (onRefreshUser) onRefreshUser(); 
       } else {
         alert(data.message || '修改失败');
       }
     } catch (err) { alert('网络错误'); }
   };
- const categories = Object.entries(CATEGORIES_CONFIG).map(([value, info]) => ({
+
+  const categories = Object.entries(CATEGORIES_CONFIG).map(([value, info]) => ({
     value,
     ...info
   }));
 
-  // [新增] 消息通知的拉取、已读与学生留言逻辑
   const fetchNotifications = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE}/notifications`, { headers: { 'Authorization': `Bearer ${token}` } });
@@ -538,7 +565,6 @@ const LoginPage = ({ onLogin, onRegister }) => {
     } catch (err) { alert('网络错误'); }
   };
 
-  // [新增] 学生撤回留言的方法
   const handleRecallMsg = async (feedbackId, replyId) => {
     if (!window.confirm('确定要撤回这条留言吗？')) return;
     try {
@@ -548,9 +574,26 @@ const LoginPage = ({ onLogin, onRegister }) => {
       });
       const data = await res.json();
       if (data.success) {
-        fetchFeedbacks(); // 刷新数据
+        fetchFeedbacks(); 
       } else {
         alert(data.message || '撤回失败');
+      }
+    } catch (err) { alert('网络错误'); }
+  };
+
+  const handleDeleteFeedback = async (feedbackId) => {
+    if (!window.confirm('警告：确定要彻底撤销(删除)这条反馈吗？此操作不可逆！')) return;
+    try {
+      const res = await fetch(`${API_BASE}/feedback/${feedbackId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('反馈已撤销');
+        fetchFeedbacks();
+      } else {
+        alert(data.message || '撤销失败');
       }
     } catch (err) { alert('网络错误'); }
   };
@@ -572,20 +615,20 @@ const LoginPage = ({ onLogin, onRegister }) => {
     }
   }, [token]);
 
- useEffect(() => {
+  useEffect(() => {
     fetchFeedbacks();
-    fetchNotifications(); // [新增]
+    fetchNotifications(); 
     const interval = setInterval(() => {
       fetchFeedbacks();
-      fetchNotifications(); // [新增]
-    }, 10000); // 实时更新
+      fetchNotifications(); 
+    }, 10000); 
     return () => clearInterval(interval);
   }, [fetchFeedbacks, fetchNotifications]);
-  const handleSubmit = async (formData, files) => { // [修改] 接收 files
+
+  const handleSubmit = async (formData, files) => { 
     setLoading(true);
     try {
       let uploadedFiles = [];
-      // [新增] 优先上传附件
       if (files && files.length > 0) {
         const fileData = new FormData();
         files.forEach(f => fileData.append('files', f));
@@ -604,7 +647,7 @@ const LoginPage = ({ onLogin, onRegister }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ ...formData, attachments: uploadedFiles }) // [修改] 拼接附件
+        body: JSON.stringify({ ...formData, attachments: uploadedFiles }) 
       });
       const data = await res.json();
       if (data.success) {
@@ -624,11 +667,9 @@ const LoginPage = ({ onLogin, onRegister }) => {
     <div className="min-h-screen">
       <Background />
       
-      {/* Header */}
       <header className="relative z-50 border-b border-white/10 backdrop-blur-xl bg-slate-950/50">
        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">    
           <div className="flex items-center gap-3 md:gap-4">
-            {/* 新增一个 flex 容器，将两个 LOGO 横向并排，间距设为 gap-2 */}
             <div className="flex items-center gap-2 shrink-0">
               <img 
                 src={collegeLogo} 
@@ -647,11 +688,15 @@ const LoginPage = ({ onLogin, onRegister }) => {
                 </h1>
             </div>
           </div>
-       {/* 右侧用户信息区域 - 修改为三行布局 */}
           <div className="flex flex-col items-end justify-center">
-            {/* 第一行：操作按钮 (小尺寸适配手机) */}
             <div className="flex items-center gap-3 mb-1">
-              {/* [新增] 消息信箱 */}
+              <button 
+                onClick={() => document.documentElement.classList.toggle('dark')} 
+                className="p-1 text-lg md:text-xl hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-all"
+                title="切换深浅色主题"
+              >
+                🌗
+              </button>
               <div className="relative">
                 <button onClick={() => setShowNotifs(!showNotifs)} className="p-1 text-lg md:text-xl hover:bg-white/10 rounded-full transition-all relative">
                   📬
@@ -680,15 +725,14 @@ const LoginPage = ({ onLogin, onRegister }) => {
               </div>
 
               <button 
-   
-             onClick={() => {
+                onClick={() => {
                   setProfileData({
                     name: user?.name || '',
                     studentId: user?.studentId || '',
                     email: user?.email || '',
                     phone: user?.phone || ''
                   });
-                  setSettingsTab('profile'); // 默认展示个人资料页
+                  setSettingsTab('profile'); 
                   setShowSettingsModal(true);
                 }}
                 className="px-2 py-1 rounded-md bg-white/5 border border-white/10 text-[10px] md:text-xs text-purple-200 hover:bg-white/10 hover:text-white transition-all whitespace-nowrap"
@@ -703,12 +747,10 @@ const LoginPage = ({ onLogin, onRegister }) => {
               </button>
             </div>
             
-            {/* 第二行：姓名 */}
             <p className="text-xs md:text-sm font-bold text-white leading-tight">
               {user?.name || '用户'}
             </p>
             
-            {/* 第三行：学号 */}
             <p className="text-[10px] md:text-xs text-purple-200/50 font-mono leading-tight">
               {user?.studentId}
             </p>
@@ -717,7 +759,6 @@ const LoginPage = ({ onLogin, onRegister }) => {
       </header>
 
       <main className="relative z-10 max-w-7xl mx-auto px-4 py-8">
-        {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {[
             { label: '总反馈', value: stats.total, color: 'purple', icon: '📊' },
@@ -736,7 +777,7 @@ const LoginPage = ({ onLogin, onRegister }) => {
             </Card>
           ))}
         </div>
-{/* Tabs */}
+
         <div className="flex gap-2 mb-6 p-1 bg-white/5 rounded-xl w-fit">
           {[
             { id: 'submit', label: '提交反馈', icon: '✏️' },
@@ -757,7 +798,6 @@ const LoginPage = ({ onLogin, onRegister }) => {
           ))}
         </div>
 
-        {/* 动态渲染对应的内容区，并闭合 main 标签 */}
         {activeTab === 'submit' ? (
           <SubmitForm categories={categories} onSubmit={handleSubmit} loading={loading} />
         ) : (
@@ -765,12 +805,12 @@ const LoginPage = ({ onLogin, onRegister }) => {
           feedbacks={feedbacks} 
           categories={categories} 
           onReply={handleStudentReply} 
-          onRecall={handleRecallMsg}  // [新增] 显式传递方法
+          onRecall={handleRecallMsg}
+          onDelete={handleDeleteFeedback}
         />
         )}
       </main>
 
-    {/* [修改] 整合的修改信息/密码弹窗 */}
       {showSettingsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
           <Card className="w-full max-w-md p-6 relative" hover={false}>
@@ -781,7 +821,6 @@ const LoginPage = ({ onLogin, onRegister }) => {
               ✕
             </button>
 
-            {/* 选项卡切换 */}
             <div className="flex mb-6 p-1 bg-white/5 rounded-xl w-full">
               <button
                 onClick={() => setSettingsTab('profile')}
@@ -801,7 +840,6 @@ const LoginPage = ({ onLogin, onRegister }) => {
               </button>
             </div>
 
-            {/* 内容区 */}
             {settingsTab === 'profile' ? (
               <form onSubmit={handleUpdateProfile} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -848,7 +886,6 @@ const LoginPage = ({ onLogin, onRegister }) => {
          </Card>
         </div>
       )}
-     {/* 页面底部双备案信息 */}
       <footer className="relative z-10 py-6 text-center text-[10px] md:text-xs text-purple-200/40 space-y-2">
         <p>©2026 赵启涵. All Rights Reserved.</p>
         <div className="flex flex-col md:flex-row items-center justify-center gap-2 md:gap-4 mt-1">
@@ -1029,9 +1066,9 @@ const SubmitForm = ({ categories, onSubmit, loading }) => {
     </div>
   );
 };
-const FeedbackList = ({ feedbacks, categories, onReply, onRecall }) => { // [新增] onRecall
+const FeedbackList = ({ feedbacks, categories, onReply, onRecall, onDelete }) => {
   const [expandedId, setExpandedId] = useState(null);
-  const [replyText, setReplyText] = useState(''); // [新增]
+  const [replyText, setReplyText] = useState(''); 
   const getCategoryInfo = (cat) => categories.find(c => c.value === cat) || { label: cat, icon: '📋' };
 
   if (feedbacks.length === 0) {
@@ -1056,11 +1093,10 @@ const FeedbackList = ({ feedbacks, categories, onReply, onRecall }) => { // [新
             className="overflow-hidden"
             onClick={() => {
               setExpandedId(isExpanded ? null : feedback._id);
-              setReplyText(''); // 切换面板时清空输入框
+              setReplyText(''); 
             }}
           >
            <div className="p-4 cursor-pointer">
-              {/* 修复移动端列表挤压：增加 min-w-0 和 shrink-0，小屏幕下允许信息列自动折行 */}
               <div className="flex items-start justify-between gap-2 md:gap-4">
                 <div className="flex items-start gap-3 md:gap-4 flex-1 min-w-0">
                   <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
@@ -1069,7 +1105,6 @@ const FeedbackList = ({ feedbacks, categories, onReply, onRecall }) => { // [新
                   <div className="flex-1 min-w-0">
                     <h4 className="text-white font-medium truncate max-w-full mb-1">{feedback.title}</h4>
                     <div className="flex flex-wrap items-center gap-2 md:gap-3">
-                      {/* 显示一级分类与二级分类 */}
                       <span className="shrink-0 text-[10px] md:text-xs text-purple-200/60">
                         {catInfo.label} {feedback.subCategory ? ` > ${feedback.subCategory}` : ''}
                       </span>
@@ -1079,8 +1114,14 @@ const FeedbackList = ({ feedbacks, categories, onReply, onRecall }) => { // [新
                     </div>
                   </div>
                 </div>
-                <div className="shrink-0 mt-0.5">
+                <div className="shrink-0 mt-0.5 flex flex-col items-end gap-2">
                   <StatusBadge status={feedback.status} />
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onDelete(feedback._id); }}
+                    className="text-[10px] md:text-xs text-red-400 hover:text-red-300 border border-red-500/30 px-2 py-1 rounded transition-colors"
+                  >
+                    撤销反馈
+                  </button>
                 </div>
               </div>
 
@@ -1088,7 +1129,6 @@ const FeedbackList = ({ feedbacks, categories, onReply, onRecall }) => { // [新
                 <div className="mt-4 pt-4 border-t border-white/10" onClick={(e) => e.stopPropagation()}>
                   <p className="text-purple-200/80 text-sm whitespace-pre-wrap">{feedback.content}</p>
                   
-                  {/* [新增] 渲染用户提交的附件 */}
                   <AttachmentViewer attachments={feedback.attachments} />
 
                  {feedback.responses && feedback.responses.length > 0 && (
@@ -1109,7 +1149,6 @@ const FeedbackList = ({ feedbacks, categories, onReply, onRecall }) => { // [新
                               <span className={`text-xs font-bold ${isStudent ? 'text-white/70' : 'text-purple-300'}`}>
                                 {isStudent ? '我的留言' : (resp.adminName || resp.senderName || '系统管理员')}
                               </span>
-                              {/* [新增] 按钮容器，包含撤回按钮和时间 */}
                               <div className="flex items-center gap-2">
                                 {isStudent && !resp.isRecalled && (
                                   <button 
@@ -1130,7 +1169,6 @@ const FeedbackList = ({ feedbacks, categories, onReply, onRecall }) => { // [新
                     </div>
                   )}
 
-                {/* [修改] 学生进行多次互动留言的输入区 (全状态开放) */}
                   <div className="mt-4 pt-3 border-t border-white/10">
                     <textarea
                       value={expandedId === feedback._id ? replyText : ''}
@@ -1142,7 +1180,7 @@ const FeedbackList = ({ feedbacks, categories, onReply, onRecall }) => { // [新
                     <div className="mt-2 flex justify-end">
                       <button 
                         onClick={(e) => {
-                          e.stopPropagation(); // 防止点击穿透导致面板收起
+                          e.stopPropagation(); 
                           onReply(feedback._id, replyText);
                         }}
                         className="px-4 py-1.5 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded-lg transition-all shadow-md shadow-purple-500/20"

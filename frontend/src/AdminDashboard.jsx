@@ -792,15 +792,14 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
     } catch (err) { alert('网络错误'); }
   };
 
-  // ------------------ 视图渲染 ------------------
+// ------------------ 视图渲染 ------------------
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950/30 to-slate-950">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-100 to-white dark:from-slate-950 dark:via-purple-950/30 dark:to-slate-950 transition-colors duration-500">
       
       {/* 顶部导航 */}
       <header className="border-b border-white/10 backdrop-blur-xl bg-slate-950/50 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3 md:gap-4">
-            {/* 同样新增 flex 容器将双 LOGO 并排 */}
             <div className="flex items-center gap-2 shrink-0">
               <img src={collegeLogo} alt="学院LOGO" className="w-10 h-10 md:w-12 md:h-12 object-contain" />
               <img src={sieLogo} alt="系统LOGO" className="w-10 h-10 md:w-12 md:h-12 object-contain" />
@@ -812,6 +811,13 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
           </div>
           
         <div className="flex items-center gap-4">
+            <button 
+              onClick={() => document.documentElement.classList.toggle('dark')} 
+              className="p-2 text-xl hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-all"
+              title="切换深浅色主题"
+            >
+              🌗
+            </button>
             <div className="relative">
               <button onClick={() => setShowNotifs(!showNotifs)} className="p-2 text-xl hover:bg-white/10 rounded-full transition-all relative">
                 📬
