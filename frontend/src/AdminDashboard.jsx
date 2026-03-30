@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import sieLogo from './assets/LOGO_1.png';
 import beian from './assets/beian.png';
+import collegeLogo from './assets/SIE_LOGO.svg';
+
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3001/api' : '/api';
 
