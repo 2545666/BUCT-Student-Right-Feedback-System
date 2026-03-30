@@ -17,11 +17,62 @@ html {
 
 body {
   font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #0f0a1a;
-  color: #ffffff;
+  @apply bg-[#f0f8ff] text-slate-800 dark:bg-[#0f0a1a] dark:text-[#ffffff] transition-colors duration-300;
   min-height: 100vh;
   overflow-x: hidden;
 }
+
+/* =========================================
+   [新增] 浅色模式全局样式覆盖
+   当系统未处于 dark 模式时，强制字体变为黑色，反转背景
+   ========================================= */
+html:not(.dark) .text-white,
+html:not(.dark) .text-purple-100,
+html:not(.dark) .text-purple-200,
+html:not(.dark) .text-purple-300,
+html:not(.dark) [class*="text-purple-200/"] {
+  color: #000000 !important;
+}
+
+/* 保护特殊元素：渐变文字及带色块的按钮文字保持透明或白色 */
+html:not(.dark) .text-transparent {
+  color: transparent !important;
+}
+html:not(.dark) button.text-white, 
+html:not(.dark) .bg-purple-600,
+html:not(.dark) .bg-blue-600,
+html:not(.dark) .bg-green-600,
+html:not(.dark) .bg-red-600,
+html:not(.dark) .bg-gradient-to-r.text-white {
+  color: #ffffff !important;
+}
+
+/* 浅色模式下反转白色玻璃态，确保卡片与边框可见 */
+html:not(.dark) .bg-white\/5 {
+  background-color: rgba(0, 0, 0, 0.03) !important;
+}
+html:not(.dark) .bg-white\/10 {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+}
+html:not(.dark) .border-white\/10 {
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+html:not(.dark) .border-white\/20 {
+  border-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+/* 浅色模式下输入框及其占位符适配 */
+html:not(.dark) input, 
+html:not(.dark) textarea, 
+html:not(.dark) select {
+  color: #000000 !important;
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+html:not(.dark) input::placeholder, 
+html:not(.dark) textarea::placeholder {
+  color: rgba(0, 0, 0, 0.45) !important;
+}
+/* ========================================= */
 
 /* 自定义滚动条 */
 ::-webkit-scrollbar {
@@ -31,6 +82,10 @@ body {
 
 ::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.05);
+}
+/* [修改] 浅色模式滚动条轨道 */
+html:not(.dark) ::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
 }
 
 ::-webkit-scrollbar-thumb {
@@ -55,6 +110,11 @@ select option {
   background: #1e1b4b;
   color: #ffffff;
 }
+/* [修改] 浅色模式下拉菜单背景与字体 */
+html:not(.dark) select option {
+  background: #ffffff;
+  color: #000000;
+}
 
 /* 复选框样式 */
 input[type="checkbox"] {
@@ -67,6 +127,11 @@ input[type="checkbox"] {
   background: rgba(255, 255, 255, 0.05);
   cursor: pointer;
   transition: all 0.2s;
+}
+/* [修改] 浅色模式复选框边框 */
+html:not(.dark) input[type="checkbox"] {
+  border-color: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.05);
 }
 
 input[type="checkbox"]:checked {
@@ -146,6 +211,11 @@ input[type="checkbox"]:checked::after {
   background: rgba(255, 255, 255, 0.05);
   border-radius: 4px;
 }
+/* [修改] 浅色模式滚动条辅助 */
+html:not(.dark) .custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+}
+
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: rgba(168, 85, 247, 0.4);
   border-radius: 4px;
