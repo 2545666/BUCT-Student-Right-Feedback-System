@@ -141,13 +141,23 @@ const FloatingShape = ({ delay, className }) => (
 );
 
 export const useTheme = () => {
-  // 更换 localStorage Key (sievox_theme_v2)，清除浏览器旧版浅色缓存，彻底强制初始化为 dark
-  const [theme, setTheme] = useState(localStorage.getItem('sievox_theme_v2') || 'dark');
+  // 核心修改：如果 localStorage 中没有值，不仅 state 设为 dark，而且立即写入 localStorage
+  const [theme, setTheme] = useState(() => {
+    const savedTheme = localStorage.getItem('sievox_theme_v2');
+    if (savedTheme) {
+      return savedTheme;
+    }
+    // 强制初始化为 dark，并立即缓存，确立第一优先级
+    localStorage.setItem('sievox_theme_v2', 'dark');
+    return 'dark';
+  });
+
   useEffect(() => {
+    const root = document.documentElement;
     if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
+      root.classList.add('dark');
     } else {
-      document.documentElement.classList.remove('dark');
+      root.classList.remove('dark');
     }
     localStorage.setItem('sievox_theme_v2', theme);
   }, [theme]);
