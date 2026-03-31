@@ -1292,29 +1292,37 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                   <span className="text-6xl mb-4 block">📭</span>暂无反馈
                 </div>
               ) : (
-                feedbacks.map(feedback => {
+               feedbacks.map(feedback => {
                   const cat = categories[feedback.category] || { label: feedback.category, icon: '📋' };
                   const status = statusConfig[feedback.status] || statusConfig.pending;
                   const priority = priorityConfig[feedback.priority] || priorityConfig.normal;
+                  // [新增] 提取撤回状态
+                  const isRevoked = feedback.isRevoked;
                   
                   return (
-                    <div key={feedback._id} className={`p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all cursor-pointer ${selectedFeedback?._id === feedback._id ? 'border-purple-500 bg-purple-500/10' : ''}`} onClick={() => setSelectedFeedback(selectedFeedback?._id === feedback._id ? null : feedback)}>
+                    <div key={feedback._id} className={`p-6 rounded-2xl border transition-all cursor-pointer ${isRevoked ? 'bg-slate-900/50 border-gray-600/50 opacity-75 grayscale-[50%]' : 'bg-white/5 border-white/10 hover:bg-white/10'} ${selectedFeedback?._id === feedback._id ? '!border-purple-500 bg-purple-500/10 opacity-100 grayscale-0' : ''}`} onClick={() => setSelectedFeedback(selectedFeedback?._id === feedback._id ? null : feedback)}>
                       <div className="flex items-start justify-between gap-2 md:gap-4">
                         <div className="flex items-start gap-3 md:gap-4 flex-1 min-w-0">
-                          <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+                          
+                          <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center shrink-0 ${isRevoked ? 'bg-gray-800' : 'bg-white/10'}`}>
                             <span className="text-lg md:text-xl">{cat.icon}</span>
                           </div>
+                          
                           <div className="flex-1 min-w-0">
                             <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-1">
-                              <h4 className="text-white font-medium truncate max-w-full">{feedback.title}</h4>
-                              <span className={`shrink-0 px-2 py-0.5 rounded text-[10px] md:text-xs bg-${priority.color}-500/20 text-${priority.color}-400`}>{priority.label}</span>
+                              <h4 className={`font-medium truncate max-w-full ${isRevoked ? 'text-gray-400 line-through' : 'text-white'}`}>{feedback.title}</h4>
+                              {!isRevoked && <span className={`shrink-0 px-2 py-0.5 rounded text-[10px] md:text-xs bg-${priority.color}-500/20 text-${priority.color}-400`}>{priority.label}</span>}
+                              {/* [新增] 撤回标签 */}
+                              {isRevoked && <span className="shrink-0 px-2 py-0.5 rounded text-[10px] md:text-xs bg-gray-500/20 text-gray-400 border border-gray-500/30">学生已撤回</span>}
                             </div>
+                            
                             <div className="flex flex-wrap items-center gap-2 md:gap-4 text-[10px] md:text-sm text-purple-200/60">
                               <span className="shrink-0">{cat.label}{feedback.subCategory ? ` > ${feedback.subCategory}` : ''}</span>
                               <span className="shrink-0">{feedback.isAnonymous ? '匿名用户' : feedback.user?.name}</span>
                               <span className="shrink-0">{new Date(feedback.createdAt).toLocaleString('zh-CN')}</span>
                             </div>
                           </div>
+                          
                         </div>
                         <span className={`shrink-0 px-2 py-1 md:px-3 md:py-1 rounded-full text-[10px] md:text-xs font-medium bg-${status.color}-500/20 text-${status.color}-400`}>{status.label}</span>
                       </div>
@@ -1374,10 +1382,17 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                             <input type="file" multiple onChange={e => setSelectedReplyFiles(Array.from(e.target.files))} className="block w-full text-xs text-purple-200/60 file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 transition-all cursor-pointer" />
                             
                             <div className="flex flex-wrap gap-2">
-                              {feedback.status !== 'processing' && ( <button onClick={() => updateStatus(feedback._id, 'processing')} className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm transition-all">开始处理</button> )}
-                              {feedback.status !== 'resolved' && ( <button onClick={() => updateStatus(feedback._id, 'resolved')} className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-500 text-white text-sm transition-all">标记解决</button> )}
-                              {feedback.status !== 'rejected' && ( <button onClick={() => updateStatus(feedback._id, 'rejected')} className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-sm transition-all">拒绝</button> )}
-                              <button onClick={() => updateStatus(feedback._id, feedback.status)} className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm transition-all">仅添加回复</button>
+                              {/* [新增] 如果是被撤回的记录，不展示状态流转按钮，只能添加回复或查看 */}
+                              {!feedback.isRevoked ? (
+                                <>
+                                  {feedback.status !== 'processing' && ( <button onClick={() => updateStatus(feedback._id, 'processing')} className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm transition-all">开始处理</button> )}
+                                  {feedback.status !== 'resolved' && ( <button onClick={() => updateStatus(feedback._id, 'resolved')} className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-500 text-white text-sm transition-all">标记解决</button> )}
+                                  {feedback.status !== 'rejected' && ( <button onClick={() => updateStatus(feedback._id, 'rejected')} className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-sm transition-all">拒绝</button> )}
+                                  <button onClick={() => updateStatus(feedback._id, feedback.status)} className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm transition-all">仅添加回复</button>
+                                </>
+                              ) : (
+                                <div className="text-xs text-gray-400 bg-gray-900/50 px-4 py-2 rounded-lg border border-gray-700/50">此反馈已被学生撤销，已锁定流转状态。</div>
+                              )}
                             </div>
                           </div>
                         </div>

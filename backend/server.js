@@ -239,7 +239,13 @@ const feedbackSchema = new mongoose.Schema({
     ref: 'User'
   },
   resolvedAt: Date,
-  tags: [String]
+  tags: [String],
+  // [新增] 软删除/撤回标记
+  isRevoked: {
+    type: Boolean,
+    default: false
+  },
+  revokedAt: Date
 }, {
   timestamps: true
 });
@@ -662,7 +668,7 @@ app.put('/api/notifications/read', authenticate, async (req, res) => {
   }
 });
 
-// [新增] 学生撤销(删除)整条反馈接口
+// [修改] 学生撤销(删除)整条反馈接口 - 改为软删除
 app.delete('/api/feedback/:id', authenticate, async (req, res) => {
   try {
     const feedback = await Feedback.findById(req.params.id);
@@ -675,8 +681,12 @@ app.delete('/api/feedback/:id', authenticate, async (req, res) => {
       return res.status(403).json({ success: false, message: '权限不足：只能撤销自己的反馈' });
     }
 
-    await Feedback.findByIdAndDelete(req.params.id);
-    await logAction(req.user._id, 'delete', 'feedback', feedback._id, { action: 'student_revoke' }, req);
+    // [修改] 软删除逻辑
+    feedback.isRevoked = true;
+    feedback.revokedAt = new Date();
+    await feedback.save();
+
+    await logAction(req.user._id, 'revoke', 'feedback', feedback._id, { action: 'student_revoke' }, req);
 
     res.json({ success: true, message: '反馈已成功撤销' });
   } catch (error) {
@@ -770,7 +780,8 @@ app.get('/api/feedback/my', authenticate, async (req, res) => {
   try {
     const { status, category, page = 1, limit = 20 } = req.query;
     
-    const query = { user: req.user._id };
+    // [修改] 排除已被撤回的反馈
+    const query = { user: req.user._id, isRevoked: { $ne: true } };
     if (status) query.status = status;
     if (category) query.category = category;
     
@@ -836,6 +847,12 @@ app.get('/api/admin/feedbacks', authenticate, adminOnly, async (req, res) => {
     
     // 1. 构建基础查询条件
     const query = {};
+    
+    // [新增] 权限隔离：普通管理员看不到已撤回的反馈，超管可以看到所有
+    if (req.user.role !== 'superadmin') {
+      query.isRevoked = { $ne: true };
+    }
+
     if (status) query.status = status;
     if (category) query.category = category;
     if (priority) query.priority = priority;
@@ -1072,6 +1089,9 @@ app.patch('/api/admin/users/:studentId/role', authenticate, adminOnly, async (re
 // 获取统计数据（管理员）
 app.get('/api/admin/stats', authenticate, adminOnly, async (req, res) => {
   try {
+    // [新增] 统计时排除被撤回的记录，确保普通管理员和超管看到的数据对齐，或者让其一致反映有效数据
+    const baseQuery = { isRevoked: { $ne: true } };
+
     const [
       totalFeedbacks,
       pendingCount,
@@ -1079,11 +1099,12 @@ app.get('/api/admin/stats', authenticate, adminOnly, async (req, res) => {
       resolvedCount,
       categoryStats
     ] = await Promise.all([
-      Feedback.countDocuments(),
-      Feedback.countDocuments({ status: 'pending' }),
-      Feedback.countDocuments({ status: 'processing' }),
-      Feedback.countDocuments({ status: 'resolved' }),
+      Feedback.countDocuments(baseQuery),
+      Feedback.countDocuments({ ...baseQuery, status: 'pending' }),
+      Feedback.countDocuments({ ...baseQuery, status: 'processing' }),
+      Feedback.countDocuments({ ...baseQuery, status: 'resolved' }),
       Feedback.aggregate([
+        { $match: baseQuery },
         { $group: { _id: '$category', count: { $sum: 1 } } }
       ])
     ]);
