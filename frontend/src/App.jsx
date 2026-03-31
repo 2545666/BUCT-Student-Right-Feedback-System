@@ -718,20 +718,20 @@ const LoginPage = ({ onLogin, onRegister }) => {
                   📬
                   {notifications.length > 0 && <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-slate-950"></span>}
                 </button>
-                {showNotifs && (
-                  <div className="absolute right-0 mt-2 w-64 bg-slate-900 border border-white/10 rounded-xl shadow-2xl z-[100] max-h-80 flex flex-col overflow-hidden text-left">
-                    <div className="p-3 border-b border-white/10 flex justify-between items-center bg-white/5">
-                      <span className="text-sm font-medium text-white">消息通知</span>
-                      {notifications.length > 0 && <button onClick={markNotificationsRead} className="text-xs text-purple-300 hover:text-white">全部标为已读</button>}
-                    </div>
+               {showNotifs && (
+                <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl shadow-2xl z-[100] max-h-80 flex flex-col overflow-hidden text-left transition-colors">
+                  <div className="p-3 border-b border-slate-200 dark:border-white/10 flex justify-between items-center bg-slate-50 dark:bg-white/5">
+                    <span className="text-sm font-medium text-slate-800 dark:text-white">消息通知</span>
+                    {notifications.length > 0 && <button onClick={markNotificationsRead} className="text-xs text-purple-500 dark:text-purple-300 hover:text-purple-700 dark:hover:text-white transition-colors">全部标为已读</button>}
+                  </div>
                     <div className="overflow-y-auto flex-1 p-2 custom-scrollbar">
                       {notifications.length === 0 ? (
-                        <p className="text-xs text-purple-200/50 text-center py-6">暂无新消息</p>
+                        <p className="text-xs text-slate-500 dark:text-purple-200/50 text-center py-6">暂无新消息</p>
                       ) : (
                         notifications.map(n => (
-                          <div key={n._id} className="p-2.5 mb-1 bg-white/5 rounded-lg border border-white/5 text-purple-100 flex flex-col gap-1">
+                          <div key={n._id} className="p-2.5 mb-1 bg-slate-50 dark:bg-white/5 rounded-lg border border-slate-200 dark:border-white/5 text-slate-800 dark:text-purple-100 flex flex-col gap-1 transition-colors">
                             <p className="text-xs break-words">{n.content}</p>
-                            <span className="text-[10px] text-purple-200/40 text-right">{new Date(n.createdAt).toLocaleString('zh-CN')}</span>
+                            <span className="text-[10px] text-slate-500 dark:text-purple-200/40 text-right">{new Date(n.createdAt).toLocaleString('zh-CN')}</span>
                           </div>
                         ))
                       )}

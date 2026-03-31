@@ -277,7 +277,7 @@ const AccountManagement = ({ token, user: currentUser }) => {
           <h3 className="text-lg font-bold text-white mb-4 shrink-0">子管理员账号</h3>
           <div className="overflow-y-auto flex-1 pr-2 custom-scrollbar">
             <table className="w-full text-left text-sm text-purple-200/80">
-              <thead className="sticky top-0 bg-slate-900/90 backdrop-blur border-b border-white/10 text-white z-10">
+              <thead className="sticky top-0 bg-slate-100/90 dark:bg-slate-900/90 backdrop-blur border-b border-slate-200 dark:border-white/10 text-slate-800 dark:text-white z-10 transition-colors">
                 <tr><th className="py-2 pl-2">人员</th><th className="py-2">操作</th></tr>
               </thead>
               <tbody>
@@ -305,7 +305,7 @@ const AccountManagement = ({ token, user: currentUser }) => {
           <h3 className="text-lg font-bold text-white mb-4 shrink-0">学生账号</h3>
           <div className="overflow-y-auto flex-1 pr-2 custom-scrollbar">
             <table className="w-full text-left text-sm text-purple-200/80">
-              <thead className="sticky top-0 bg-slate-900/90 backdrop-blur border-b border-white/10 text-white z-10">
+              <thead className="sticky top-0 bg-slate-100/90 dark:bg-slate-900/90 backdrop-blur border-b border-slate-200 dark:border-white/10 text-slate-800 dark:text-white z-10 transition-colors">
                 <tr><th className="py-2 pl-2">人员</th><th className="py-2">操作</th></tr>
               </thead>
               <tbody>
@@ -827,20 +827,20 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                 📬
                 {notifications.length > 0 && <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-slate-900"></span>}
               </button>
-              {showNotifs && (
-                <div className="absolute right-0 mt-2 w-72 bg-slate-900 border border-white/10 rounded-xl shadow-2xl z-[100] max-h-80 flex flex-col overflow-hidden text-left">
-                  <div className="p-3 border-b border-white/10 flex justify-between items-center bg-white/5">
-                    <span className="text-sm font-medium text-white">消息通知</span>
-                    {notifications.length > 0 && <button onClick={markNotificationsRead} className="text-xs text-purple-300 hover:text-white">全部标为已读</button>}
+            {showNotifs && (
+                <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl shadow-2xl z-[100] max-h-80 flex flex-col overflow-hidden text-left transition-colors">
+                  <div className="p-3 border-b border-slate-200 dark:border-white/10 flex justify-between items-center bg-slate-50 dark:bg-white/5">
+                    <span className="text-sm font-medium text-slate-800 dark:text-white">消息通知</span>
+                    {notifications.length > 0 && <button onClick={markNotificationsRead} className="text-xs text-purple-500 dark:text-purple-300 hover:text-purple-700 dark:hover:text-white transition-colors">全部标为已读</button>}
                   </div>
                   <div className="overflow-y-auto flex-1 p-2 custom-scrollbar">
                     {notifications.length === 0 ? (
-                      <p className="text-xs text-purple-200/50 text-center py-6">暂无新消息</p>
+                      <p className="text-xs text-slate-500 dark:text-purple-200/50 text-center py-6">暂无新消息</p>
                     ) : (
                       notifications.map(n => (
-                        <div key={n._id} className="p-2.5 mb-1 bg-white/5 rounded-lg border border-white/5 text-purple-100 flex flex-col gap-1">
+                        <div key={n._id} className="p-2.5 mb-1 bg-slate-50 dark:bg-white/5 rounded-lg border border-slate-200 dark:border-white/5 text-slate-800 dark:text-purple-100 flex flex-col gap-1 transition-colors">
                           <p className="text-xs break-words">{n.content}</p>
-                          <span className="text-[10px] text-purple-200/40 text-right">{new Date(n.createdAt).toLocaleString('zh-CN')}</span>
+                          <span className="text-[10px] text-slate-500 dark:text-purple-200/40 text-right">{new Date(n.createdAt).toLocaleString('zh-CN')}</span>
                         </div>
                       ))
                     )}
@@ -911,16 +911,16 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
           <div className="animate-fadeIn space-y-4 md:space-y-6">
             <PerformanceRulesAccordion />
             
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between bg-slate-900/80 p-4 rounded-2xl border border-white/10 mb-4 md:mb-6 shadow-lg gap-4">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between bg-white/80 dark:bg-slate-900/80 p-4 rounded-2xl border border-slate-200 dark:border-white/10 mb-4 md:mb-6 shadow-lg gap-4 transition-colors">
                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 w-full md:w-auto">
-                 <span className="text-white font-bold shrink-0">当前管理学期：</span>
+                 <span className="text-slate-800 dark:text-white font-bold shrink-0 transition-colors">当前管理学期：</span>
                  <div className="flex items-center gap-2 w-full sm:w-auto">
                    <select 
                      value={selectedSemester} 
                      onChange={(e) => { setSelectedSemester(e.target.value); fetchPerformanceAndUsers(e.target.value); }}
-                     className="flex-1 sm:flex-none px-4 py-2 bg-slate-800 rounded-lg text-white border border-white/10 outline-none text-sm"
+                     className="flex-1 sm:flex-none px-4 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg text-slate-800 dark:text-white border border-slate-200 dark:border-white/10 outline-none text-sm transition-colors"
                    >
-                     {availableSemesters.map(s => <option key={s} value={s}>{s} {s === currentSemester ? '(当前运行中)' : '(历史归档)'}</option>)}
+                     {availableSemesters.map(s => <option key={s} value={s} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">{s} {s === currentSemester ? '(当前运行中)' : '(历史归档)'}</option>)}
                    </select>
                    {user?.role === 'superadmin' && (
                      <button onClick={handleRenameSemester} title="重命名此学期" className="p-2 shrink-0 bg-white/5 hover:bg-white/10 rounded-lg text-purple-300 hover:text-white transition-colors border border-white/5">
@@ -938,9 +938,9 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
             
             {user?.role === 'superadmin' ? (
               <div className="space-y-4 md:space-y-6">
-                <div className="p-4 md:p-6 bg-gradient-to-br from-slate-900 to-purple-950/50 border border-purple-500/30 rounded-2xl">
+                <div className="p-4 md:p-6 bg-gradient-to-br from-white to-purple-50 dark:from-slate-900 dark:to-purple-950/50 border border-purple-200 dark:border-purple-500/30 rounded-2xl shadow-sm transition-colors">
                   {/* [修复] 在这里加回了呼出“加权核算器”的按钮！ */}
-                  <h3 className="text-base md:text-lg font-bold text-white mb-4 flex items-center justify-between">
+                  <h3 className="text-base md:text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center justify-between">
                     <div className="flex items-center gap-2"><span>🏆</span> 部门全员期末核算总榜单</div>
                     {user?.role === 'superadmin' && (
                       <button onClick={() => setShowWeightCalc(true)} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-lg shadow-md transition-colors flex items-center gap-1">
@@ -950,31 +950,31 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                   </h3>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm whitespace-nowrap">
-                      <thead className="border-b border-white/10 text-purple-200/60">
+                      <thead className="border-b border-slate-200 dark:border-white/10 text-slate-500 dark:text-purple-200/60 transition-colors">
                         <tr>
                           <th className="pb-3 pr-4">志愿者姓名</th>
-                          <th className="pb-3 pr-4 text-purple-300">考勤(20)</th>
-                          <th className="pb-3 pr-4 text-blue-300">活动(35)</th>
-                          <th className="pb-3 pr-4 text-green-300">跟进(25)</th>
-                          <th className="pb-3 pr-4 text-yellow-300">文案(15)</th>
-                          <th className="pb-3 pr-4 text-gray-300">常规(5)</th>
-                          <th className="pb-3 pr-4 text-red-300">+附加</th>
-                          <th className="pb-3 font-bold text-white">总计得分</th>
+                          <th className="pb-3 pr-4 text-purple-600 dark:text-purple-300">考勤(20)</th>
+                          <th className="pb-3 pr-4 text-blue-600 dark:text-blue-300">活动(35)</th>
+                          <th className="pb-3 pr-4 text-green-600 dark:text-green-300">跟进(25)</th>
+                          <th className="pb-3 pr-4 text-yellow-600 dark:text-yellow-300">文案(15)</th>
+                          <th className="pb-3 pr-4 text-slate-500 dark:text-gray-300">常规(5)</th>
+                          <th className="pb-3 pr-4 text-red-500 dark:text-red-300">+附加</th>
+                          <th className="pb-3 font-bold text-slate-800 dark:text-white">总计得分</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-white/5 text-purple-100">
+                      <tbody className="divide-y divide-slate-200 dark:divide-white/5 text-slate-700 dark:text-purple-100 transition-colors">
                         {volunteers.map(v => {
                           const personalRecords = performanceRecords.filter(r => r.volunteer?._id === v._id);
                           return { user: v, scoreObj: calculateScore(personalRecords) };
                         }).sort((a, b) => b.scoreObj.total - a.scoreObj.total).map(({ user: v, scoreObj: s }) => (
-                          <tr key={v._id} className="hover:bg-white/5 transition-colors">
-                            <td className="py-3 pr-4 font-medium text-white">{v.name}</td>
+                          <tr key={v._id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                            <td className="py-3 pr-4 font-medium text-slate-800 dark:text-white">{v.name}</td>
                             <td className="py-3 pr-4">{s.attendance}</td>
                             <td className="py-3 pr-4">{s.activity}</td>
                             <td className="py-3 pr-4">{s.feedback}</td>
                             <td className="py-3 pr-4">{s.copywriting}</td>
                             <td className="py-3 pr-4">{s.others}</td>
-                            <td className="py-3 pr-4 text-red-400">{s.bonus > 0 ? `+${s.bonus}` : '-'}</td>
+                            <td className="py-3 pr-4 text-red-600 dark:text-red-400">{s.bonus > 0 ? `+${s.bonus}` : '-'}</td>
                             <td className="py-3 text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 relative pr-6">
                               {s.total}
                               {Object.values(s.weightedFlags).some(val => val) && <span className="absolute top-1 ml-1 text-[9px] text-green-400 bg-green-500/10 border border-green-500/30 px-1 py-0.5 rounded shadow-sm whitespace-nowrap">已加权</span>}
@@ -992,20 +992,20 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                     <form onSubmit={handlePerfSubmit} className="space-y-4">
                       
                       <div>
-                        <label className="text-xs text-purple-200/60 mb-1 block">录入目标学期 (默认跟随当前视图)</label>
+                        <label className="text-xs text-slate-500 dark:text-purple-200/60 mb-1 block transition-colors">录入目标学期 (默认跟随当前视图)</label>
                         <select 
                           value={perfForm.targetSemester || currentSemester} 
                           onChange={e => setPerfForm({...perfForm, targetSemester: e.target.value})} 
-                          className={`w-full px-3 py-2 rounded-lg text-white outline-none transition-colors ${
+                          className={`w-full px-3 py-2 rounded-lg outline-none transition-colors ${
                             perfForm.targetSemester && perfForm.targetSemester !== currentSemester 
-                              ? 'bg-orange-950/50 border border-orange-500/50 text-orange-200 shadow-[0_0_10px_rgba(249,115,22,0.2)]' 
-                              : 'bg-slate-900 border border-white/10'
+                              ? 'bg-orange-50 dark:bg-orange-950/50 border border-orange-300 dark:border-orange-500/50 text-orange-600 dark:text-orange-200 shadow-[0_0_10px_rgba(249,115,22,0.2)]' 
+                              : 'bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white'
                           }`}
                         >
                           {availableSemesters.map(s => <option key={s} value={s}>{s} {s === currentSemester ? '(当前学期)' : '(历史归档)'}</option>)}
                         </select>
                         {perfForm.targetSemester && perfForm.targetSemester !== currentSemester && (
-                          <p className="text-[10px] text-orange-400 mt-1.5 flex items-start gap-1 leading-tight">
+                          <p className="text-[10px] text-orange-500 dark:text-orange-400 mt-1.5 flex items-start gap-1 leading-tight">
                             <span className="shrink-0">⚠️</span>
                             <span>注意：您当前正在向历史归档学期补录积分，此操作将改变该学期的结算总分。</span>
                           </p>
@@ -1013,38 +1013,38 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                       </div>
 
                       <div>
-                        <label className="text-xs text-purple-200/60 mb-1 block">考核维度</label>
-                        <select value={perfForm.dimension} onChange={e => setPerfForm({...perfForm, dimension: e.target.value})} className="w-full px-3 py-2 bg-slate-900 rounded-lg text-white border border-white/10 outline-none">
+                        <label className="text-xs text-slate-500 dark:text-purple-200/60 mb-1 block transition-colors">考核维度</label>
+                        <select value={perfForm.dimension} onChange={e => setPerfForm({...perfForm, dimension: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 rounded-lg text-slate-800 dark:text-white border border-slate-200 dark:border-white/10 outline-none transition-colors">
                           {Object.entries(PERF_DIMENSIONS).map(([k, v]) => <option key={k} value={k}>{v.label} (封顶{v.max}分)</option>)}
                         </select>
                       </div>
                       
                       {(perfForm.dimension === 'attendance' || perfForm.dimension === 'activity' || perfForm.dimension === 'copywriting' || perfForm.dimension === 'bonus') && (
                         <div>
-                          <label className="text-xs text-purple-200/60 mb-1 block">具体项目名称 (填写名称后方可参与期末加权)</label>
-                          <input type="text" placeholder="例: 第三周例会 / 迎新晚会统筹" value={perfForm.activityName} onChange={e => setPerfForm({...perfForm, activityName: e.target.value})} className="w-full px-3 py-2 bg-slate-900 rounded-lg text-white border border-white/10 outline-none" />
+                          <label className="text-xs text-slate-500 dark:text-purple-200/60 mb-1 block transition-colors">具体项目名称 (填写名称后方可参与期末加权)</label>
+                          <input type="text" placeholder="例: 第三周例会 / 迎新晚会统筹" value={perfForm.activityName} onChange={e => setPerfForm({...perfForm, activityName: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 rounded-lg text-slate-800 dark:text-white border border-slate-200 dark:border-white/10 outline-none transition-colors" />
                         </div>
                       )}
                       
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="text-xs text-purple-200/60 mb-1 block">发生日期</label>
-                          <input type="date" required value={perfForm.occurrenceDate} onChange={e => setPerfForm({...perfForm, occurrenceDate: e.target.value})} className="w-full px-3 py-2 bg-slate-900 rounded-lg text-white border border-white/10 outline-none [color-scheme:dark]" />
+                          <label className="text-xs text-slate-500 dark:text-purple-200/60 mb-1 block transition-colors">发生日期</label>
+                          <input type="date" required value={perfForm.occurrenceDate} onChange={e => setPerfForm({...perfForm, occurrenceDate: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 rounded-lg text-slate-800 dark:text-white border border-slate-200 dark:border-white/10 outline-none dark:[color-scheme:dark] transition-colors" />
                         </div>
                         <div>
-                          <label className="text-xs text-purple-200/60 mb-1 block">获得积分数</label>
-                          <input type="number" step="0.5" required placeholder="如 2 或 4.5" value={perfForm.score} onChange={e => setPerfForm({...perfForm, score: e.target.value})} className="w-full px-3 py-2 bg-slate-900 rounded-lg text-white border border-white/10 outline-none" />
+                          <label className="text-xs text-slate-500 dark:text-purple-200/60 mb-1 block transition-colors">获得积分数</label>
+                          <input type="number" step="0.5" required placeholder="如 2 或 4.5" value={perfForm.score} onChange={e => setPerfForm({...perfForm, score: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 rounded-lg text-slate-800 dark:text-white border border-slate-200 dark:border-white/10 outline-none transition-colors" />
                         </div>
                       </div>
                       <div>
-                        <label className="text-xs text-purple-200/60 mb-1 block">详细加分事由</label>
-                        <textarea required rows="2" placeholder="例: 按时全勤出勤 / 独立撰写大型策划案" value={perfForm.reason} onChange={e => setPerfForm({...perfForm, reason: e.target.value})} className="w-full px-3 py-2 bg-slate-900 rounded-lg text-white border border-white/10 outline-none resize-none" />
+                        <label className="text-xs text-slate-500 dark:text-purple-200/60 mb-1 block transition-colors">详细加分事由</label>
+                        <textarea required rows="2" placeholder="例: 按时全勤出勤 / 独立撰写大型策划案" value={perfForm.reason} onChange={e => setPerfForm({...perfForm, reason: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 rounded-lg text-slate-800 dark:text-white border border-slate-200 dark:border-white/10 outline-none resize-none transition-colors" />
                       </div>
                       <div>
-                        <label className="text-xs text-purple-200/60 mb-1 block">选择志愿者 (可批量勾选)</label>
-                        <div className="max-h-32 overflow-y-auto bg-slate-900 rounded-lg border border-white/10 p-2 space-y-1 custom-scrollbar">
+                        <label className="text-xs text-slate-500 dark:text-purple-200/60 mb-1 block transition-colors">选择志愿者 (可批量勾选)</label>
+                        <div className="max-h-32 overflow-y-auto bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-white/10 p-2 space-y-1 custom-scrollbar transition-colors">
                           {volunteers.map(v => (
-                            <label key={v._id} className="flex items-center gap-2 text-sm text-white hover:bg-white/5 p-1 rounded cursor-pointer">
+                            <label key={v._id} className="flex items-center gap-2 text-sm text-slate-800 dark:text-white hover:bg-slate-200/50 dark:hover:bg-white/5 p-1 rounded cursor-pointer transition-colors">
                               <input type="checkbox" checked={perfForm.volunteerIds.includes(v._id)} onChange={(e) => {
                                 const ids = e.target.checked ? [...perfForm.volunteerIds, v._id] : perfForm.volunteerIds.filter(id => id !== v._id);
                                 setPerfForm({...perfForm, volunteerIds: ids});
@@ -1381,8 +1381,8 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                             <textarea value={responseText} onChange={e => setResponseText(e.target.value)} placeholder="添加处理回复..." className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-purple-500 min-h-[100px]" />
                             <input type="file" multiple onChange={e => setSelectedReplyFiles(Array.from(e.target.files))} className="block w-full text-xs text-purple-200/60 file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 transition-all cursor-pointer" />
                             
-                            <div className="flex flex-wrap gap-2">
-                              {/* [新增] 如果是被撤回的记录，不展示状态流转按钮，只能添加回复或查看 */}
+                          <div className="flex flex-wrap gap-2">
+                              {/* [修复] 使用三元运算符替代非法的 if 语句 */}
                               {!feedback.isRevoked ? (
                                 <>
                                   {feedback.status !== 'processing' && ( <button onClick={() => updateStatus(feedback._id, 'processing')} className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm transition-all">开始处理</button> )}
@@ -1393,7 +1393,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                               ) : (
                                 <div className="text-xs text-gray-400 bg-gray-900/50 px-4 py-2 rounded-lg border border-gray-700/50">此反馈已被学生撤销，已锁定流转状态。</div>
                               )}
-                            </div>
+                            </div>  
                           </div>
                         </div>
                       )}
@@ -1508,34 +1508,34 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
         </div>
       )}
 
-      {/* 全局设置弹窗 */}
+     {/* 全局设置弹窗 */}
       {showSettingsModal && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="w-full max-w-md p-6 relative bg-slate-900 border border-white/10 rounded-2xl shadow-2xl">
-            <button onClick={() => setShowSettingsModal(false)} className="absolute top-4 right-4 text-purple-200/50 hover:text-white text-lg">✕</button>
-            <div className="flex mb-6 p-1 bg-white/5 rounded-xl w-full">
-              <button onClick={() => setSettingsTab('profile')} className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${settingsTab === 'profile' ? 'bg-purple-600 text-white shadow-md' : 'text-purple-200/60 hover:text-white'}`}>个人资料</button>
-              <button onClick={() => setSettingsTab('password')} className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${settingsTab === 'password' ? 'bg-purple-600 text-white shadow-md' : 'text-purple-200/60 hover:text-white'}`}>修改密码</button>
+          <div className="w-full max-w-md p-6 relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl transition-colors">
+            <button onClick={() => setShowSettingsModal(false)} className="absolute top-4 right-4 text-purple-400 dark:text-purple-200/50 hover:text-slate-800 dark:hover:text-white text-lg transition-colors">✕</button>
+            <div className="flex mb-6 p-1 bg-slate-100 dark:bg-white/5 rounded-xl w-full border border-slate-200 dark:border-transparent transition-colors">
+              <button onClick={() => setSettingsTab('profile')} className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${settingsTab === 'profile' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-500 dark:text-purple-200/60 hover:text-slate-800 dark:hover:text-white'}`}>个人资料</button>
+              <button onClick={() => setSettingsTab('password')} className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${settingsTab === 'password' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-500 dark:text-purple-200/60 hover:text-slate-800 dark:hover:text-white'}`}>修改密码</button>
             </div>
             {settingsTab === 'profile' ? (
               <form onSubmit={handleUpdateProfile} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm text-purple-200/80">学号</label>
-                    <input type="text" required value={profileData.studentId} onChange={e => setProfileData({...profileData, studentId: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-white focus:outline-none focus:border-purple-500" />
+                    <label className="text-sm text-slate-600 dark:text-purple-200/80 transition-colors">学号</label>
+                    <input type="text" required value={profileData.studentId} onChange={e => setProfileData({...profileData, studentId: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white focus:outline-none focus:border-purple-500 transition-colors" />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm text-purple-200/80">姓名</label>
-                    <input type="text" required value={profileData.name} onChange={e => setProfileData({...profileData, name: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-white focus:outline-none focus:border-purple-500" />
+                    <label className="text-sm text-slate-600 dark:text-purple-200/80 transition-colors">姓名</label>
+                    <input type="text" required value={profileData.name} onChange={e => setProfileData({...profileData, name: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white focus:outline-none focus:border-purple-500 transition-colors" />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm text-purple-200/80">邮箱</label>
-                  <input type="email" required value={profileData.email} onChange={e => setProfileData({...profileData, email: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-white focus:outline-none focus:border-purple-500" />
+                  <label className="text-sm text-slate-600 dark:text-purple-200/80 transition-colors">邮箱</label>
+                  <input type="email" required value={profileData.email} onChange={e => setProfileData({...profileData, email: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white focus:outline-none focus:border-purple-500 transition-colors" />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm text-purple-200/80">手机号</label>
-                  <input type="text" value={profileData.phone} onChange={e => setProfileData({...profileData, phone: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-white focus:outline-none focus:border-purple-500" />
+                  <label className="text-sm text-slate-600 dark:text-purple-200/80 transition-colors">手机号</label>
+                  <input type="text" value={profileData.phone} onChange={e => setProfileData({...profileData, phone: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white focus:outline-none focus:border-purple-500 transition-colors" />
                 </div>
                 <div className="pt-2">
                   <button type="submit" className="w-full py-3 rounded-xl bg-purple-600 text-white hover:bg-purple-500 transition-all font-medium shadow-lg shadow-purple-500/20">保存资料修改</button>
@@ -1544,12 +1544,12 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
             ) : (
               <form onSubmit={handleChangePassword} className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm text-purple-200/80">当前密码</label>
-                  <input type="password" required value={pwdData.current} onChange={e => setPwdData({...pwdData, current: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-white focus:outline-none focus:border-purple-500" placeholder="输入当前使用的密码" />
+                  <label className="text-sm text-slate-600 dark:text-purple-200/80 transition-colors">当前密码</label>
+                  <input type="password" required value={pwdData.current} onChange={e => setPwdData({...pwdData, current: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white focus:outline-none focus:border-purple-500 transition-colors" placeholder="输入当前使用的密码" />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm text-purple-200/80">新密码</label>
-                  <input type="password" required value={pwdData.new} onChange={e => setPwdData({...pwdData, new: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-white focus:outline-none focus:border-purple-500" placeholder="设置新密码（至少6位）" />
+                  <label className="text-sm text-slate-600 dark:text-purple-200/80 transition-colors">新密码</label>
+                  <input type="password" required value={pwdData.new} onChange={e => setPwdData({...pwdData, new: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white focus:outline-none focus:border-purple-500 transition-colors" placeholder="设置新密码（至少6位）" />
                 </div>
                 <div className="pt-2">
                   <button type="submit" className="w-full py-3 rounded-xl bg-purple-600 text-white hover:bg-purple-500 transition-all font-medium shadow-lg shadow-purple-500/20">确认修改密码</button>
@@ -1559,6 +1559,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
           </div>
         </div>
       )}
+      
     </div>
   );
 }
