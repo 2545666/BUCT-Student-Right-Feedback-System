@@ -828,20 +828,20 @@ const LoginPage = ({ onLogin, onRegister }) => {
       </main>
 
       {showSettingsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <Card className="w-full max-w-md p-6 relative" hover={false}>
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <div className="w-full max-w-md p-6 relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl transition-colors">
             <button 
               onClick={() => setShowSettingsModal(false)}
-              className="absolute top-4 right-4 text-purple-200/50 hover:text-white text-lg"
+              className="absolute top-4 right-4 text-purple-400 dark:text-purple-200/50 hover:text-slate-800 dark:hover:text-white text-lg transition-colors"
             >
               ✕
             </button>
 
-            <div className="flex mb-6 p-1 bg-white/5 rounded-xl w-full">
+            <div className="flex mb-6 p-1 bg-slate-100 dark:bg-white/5 rounded-xl w-full border border-slate-200 dark:border-transparent transition-colors">
               <button
                 onClick={() => setSettingsTab('profile')}
                 className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-                  settingsTab === 'profile' ? 'bg-purple-600 text-white shadow-md' : 'text-purple-200/60 hover:text-white'
+                  settingsTab === 'profile' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-500 dark:text-purple-200/60 hover:text-slate-800 dark:hover:text-white'
                 }`}
               >
                 个人资料
@@ -849,7 +849,7 @@ const LoginPage = ({ onLogin, onRegister }) => {
               <button
                 onClick={() => setSettingsTab('password')}
                 className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-                  settingsTab === 'password' ? 'bg-purple-600 text-white shadow-md' : 'text-purple-200/60 hover:text-white'
+                  settingsTab === 'password' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-500 dark:text-purple-200/60 hover:text-slate-800 dark:hover:text-white'
                 }`}
               >
                 修改密码
@@ -860,21 +860,21 @@ const LoginPage = ({ onLogin, onRegister }) => {
               <form onSubmit={handleUpdateProfile} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm text-purple-200/80">学号</label>
-                    <input type="text" required value={profileData.studentId} onChange={e => setProfileData({...profileData, studentId: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-purple-500" />
+                    <label className="text-sm text-slate-600 dark:text-purple-200/80 transition-colors">学号</label>
+                    <input type="text" required value={profileData.studentId} onChange={e => setProfileData({...profileData, studentId: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white focus:outline-none focus:border-purple-500 transition-colors" />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm text-purple-200/80">姓名</label>
-                    <input type="text" required value={profileData.name} onChange={e => setProfileData({...profileData, name: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-purple-500" />
+                    <label className="text-sm text-slate-600 dark:text-purple-200/80 transition-colors">姓名</label>
+                    <input type="text" required value={profileData.name} onChange={e => setProfileData({...profileData, name: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white focus:outline-none focus:border-purple-500 transition-colors" />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm text-purple-200/80">邮箱</label>
-                  <input type="email" required value={profileData.email} onChange={e => setProfileData({...profileData, email: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-purple-500" />
+                  <label className="text-sm text-slate-600 dark:text-purple-200/80 transition-colors">邮箱</label>
+                  <input type="email" required value={profileData.email} onChange={e => setProfileData({...profileData, email: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white focus:outline-none focus:border-purple-500 transition-colors" />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm text-purple-200/80">手机号</label>
-                  <input type="text" value={profileData.phone} onChange={e => setProfileData({...profileData, phone: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-purple-500" />
+                  <label className="text-sm text-slate-600 dark:text-purple-200/80 transition-colors">手机号</label>
+                  <input type="text" value={profileData.phone} onChange={e => setProfileData({...profileData, phone: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white focus:outline-none focus:border-purple-500 transition-colors" />
                 </div>
                 <div className="pt-2">
                   <button type="submit" className="w-full py-3 rounded-xl bg-purple-600 text-white hover:bg-purple-500 transition-all font-medium shadow-lg shadow-purple-500/20">
@@ -885,12 +885,12 @@ const LoginPage = ({ onLogin, onRegister }) => {
             ) : (
               <form onSubmit={handleChangePassword} className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm text-purple-200/80">当前密码</label>
-                  <input type="password" required value={pwdData.current} onChange={e => setPwdData({...pwdData, current: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-purple-500" placeholder="输入当前使用的密码" />
+                  <label className="text-sm text-slate-600 dark:text-purple-200/80 transition-colors">当前密码</label>
+                  <input type="password" required value={pwdData.current} onChange={e => setPwdData({...pwdData, current: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white focus:outline-none focus:border-purple-500 transition-colors" placeholder="输入当前使用的密码" />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm text-purple-200/80">新密码</label>
-                  <input type="password" required value={pwdData.new} onChange={e => setPwdData({...pwdData, new: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-purple-500" placeholder="设置新密码（至少6位）" />
+                  <label className="text-sm text-slate-600 dark:text-purple-200/80 transition-colors">新密码</label>
+                  <input type="password" required value={pwdData.new} onChange={e => setPwdData({...pwdData, new: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white focus:outline-none focus:border-purple-500 transition-colors" placeholder="设置新密码（至少6位）" />
                 </div>
                 <div className="pt-2">
                   <button type="submit" className="w-full py-3 rounded-xl bg-purple-600 text-white hover:bg-purple-500 transition-all font-medium shadow-lg shadow-purple-500/20">
@@ -899,7 +899,7 @@ const LoginPage = ({ onLogin, onRegister }) => {
                 </div>
               </form>
             )}
-         </Card>
+         </div>
         </div>
       )}
       <footer className="relative z-10 py-6 text-center text-[10px] md:text-xs text-purple-200/40 space-y-2">
