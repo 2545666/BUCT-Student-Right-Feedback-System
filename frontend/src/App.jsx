@@ -680,40 +680,40 @@ const LoginPage = ({ onLogin, onRegister }) => {
       <Background />
       
       <header className="relative z-50 border-b border-white/10 backdrop-blur-xl bg-slate-950/50">
-       <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">    
-          <div className="flex items-center gap-3 md:gap-4">
-            <div className="flex items-center gap-2 shrink-0">
+       <div className="max-w-7xl mx-auto px-2 sm:px-4 py-3 sm:py-4 flex items-center justify-between gap-1 sm:gap-4">    
+          <div className="flex items-center gap-1.5 sm:gap-3 md:gap-4 flex-1 min-w-0">
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
               <img 
                 src={collegeLogo} 
                 alt="学院LOGO" 
-                className="w-10 h-10 md:w-12 md:h-12 object-contain" 
+                className="w-7 h-7 sm:w-10 sm:h-10 md:w-12 md:h-12 object-contain" 
               />
               <img 
                 src={sieLogo} 
                 alt="系统LOGO" 
-                className="w-10 h-10 md:w-12 md:h-12 object-contain" 
+                className="w-7 h-7 sm:w-10 sm:h-10 md:w-12 md:h-12 object-contain" 
               />
             </div>
-            <div>
-              <h1 className="text-base md:text-2xl font-bold text-white whitespace-nowrap">
+            <div className="min-w-0">
+              <h1 className="text-[14px] sm:text-base md:text-2xl font-bold text-white truncate">
                   学生权益反馈系统
                 </h1>
             </div>
           </div>
-          <div className="flex flex-col items-end justify-center">
-            <div className="flex items-center gap-3 mb-1">
+          <div className="flex flex-col items-end justify-center shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-3 mb-1">
               <button 
                 onClick={() => {
                   const isDark = document.documentElement.classList.toggle('dark');
                   localStorage.setItem('sievox_theme_v2', isDark ? 'dark' : 'light');
                 }} 
-                className="p-1 text-lg md:text-xl hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-all"
+                className="p-1 text-base sm:text-lg md:text-xl hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-all"
                 title="切换深浅色主题"
               >
                 🌗
               </button>
               <div className="relative">
-                <button onClick={() => setShowNotifs(!showNotifs)} className="p-1 text-lg md:text-xl hover:bg-white/10 rounded-full transition-all relative">
+                <button onClick={() => setShowNotifs(!showNotifs)} className="p-1 text-base sm:text-lg md:text-xl hover:bg-white/10 rounded-full transition-all relative">
                   📬
                   {notifications.length > 0 && <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-slate-950"></span>}
                 </button>
@@ -1054,11 +1054,11 @@ const SubmitForm = ({ categories, onSubmit, loading }) => {
               ]}
             />
             {/* 场景定义信息框 */}
-            <div className="mt-2 p-3 rounded-xl bg-blue-900/20 border border-blue-500/20 text-xs text-blue-200/80 space-y-1.5 leading-relaxed">
-              <p><span className="font-bold text-red-400">紧急：</span>涉及人身安全、重大财产损失、严重设施损坏等需立即干预处置的问题。</p>
-              <p><span className="font-bold text-orange-400">高：</span>影响正常学习秩序、涉及核心权益受损、需快速响应的问题。</p>
-              <p><span className="font-bold text-blue-400">普通：</span>日常权益、校园生活、服务体验等常规问题。</p>
-              <p><span className="font-bold text-gray-400">低：</span>长期优化建议、功能改进等建设性意见。</p>
+            <div className="mt-2 p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-500/20 text-xs text-slate-700 dark:text-blue-200/80 space-y-1.5 leading-relaxed">
+              <p><span className="font-bold text-red-600 dark:text-red-400">紧急：</span>涉及人身安全、重大财产损失、严重设施损坏等需立即干预处置的问题。</p>
+              <p><span className="font-bold text-orange-600 dark:text-orange-400">高：</span>影响正常学习秩序、涉及核心权益受损、需快速响应的问题。</p>
+              <p><span className="font-bold text-blue-600 dark:text-blue-400">普通：</span>日常权益、校园生活、服务体验等常规问题。</p>
+              <p><span className="font-bold text-slate-600 dark:text-gray-400">低：</span>长期优化建议、功能改进等建设性意见。</p>
             </div>
           </div>
 

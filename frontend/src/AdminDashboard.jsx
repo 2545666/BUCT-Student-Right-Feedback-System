@@ -798,31 +798,31 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
       
       {/* 顶部导航 */}
       <header className="border-b border-white/10 backdrop-blur-xl bg-slate-950/50 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3 md:gap-4">
-            <div className="flex items-center gap-2 shrink-0">
-              <img src={collegeLogo} alt="学院LOGO" className="w-10 h-10 md:w-12 md:h-12 object-contain" />
-              <img src={sieLogo} alt="系统LOGO" className="w-10 h-10 md:w-12 md:h-12 object-contain" />
+        <div className="max-w-7xl mx-auto px-2 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-1 sm:gap-4">
+          <div className="flex items-center gap-1.5 sm:gap-3 md:gap-4 flex-1 min-w-0">
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+              <img src={collegeLogo} alt="学院LOGO" className="w-7 h-7 sm:w-10 sm:h-10 md:w-12 md:h-12 object-contain" />
+              <img src={sieLogo} alt="系统LOGO" className="w-7 h-7 sm:w-10 sm:h-10 md:w-12 md:h-12 object-contain" />
             </div>
-            <div>
-              <h1 className="text-base md:text-2xl font-bold text-white whitespace-nowrap">管理控制台</h1>
-              <p className="text-xs text-purple-200/60">学生权益反馈系统</p>
+            <div className="min-w-0">
+              <h1 className="text-[14px] sm:text-base md:text-2xl font-bold text-white truncate">管理控制台</h1>
+              <p className="text-[10px] sm:text-xs text-purple-200/60 truncate">学生权益反馈系统</p>
             </div>
           </div>
           
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
             <button 
               onClick={() => {
                 const isDark = document.documentElement.classList.toggle('dark');
                 localStorage.setItem('sievox_theme_v2', isDark ? 'dark' : 'light');
               }} 
-              className="p-2 text-xl hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-all"
+              className="p-1 sm:p-2 text-base sm:text-xl hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-all"
               title="切换深浅色主题"
             >
               🌗
             </button>
             <div className="relative">
-              <button onClick={() => setShowNotifs(!showNotifs)} className="p-2 text-xl hover:bg-white/10 rounded-full transition-all relative">
+              <button onClick={() => setShowNotifs(!showNotifs)} className="p-1 sm:p-2 text-base sm:text-xl hover:bg-white/10 rounded-full transition-all relative">
                 📬
                 {notifications.length > 0 && <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-slate-900"></span>}
               </button>
