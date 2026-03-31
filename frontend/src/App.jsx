@@ -679,7 +679,8 @@ const LoginPage = ({ onLogin, onRegister }) => {
     <div className="min-h-screen">
       <Background />
       
-      <header className="relative z-50 border-b border-white/10 backdrop-blur-xl bg-slate-950/50">
+      {/* 修改：浅色模式下背景设为稍深的紫色 (bg-purple-200/60)，边框设为紫色的半透明边框 (border-purple-300/50) */}
+      <header className="relative z-50 border-b border-purple-300/50 dark:border-white/10 backdrop-blur-xl bg-purple-200/60 dark:bg-slate-950/50 transition-colors duration-300">
        <div className="max-w-7xl mx-auto px-2 sm:px-4 py-3 sm:py-4 flex items-center justify-between gap-1 sm:gap-4">    
           <div className="flex items-center gap-1.5 sm:gap-3 md:gap-4 flex-1 min-w-0">
             <div className="flex items-center gap-1 sm:gap-2 shrink-0">
