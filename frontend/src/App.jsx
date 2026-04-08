@@ -173,7 +173,10 @@ const Background = () => (
     <GlowOrb className="w-96 h-96 bg-purple-600 -top-48 -left-48" />
     <GlowOrb className="w-80 h-80 bg-blue-600 top-1/3 -right-40" />
     <GlowOrb className="w-64 h-64 bg-violet-500 bottom-20 left-1/4" />
-    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.4)_100%)]" />
+    
+    {/* [修复] 使用 dark: 前缀，确保这个黑色径向渐变蒙版只在深色模式下显示，浅色模式下透明 */}
+    <div className="absolute inset-0 hidden dark:block bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.4)_100%)]" />
+    
     <div className="absolute inset-0" style={{
       backgroundImage: `radial-gradient(circle at 2px 2px, rgba(139,92,246,0.15) 1px, transparent 0)`,
       backgroundSize: '40px 40px'
@@ -192,7 +195,6 @@ const Background = () => (
     ))}
   </div>
 );
-
 //  Card 组件
 const Card = ({ children, className = '', hover = true, ...props }) => (
   <div 
