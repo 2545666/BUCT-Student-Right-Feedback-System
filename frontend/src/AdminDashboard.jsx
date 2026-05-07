@@ -449,7 +449,10 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
   const [totalActivitiesCount, setTotalActivitiesCount] = useState(10); 
   const [weightConfig, setWeightConfig] = useState({}); 
 
-  // 撤回绩效记录
+  // [新增] 批量撤回选中的记录状态
+  const [selectedRecordIds, setSelectedRecordIds] = useState([]);
+
+  // 撤回单条绩效记录
   const handleDeleteRecord = async (recordId) => {
     if (!window.confirm('警告：确定要彻底撤回这条赋分记录吗？撤回后该人员本学期的总分将自动重算！')) return;
     try {
@@ -458,8 +461,30 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
       });
       if ((await res.json()).success) {
         fetchPerformanceAndUsers(selectedSemester); 
+        // 撤回成功后，如果是被选中的记录，将其从选中列表中移除
+        setSelectedRecordIds(prev => prev.filter(id => id !== recordId));
       }
     } catch (err) { alert('撤回失败'); }
+  };
+
+  // [新增] 批量撤回绩效记录
+  const handleBatchDeleteRecords = async () => {
+    if (selectedRecordIds.length === 0) return alert('请先选择要撤回的记录');
+    if (!window.confirm(`警告：确定要批量撤回选中的 ${selectedRecordIds.length} 条记录吗？此操作不可逆！`)) return;
+    
+    let successCount = 0;
+    for (const id of selectedRecordIds) {
+      try {
+        const res = await fetch(`${API_BASE}/admin/performance/${id}`, {
+          method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if ((await res.json()).success) successCount++;
+      } catch (err) { console.error('撤回失败', id); }
+    }
+    
+    alert(`批量撤回完成，成功撤回 ${successCount} 条记录。`);
+    setSelectedRecordIds([]);
+    fetchPerformanceAndUsers(selectedSemester);
   };
 
   // 应用加权计算
@@ -1060,24 +1085,74 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                   </div>
 
                   <div className="md:col-span-2 p-4 md:p-6 bg-white/5 border border-white/10 rounded-2xl h-fit">
-                    <h3 className="text-base md:text-lg font-bold text-white mb-4">🗂 部门打分流水账库</h3>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-base md:text-lg font-bold text-white">🗂 部门打分流水账库</h3>
+                      {selectedRecordIds.length > 0 && (
+                        <button 
+                          onClick={handleBatchDeleteRecords} 
+                          className="px-3 py-1.5 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white border border-red-500/30 rounded-lg transition-all text-xs font-medium flex items-center gap-1"
+                        >
+                          🗑️ 批量撤回 ({selectedRecordIds.length})
+                        </button>
+                      )}
+                    </div>
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-sm whitespace-nowrap">
                         <thead className="border-b border-white/10 text-purple-200/60">
-                          <tr><th className="pb-3 pr-4">日期</th><th className="pb-3 pr-4">志愿者</th><th className="pb-3 pr-4">分值</th><th className="pb-3 pr-4">维度</th><th className="pb-3">事由明细</th></tr>
+                          <tr>
+                            <th className="pb-3 pr-4">
+                              <input 
+                                type="checkbox" 
+                                className="accent-purple-500 cursor-pointer"
+                                checked={performanceRecords.length > 0 && selectedRecordIds.length === performanceRecords.length}
+                                onChange={(e) => {
+                                  if (e.target.checked) setSelectedRecordIds(performanceRecords.map(r => r._id));
+                                  else setSelectedRecordIds([]);
+                                }}
+                              />
+                            </th>
+                            <th className="pb-3 pr-4">日期</th>
+                            <th className="pb-3 pr-4">志愿者</th>
+                            <th className="pb-3 pr-4">分值</th>
+                            <th className="pb-3 pr-4">维度</th>
+                            <th className="pb-3 pr-4">事由明细</th>
+                            <th className="pb-3">操作</th>
+                          </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5 text-purple-100">
                           {performanceRecords.map(r => (
                             <tr key={r._id} className="hover:bg-white/5 transition-colors">
+                              <td className="py-3 pr-4">
+                                <input 
+                                  type="checkbox" 
+                                  className="accent-purple-500 cursor-pointer"
+                                  checked={selectedRecordIds.includes(r._id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) setSelectedRecordIds([...selectedRecordIds, r._id]);
+                                    else setSelectedRecordIds(selectedRecordIds.filter(id => id !== r._id));
+                                  }}
+                                />
+                              </td>
                               <td className="py-3 pr-4 text-xs">{new Date(r.occurrenceDate).toLocaleDateString('zh-CN')}</td>
                               <td className="py-3 pr-4">{r.volunteer?.name}</td>
                               <td className={`py-3 pr-4 font-bold text-green-400`}>+{r.score}</td>
                               <td className="py-3 pr-4"><span className={`px-2 py-0.5 rounded text-[10px] bg-${PERF_DIMENSIONS[r.dimension]?.color || 'gray'}-500/20 text-${PERF_DIMENSIONS[r.dimension]?.color || 'gray'}-300`}>{PERF_DIMENSIONS[r.dimension]?.label || '旧版归档记录'}</span></td>
-                              <td className="py-3 text-xs truncate max-w-[200px]" title={r.reason}>{r.activityName ? `[${r.activityName}] ` : ''}{r.reason}</td>
+                              <td className="py-3 pr-4 text-xs truncate max-w-[200px]" title={r.reason}>{r.activityName ? `[${r.activityName}] ` : ''}{r.reason}</td>
+                              <td className="py-3">
+                                <button 
+                                  onClick={() => handleDeleteRecord(r._id)} 
+                                  className="text-xs px-2 py-1 bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 rounded transition-colors"
+                                >
+                                  撤回
+                                </button>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
+                      {performanceRecords.length === 0 && (
+                        <p className="text-center text-purple-200/50 py-6 text-sm">暂无打分记录</p>
+                      )}
                     </div>
                   </div>
                 </div>
