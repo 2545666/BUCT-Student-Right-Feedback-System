@@ -750,42 +750,7 @@ app.post('/api/feedback', authenticate, async (req, res) => {
       attachments: attachments || [] // [新增] 存入数据库
     });
     await logAction(req.user._id, 'create', 'feedback', feedback._id, { category }, req);
-  // [新增] 账号注销接口（仅超管可用）
-app.delete('/api/admin/users/:id', authenticate, adminOnly, async (req, res) => {
-  try {
-    // 1. 双重越权校验：强制阻断普通 admin
-    if (req.user.role !== 'superadmin') {
-      return res.status(403).json({ success: false, message: '权限不足：仅超级管理员可执行注销操作' });
-    }
-    
-    const targetUserId = req.params.id;
-    
-    // 2. 逻辑阻断：防止超管误注销当前正在使用的账号
-    if (targetUserId === req.user._id.toString()) {
-      return res.status(400).json({ success: false, message: '安全限制：不能注销当前正在登录的账号' });
-    }
 
-    const targetUser = await User.findById(targetUserId);
-    if (!targetUser) {
-      return res.status(404).json({ success: false, message: '目标用户不存在' });
-    }
-
-    // 3. 执行彻底删除
-    await User.findByIdAndDelete(targetUserId);
-    
-    // 4. 记录高危操作日志
-    try {
-      await logAction(req.user._id, 'delete_account', 'user', targetUserId, { targetStudentId: targetUser.studentId }, req);
-    } catch (e) {
-      console.error('注销日志记录失败:', e);
-    }
-
-    res.json({ success: true, message: '账号已成功彻底注销' });
-  } catch (error) {
-    console.error('注销账号失败:', error);
-    res.status(500).json({ success: false, message: '服务器内部错误，注销失败' });
-  }
-});
     // [新增] 触发通知给管理员
     const admins = await User.find({ role: { $in: ['admin', 'superadmin'] } });
     const notifications = admins.map(admin => ({
@@ -1001,6 +966,43 @@ app.patch('/api/admin/feedback/:id/status', authenticate, adminOnly, async (req,
   }
 });
 // ================== 超级管理员账号管理专属 API ==================
+
+// [新增] 账号注销接口（仅超管可用）
+app.delete('/api/admin/users/:id', authenticate, adminOnly, async (req, res) => {
+  try {
+    // 1. 双重越权校验：强制阻断普通 admin
+    if (req.user.role !== 'superadmin') {
+      return res.status(403).json({ success: false, message: '权限不足：仅超级管理员可执行注销操作' });
+    }
+    
+    const targetUserId = req.params.id;
+    
+    // 2. 逻辑阻断：防止超管误注销当前正在使用的账号
+    if (targetUserId === req.user._id.toString()) {
+      return res.status(400).json({ success: false, message: '安全限制：不能注销当前正在登录的账号' });
+    }
+
+    const targetUser = await User.findById(targetUserId);
+    if (!targetUser) {
+      return res.status(404).json({ success: false, message: '目标用户不存在' });
+    }
+
+    // 3. 执行彻底删除
+    await User.findByIdAndDelete(targetUserId);
+    
+    // 4. 记录高危操作日志
+    try {
+      await logAction(req.user._id, 'delete_account', 'user', targetUserId, { targetStudentId: targetUser.studentId }, req);
+    } catch (e) {
+      console.error('注销日志记录失败:', e);
+    }
+
+    res.json({ success: true, message: '账号已成功彻底注销' });
+  } catch (error) {
+    console.error('注销账号失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误，注销失败' });
+  }
+});
 
 // 1. 获取所有用户列表（区分角色）
 app.get('/api/admin/users', authenticate, adminOnly, async (req, res) => {
