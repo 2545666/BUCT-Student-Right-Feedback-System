@@ -750,7 +750,42 @@ app.post('/api/feedback', authenticate, async (req, res) => {
       attachments: attachments || [] // [新增] 存入数据库
     });
     await logAction(req.user._id, 'create', 'feedback', feedback._id, { category }, req);
+  // [新增] 账号注销接口（仅超管可用）
+app.delete('/api/admin/users/:id', authenticate, adminOnly, async (req, res) => {
+  try {
+    // 1. 双重越权校验：强制阻断普通 admin
+    if (req.user.role !== 'superadmin') {
+      return res.status(403).json({ success: false, message: '权限不足：仅超级管理员可执行注销操作' });
+    }
     
+    const targetUserId = req.params.id;
+    
+    // 2. 逻辑阻断：防止超管误注销当前正在使用的账号
+    if (targetUserId === req.user._id.toString()) {
+      return res.status(400).json({ success: false, message: '安全限制：不能注销当前正在登录的账号' });
+    }
+
+    const targetUser = await User.findById(targetUserId);
+    if (!targetUser) {
+      return res.status(404).json({ success: false, message: '目标用户不存在' });
+    }
+
+    // 3. 执行彻底删除
+    await User.findByIdAndDelete(targetUserId);
+    
+    // 4. 记录高危操作日志
+    try {
+      await logAction(req.user._id, 'delete_account', 'user', targetUserId, { targetStudentId: targetUser.studentId }, req);
+    } catch (e) {
+      console.error('注销日志记录失败:', e);
+    }
+
+    res.json({ success: true, message: '账号已成功彻底注销' });
+  } catch (error) {
+    console.error('注销账号失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误，注销失败' });
+  }
+});
     // [新增] 触发通知给管理员
     const admins = await User.find({ role: { $in: ['admin', 'superadmin'] } });
     const notifications = admins.map(admin => ({
@@ -1236,17 +1271,31 @@ const startServer = async () => {
     });
     console.log('✅ MongoDB 连接成功');
     
-    // 创建管理员账户
-    const adminExists = await User.findOne({ role: 'superadmin' });
-    if (!adminExists) {
-      await User.create({
-        studentId: '20240901007',
-        password: 'SIEVOX2026.',
-        name: '超级管理员',
-        email: '2024090107@buct.edu.cn',
-        role: 'superadmin'
-      });
-      console.log('✅ 默认超级管理员账户已创建');
+// [修改] 确保初始化 3 个完全同权限的超级管理员账号
+    const superadminsToInit = [
+      { studentId: '20240901007', name: '超级管理员1', email: '2024090107@buct.edu.cn' },
+      { studentId: '20240901008', name: '超级管理员2', email: 'superadmin2@buct.edu.cn' }, // 第 2 个超管
+      { studentId: '20240901009', name: '超级管理员3', email: 'superadmin3@buct.edu.cn' }  // 第 3 个超管
+    ];
+    
+    for (const adminData of superadminsToInit) {
+      const exists = await User.findOne({ studentId: adminData.studentId });
+      if (!exists) {
+        // 若账号不存在，直接创建为 superadmin
+        await User.create({
+          studentId: adminData.studentId,
+          name: adminData.name,
+          email: adminData.email,
+          password: 'SIEVOX2026.', // pre-save hook 会自动加密
+          role: 'superadmin'
+        });
+        console.log(`✅ Superadmin ${adminData.studentId} created`);
+      } else if (exists.role !== 'superadmin') {
+        // 若账号已注册但非超管，则强行覆盖提权为超管
+        exists.role = 'superadmin';
+        await exists.save();
+        console.log(`✅ User ${adminData.studentId} promoted to superadmin`);
+      }
     }
 
     

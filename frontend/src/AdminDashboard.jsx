@@ -219,6 +219,30 @@ const AccountManagement = ({ token, user: currentUser }) => {
     } catch (err) { alert('操作失败'); }
   };
 
+  // [新增] 前端注销账号请求逻辑
+  const handleDeleteUser = async (userId) => {
+    if (currentUser?.role !== 'superadmin') {
+      return alert('权限不足：仅超级管理员可注销账号');
+    }
+    
+    if (!window.confirm('危险操作：确定要彻底注销并抹除该账号吗？此操作不可逆！')) return;
+    
+    try {
+      const res = await fetch(`${API_BASE}/admin/users/${userId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        alert('该账号已从系统中彻底注销');
+        fetchUsers(); 
+      } else {
+        alert(data.message || '注销失败');
+      }
+    } catch (err) { alert('网络通信错误'); }
+  };
+
  const handleResetPassword = async (studentId) => {
     const newPwd = window.prompt(`请输入学号 ${studentId} 的新密码(至少6位)：`, '123456'); 
     if (!newPwd || newPwd.length < 6) return alert('密码无效或取消操作');
@@ -293,6 +317,15 @@ const AccountManagement = ({ token, user: currentUser }) => {
                       {admin.role !== 'superadmin' && (
                         <button onClick={() => handleDemote(admin.studentId)} className="text-xs px-2 py-1 bg-red-500/20 text-red-300 rounded hover:bg-red-500/40 transition">降级</button>
                       )}
+                      {/* [新增] 账号注销按钮，增加权限屏障仅渲染给 superadmin 且不能注销自己 */}
+                      {currentUser?.role === 'superadmin' && admin._id !== currentUser.id && (
+                        <button 
+                          onClick={() => handleDeleteUser(admin._id)} 
+                          className="text-xs px-2 py-1 bg-slate-600/20 text-slate-800 dark:text-slate-400 hover:bg-slate-800 hover:text-white dark:hover:bg-white dark:hover:text-slate-900 border border-slate-500/30 rounded transition-all"
+                        >
+                          注销
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -319,6 +352,15 @@ const AccountManagement = ({ token, user: currentUser }) => {
                       <button onClick={() => viewStudentFeedbacks(student._id, student.name)} className="text-xs px-2 py-1 bg-purple-500/20 text-purple-300 rounded hover:bg-purple-500/40 transition">查阅</button>
                       <button onClick={() => handleResetPassword(student.studentId)} className="text-xs px-2 py-1 bg-yellow-500/20 text-yellow-300 rounded hover:bg-yellow-500/40 transition">重置</button>
                       <button onClick={() => handleDirectPromote(student.studentId, student.name)} className="text-xs px-2 py-1 bg-green-500/20 text-green-300 rounded hover:bg-green-500/40 transition">升级</button>
+                      {/* [新增] 账号注销按钮 */}
+                      {currentUser?.role === 'superadmin' && (
+                        <button 
+                          onClick={() => handleDeleteUser(student._id)} 
+                          className="text-xs px-2 py-1 bg-slate-600/20 text-slate-800 dark:text-slate-400 hover:bg-slate-800 hover:text-white dark:hover:bg-white dark:hover:text-slate-900 border border-slate-500/30 rounded transition-all"
+                        >
+                          注销
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
