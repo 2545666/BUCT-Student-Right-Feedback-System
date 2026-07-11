@@ -485,6 +485,12 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
   const [selectedSemester, setSelectedSemester] = useState('');
   const [availableSemesters, setAvailableSemesters] = useState([]);
 
+  // [新增] 按学期成员名单（绩效"人员存档"）
+  const [rosterMembers, setRosterMembers] = useState([]);   // 当前所选学期名单 [{_id,name,studentId}]
+  const [rosterSource, setRosterSource] = useState('');       // explicit | current | legacy
+  const [showRosterModal, setShowRosterModal] = useState(false);
+  const [rosterSelection, setRosterSelection] = useState([]); // 弹窗中勾选的成员 id
+
   // 加权核算器专属状态
   const [showWeightCalc, setShowWeightCalc] = useState(false);
   const [calcDimension, setCalcDimension] = useState('activity');
@@ -533,7 +539,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
   const handleApplyWeighting = async () => {
     if (!window.confirm('确定应用加权吗？系统将自动校准该板块得分，并在得分处点亮“已加权”绿标。')) return;
 
-    for (const v of volunteers) {
+    for (const v of rosterMembers) {
         const userRecords = performanceRecords.filter(r => r.volunteer?._id === v._id && r.dimension === calcDimension);
         let attendedWeight = 0;
         let currentScore = 0;
@@ -605,9 +611,42 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
         const uRes = await fetch(`${API_BASE}/admin/users`, { headers: { 'Authorization': `Bearer ${token}` } });
         const uData = await uRes.json(); // 安全的单次读取
         if (uData.success) setVolunteers((uData.users || []).filter(u => u.role === 'admin'));
+
+        // [新增] 拉取当前所选学期的成员名单（榜单/录入/加权器均以此为准）
+        const rRes = await fetch(`${API_BASE}/admin/system/roster?semester=${encodeURIComponent(querySemester)}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const rData = await rRes.json();
+        if (rData.success) {
+          setRosterMembers(rData.members || []);
+          setRosterSource(rData.source || '');
+        }
       }
     } catch (err) { console.error('获取绩效信息失败:', err); }
   }, [token, user?.role, selectedSemester]);
+
+  // [新增] 打开"管理本学期成员名单"弹窗，初始勾选 = 当前名单
+  const openRosterModal = () => {
+    setRosterSelection(rosterMembers.map(m => m._id));
+    setShowRosterModal(true);
+  };
+
+  // [新增] 保存本学期成员名单（整份替换）
+  const handleSaveRoster = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/system/roster`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ semester: selectedSemester || currentSemester, volunteerIds: rosterSelection })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('本学期成员名单已保存');
+        setShowRosterModal(false);
+        fetchPerformanceAndUsers(selectedSemester);
+      } else {
+        alert(data.message || '保存失败');
+      }
+    } catch (err) { alert('网络错误'); }
+  };
 
   const calculateScore = useCallback((records) => {
     let scores = { attendance: 0, activity: 0, feedback: 0, copywriting: 0, others: 0, bonus: 0 };
@@ -649,7 +688,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
   const handleArchiveSemester = async () => {
     const newSemester = window.prompt(`当前运行学期为：${currentSemester}\n请输入新学期的名称以进行归档重置`); 
     if (!newSemester || newSemester === currentSemester) return;
-    if (!window.confirm(`警告：确认开启新学期 [${newSemester}] 吗？\n开启后全员当期积分将重新从 0 累计，旧学期数据将被永久归档！`)) return;
+    if (!window.confirm(`警告：确认开启新学期 [${newSemester}] 吗？\n上一学期的成员名单与绩效将被冻结存档，新学期成员名单将清空，需重新从子管理员账号中选择！`)) return;
     
     try {
       const res = await fetch(`${API_BASE}/admin/system/semester`, {
@@ -677,6 +716,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
       const data = await res.json();
       if (data.success) {
         alert('学期名称修改成功！');
+        setSelectedSemester(newName);
         fetchPerformanceAndUsers(newName);
       } else {
         alert(data.message || '操作失败');
@@ -1007,12 +1047,17 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
               <div className="space-y-4 md:space-y-6">
                 <div className="p-4 md:p-6 bg-gradient-to-br from-white to-purple-50 dark:from-slate-900 dark:to-purple-950/50 border border-purple-200 dark:border-purple-500/30 rounded-2xl shadow-sm transition-colors">
                   {/* [修复] 在这里加回了呼出“加权核算器”的按钮！ */}
-                  <h3 className="text-base md:text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center justify-between">
+                  <h3 className="text-base md:text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2"><span>🏆</span> 部门全员期末核算总榜单</div>
                     {user?.role === 'superadmin' && (
-                      <button onClick={() => setShowWeightCalc(true)} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-lg shadow-md transition-colors flex items-center gap-1">
-                        <span>🧮</span> 期末动态加权结算
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button onClick={openRosterModal} className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded-lg shadow-md transition-colors flex items-center gap-1">
+                          <span>👥</span> 管理本学期成员名单
+                        </button>
+                        <button onClick={() => setShowWeightCalc(true)} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-lg shadow-md transition-colors flex items-center gap-1">
+                          <span>🧮</span> 期末动态加权结算
+                        </button>
+                      </div>
                     )}
                   </h3>
                   <div className="overflow-x-auto">
@@ -1030,7 +1075,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200 dark:divide-white/5 text-slate-700 dark:text-purple-100 transition-colors">
-                        {volunteers.map(v => {
+                        {rosterMembers.map(v => {
                           const personalRecords = performanceRecords.filter(r => r.volunteer?._id === v._id);
                           return { user: v, scoreObj: calculateScore(personalRecords) };
                         }).sort((a, b) => b.scoreObj.total - a.scoreObj.total).map(({ user: v, scoreObj: s }) => (
@@ -1050,6 +1095,11 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                         ))}
                       </tbody>
                     </table>
+                    {rosterMembers.length === 0 && (
+                      <p className="text-center text-slate-500 dark:text-purple-200/50 py-6 text-sm">
+                        本学期尚未选择参与绩效的成员，请点击右上角「👥 管理本学期成员名单」从子管理员账号中添加。
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -1108,9 +1158,9 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                         <textarea required rows="2" placeholder="例: 按时全勤出勤 / 独立撰写大型策划案" value={perfForm.reason} onChange={e => setPerfForm({...perfForm, reason: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 rounded-lg text-slate-800 dark:text-white border border-slate-200 dark:border-white/10 outline-none resize-none transition-colors" />
                       </div>
                       <div>
-                        <label className="text-xs text-slate-500 dark:text-purple-200/60 mb-1 block transition-colors">选择志愿者 (可批量勾选)</label>
+                        <label className="text-xs text-slate-500 dark:text-purple-200/60 mb-1 block transition-colors">选择志愿者 (仅限本学期名单)</label>
                         <div className="max-h-32 overflow-y-auto bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-white/10 p-2 space-y-1 custom-scrollbar transition-colors">
-                          {volunteers.map(v => (
+                          {rosterMembers.map(v => (
                             <label key={v._id} className="flex items-center gap-2 text-sm text-slate-800 dark:text-white hover:bg-slate-200/50 dark:hover:bg-white/5 p-1 rounded cursor-pointer transition-colors">
                               <input type="checkbox" checked={perfForm.volunteerIds.includes(v._id)} onChange={(e) => {
                                 const ids = e.target.checked ? [...perfForm.volunteerIds, v._id] : perfForm.volunteerIds.filter(id => id !== v._id);
@@ -1119,6 +1169,9 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                               {v.name}
                             </label>
                           ))}
+                          {rosterMembers.length === 0 && (
+                            <p className="text-xs text-slate-400 dark:text-purple-200/40 text-center py-3">本学期暂无成员，请先用上方「👥 管理本学期成员名单」添加。</p>
+                          )}
                         </div>
                       </div>
                       
@@ -1591,7 +1644,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                       <tr><th className="py-2 pl-4">干事姓名</th><th className="py-2">有效参次记录</th><th className="py-2 text-blue-300">累计获得权重</th><th className="py-2 pr-4 font-bold text-white text-right">加权后覆盖得分</th></tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
-                      {volunteers.map(v => {
+                      {rosterMembers.map(v => {
                         const userRecords = performanceRecords.filter(r => r.volunteer?._id === v._id && r.dimension === calcDimension);
                         let attendedWeight = 0;
                         userRecords.forEach(r => {
@@ -1620,6 +1673,55 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                   </table>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+     {/* [新增] 管理本学期成员名单弹窗 */}
+      {showRosterModal && (
+        <div className="fixed inset-0 z-[180] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <div className="w-full max-w-lg p-6 relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-[85vh] transition-colors">
+            <button onClick={() => setShowRosterModal(false)} className="absolute top-4 right-4 text-purple-400 dark:text-purple-200/50 hover:text-slate-800 dark:hover:text-white text-lg transition-colors">✕</button>
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-1 pr-8 flex items-center gap-2"><span>👥</span> 管理本学期成员名单</h3>
+            <p className="text-xs text-slate-500 dark:text-purple-200/60 mb-4">
+              学期：<span className="font-bold text-purple-600 dark:text-purple-300">{selectedSemester || currentSemester}</span>
+              　勾选后即为本学期参与绩效核算的成员（来源：子管理员账号）。
+            </p>
+
+            <div className="flex items-center justify-between mb-2 text-xs">
+              <span className="text-slate-500 dark:text-purple-200/50">已选 {rosterSelection.length} / {volunteers.length} 人</span>
+              <div className="flex items-center gap-3">
+                <button type="button" onClick={() => setRosterSelection(volunteers.map(v => v._id))} className="text-purple-600 dark:text-purple-300 hover:underline">全选</button>
+                <button type="button" onClick={() => setRosterSelection([])} className="text-slate-500 dark:text-purple-200/50 hover:underline">清空</button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-white/10 p-2 space-y-1">
+              {volunteers.length === 0 ? (
+                <p className="text-sm text-slate-400 dark:text-purple-200/40 text-center py-8">暂无子管理员账号，请先在「账号管理面板」中将学生升级为管理员。</p>
+              ) : (
+                volunteers.map(v => (
+                  <label key={v._id} className="flex items-center gap-3 text-sm text-slate-800 dark:text-white hover:bg-slate-200/50 dark:hover:bg-white/5 p-2 rounded-lg cursor-pointer transition-colors">
+                    <input
+                      type="checkbox"
+                      className="accent-purple-500"
+                      checked={rosterSelection.includes(v._id)}
+                      onChange={(e) => {
+                        if (e.target.checked) setRosterSelection([...rosterSelection, v._id]);
+                        else setRosterSelection(rosterSelection.filter(id => id !== v._id));
+                      }}
+                    />
+                    <span className="font-medium">{v.name}</span>
+                    <span className="text-xs font-mono text-slate-400 dark:text-purple-200/40">{v.studentId}</span>
+                  </label>
+                ))
+              )}
+            </div>
+
+            <div className="pt-4 flex justify-end gap-2">
+              <button onClick={() => setShowRosterModal(false)} className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-purple-200/70 hover:bg-slate-200 dark:hover:bg-white/10 transition-all text-sm">取消</button>
+              <button onClick={handleSaveRoster} className="px-5 py-2 rounded-xl bg-purple-600 text-white hover:bg-purple-500 transition-all font-medium shadow-lg shadow-purple-500/20 text-sm">保存名单</button>
             </div>
           </div>
         </div>

@@ -306,6 +306,77 @@ const systemConfigSchema = new mongoose.Schema({
 });
 const SystemConfig = mongoose.model('SystemConfig', systemConfigSchema);
 
+// [新增] 按学期成员名单模型 (绩效"人员存档")
+// 每条记录表示：某个志愿者(User) 属于某个学期(semester) 的绩效名单。
+// 冻结时对 name/studentId 做快照，防止账号后续被注销/改名后历史名单丢失姓名。
+const semesterMemberSchema = new mongoose.Schema({
+  volunteer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  semester:  { type: String, required: true },
+  name:      { type: String },   // 快照
+  studentId: { type: String },   // 快照
+  addedBy:   { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+}, { timestamps: true });
+semesterMemberSchema.index({ volunteer: 1, semester: 1 }, { unique: true });
+const SemesterMember = mongoose.model('SemesterMember', semesterMemberSchema);
+
+// [新增] 读取/记录"已纳入名单管理"的学期集合 (存于 SystemConfig, JSON 字符串)
+// 被标记为 managed 的学期：新开启的学期、或超管显式保存过名单的学期 —— 其"空名单"即真正为空，不再回退。
+async function getManagedSemesters() {
+  const doc = await SystemConfig.findOne({ key: 'rosterManagedSemesters' });
+  if (!doc) return [];
+  try { return JSON.parse(doc.value) || []; } catch (e) { return []; }
+}
+async function markSemesterManaged(semester) {
+  if (!semester) return;
+  const list = await getManagedSemesters();
+  if (!list.includes(semester)) {
+    list.push(semester);
+    await SystemConfig.findOneAndUpdate(
+      { key: 'rosterManagedSemesters' },
+      { value: JSON.stringify(list) },
+      { upsert: true }
+    );
+  }
+}
+
+// [新增] 名单解析工具：按"解析规则"返回某学期的有效成员 [{ _id, name, studentId }]
+// 规则：1) 存在显式名单 → 用显式名单(账号被注销时回退快照)
+//       2) 学期已被 managed 但无显式名单 → 空即为空(新学期/已清空的名单)
+//       3) 无显式名单且为当前运行学期(未 managed) → 当前全部 admin(上线兼容,可编辑)
+//       4) 无显式名单且为历史学期(未 managed) → 该学期绩效流水中出现过的成员
+async function resolveSemesterMembers(semester) {
+  const explicit = await SemesterMember.find({ semester })
+    .populate('volunteer', 'name studentId')
+    .sort({ createdAt: 1 });
+  if (explicit.length > 0) {
+    const members = explicit.map(m => ({
+      _id: m.volunteer?._id || m.volunteer,
+      name: m.volunteer?.name || m.name,
+      studentId: m.volunteer?.studentId || m.studentId
+    }));
+    return { members, source: 'explicit' };
+  }
+
+  // 已被显式管理(新学期或曾保存过名单)→ 空即为空，不再回退
+  const managed = await getManagedSemesters();
+  if (managed.includes(semester)) {
+    return { members: [], source: 'explicit' };
+  }
+
+  const config = await SystemConfig.findOne({ key: 'currentSemester' });
+  const currentSemester = config ? config.value : null;
+
+  if (semester && semester === currentSemester) {
+    const admins = await User.find({ role: 'admin' })
+      .select('name studentId').sort({ createdAt: -1 });
+    return { members: admins.map(u => ({ _id: u._id, name: u.name, studentId: u.studentId })), source: 'current' };
+  }
+
+  const volunteerIds = await PerformanceRecord.find({ semester }).distinct('volunteer');
+  const users = await User.find({ _id: { $in: volunteerIds } }).select('name studentId');
+  return { members: users.map(u => ({ _id: u._id, name: u.name, studentId: u.studentId })), source: 'legacy' };
+}
+
 // ============================================
 // 中间件
 // ============================================
@@ -1171,7 +1242,9 @@ app.get('/api/admin/system/config', async (req, res) => {
   try {
     let config = await SystemConfig.findOne({ key: 'currentSemester' });
     if (!config) config = await SystemConfig.create({ key: 'currentSemester', value: '2025-2026学年 第二学期' });
-    const semesters = await PerformanceRecord.distinct('semester');
+    const perfSemesters = await PerformanceRecord.distinct('semester');
+    const rosterSemesters = await SemesterMember.distinct('semester');
+    const semesters = Array.from(new Set([...perfSemesters, ...rosterSemesters]));
     if (!semesters.includes(config.value)) semesters.push(config.value);
     res.json({ success: true, currentSemester: config.value, semesters });
   } catch (error) { res.status(500).json({ success: false }); }
@@ -1181,9 +1254,96 @@ app.get('/api/admin/system/config', async (req, res) => {
 app.post('/api/admin/system/semester', authenticate, adminOnly, async (req, res) => {
   if (req.user.role !== 'superadmin') return res.status(403).json({ success: false });
   try {
+    // [新增] 切换前冻结上一学期名单：若旧学期尚无显式名单，则把其"有效名单"快照存档
+    const oldConfig = await SystemConfig.findOne({ key: 'currentSemester' });
+    const oldSemester = oldConfig ? oldConfig.value : null;
+    if (oldSemester && oldSemester !== req.body.semester) {
+      const existing = await SemesterMember.countDocuments({ semester: oldSemester });
+      if (existing === 0) {
+        const { members } = await resolveSemesterMembers(oldSemester);
+        if (members.length > 0) {
+          await SemesterMember.insertMany(members.map(m => ({
+            volunteer: m._id, semester: oldSemester, name: m.name, studentId: m.studentId, addedBy: req.user._id
+          })), { ordered: false }).catch(() => {});
+        }
+      }
+      await markSemesterManaged(oldSemester);
+    }
+
+    // [新增] 新学期纳入名单管理：名单从空开始，需重新选择(不回退到全部 admin)
+    await markSemesterManaged(req.body.semester);
     await SystemConfig.findOneAndUpdate({ key: 'currentSemester' }, { value: req.body.semester }, { upsert: true });
     res.json({ success: true, message: '新学期已开启' });
   } catch (error) { res.status(500).json({ success: false }); }
+});
+
+// [新增] 重命名学期 (仅超管)：同步改绩效流水、成员名单、当前学期与受管学期列表
+app.put('/api/admin/system/semester/rename', authenticate, adminOnly, async (req, res) => {
+  if (req.user.role !== 'superadmin') return res.status(403).json({ success: false, message: '仅负责人可用' });
+  try {
+    const { oldName, newName } = req.body;
+    if (!oldName || !newName) return res.status(400).json({ success: false, message: '缺少学期名称' });
+    if (oldName === newName) return res.status(400).json({ success: false, message: '新旧名称相同' });
+
+    // 防止意外合并：若新名称已被使用则拒绝
+    const conflict =
+      (await PerformanceRecord.countDocuments({ semester: newName })) > 0 ||
+      (await SemesterMember.countDocuments({ semester: newName })) > 0 ||
+      (await getManagedSemesters()).includes(newName);
+    const curConfig = await SystemConfig.findOne({ key: 'currentSemester' });
+    if (conflict || (curConfig && curConfig.value === newName)) {
+      return res.status(409).json({ success: false, message: '该学期名称已存在，无法重命名' });
+    }
+
+    // 同步更新所有以学期字符串为键的数据
+    await PerformanceRecord.updateMany({ semester: oldName }, { semester: newName });
+    await SemesterMember.updateMany({ semester: oldName }, { semester: newName });
+    if (curConfig && curConfig.value === oldName) {
+      curConfig.value = newName;
+      await curConfig.save();
+    }
+    const managed = await getManagedSemesters();
+    if (managed.includes(oldName)) {
+      const updated = managed.map(s => (s === oldName ? newName : s));
+      await SystemConfig.findOneAndUpdate({ key: 'rosterManagedSemesters' }, { value: JSON.stringify(updated) }, { upsert: true });
+    }
+
+    res.json({ success: true, message: '学期名称已更新' });
+  } catch (error) { res.status(500).json({ success: false, message: '重命名失败' }); }
+});
+
+// [新增] 获取某学期成员名单 (仅超管)
+app.get('/api/admin/system/roster', authenticate, adminOnly, async (req, res) => {
+  if (req.user.role !== 'superadmin') return res.status(403).json({ success: false, message: '仅负责人可用' });
+  try {
+    const semester = req.query.semester;
+    if (!semester) return res.status(400).json({ success: false, message: '缺少学期参数' });
+    const { members, source } = await resolveSemesterMembers(semester);
+    res.json({ success: true, members, source });
+  } catch (error) { res.status(500).json({ success: false, message: '获取名单失败' }); }
+});
+
+// [新增] 保存/整份替换某学期成员名单 (仅超管)
+app.post('/api/admin/system/roster', authenticate, adminOnly, async (req, res) => {
+  if (req.user.role !== 'superadmin') return res.status(403).json({ success: false, message: '仅负责人可用' });
+  try {
+    const { semester, volunteerIds } = req.body;
+    if (!semester) return res.status(400).json({ success: false, message: '缺少学期参数' });
+    const ids = Array.isArray(volunteerIds) ? volunteerIds : [];
+
+    // 整份替换：先清空该学期名单，再按选择重建(带姓名/学号快照)
+    await SemesterMember.deleteMany({ semester });
+    if (ids.length > 0) {
+      const users = await User.find({ _id: { $in: ids } }).select('name studentId');
+      const docs = users.map(u => ({
+        volunteer: u._id, semester, name: u.name, studentId: u.studentId, addedBy: req.user._id
+      }));
+      if (docs.length > 0) await SemesterMember.insertMany(docs);
+    }
+    // [新增] 标记该学期已纳入名单管理：此后"空名单"即真正为空，不再回退到全部 admin
+    await markSemesterManaged(semester);
+    res.json({ success: true, message: '名单已保存' });
+  } catch (error) { res.status(500).json({ success: false, message: '保存名单失败' }); }
 });
 
 // 1. [超管] 批量录入绩效记录 (修复Bug：支持跨学期补录)
@@ -1281,22 +1441,27 @@ const startServer = async () => {
     ];
     
     for (const adminData of superadminsToInit) {
-      const exists = await User.findOne({ studentId: adminData.studentId });
-      if (!exists) {
-        // 若账号不存在，直接创建为 superadmin
-        await User.create({
-          studentId: adminData.studentId,
-          name: adminData.name,
-          email: adminData.email,
-          password: 'SIEVOX2026.', // pre-save hook 会自动加密
-          role: 'superadmin'
-        });
-        console.log(`✅ Superadmin ${adminData.studentId} created`);
-      } else if (exists.role !== 'superadmin') {
-        // 若账号已注册但非超管，则强行覆盖提权为超管
-        exists.role = 'superadmin';
-        await exists.save();
-        console.log(`✅ User ${adminData.studentId} promoted to superadmin`);
+      try {
+        const exists = await User.findOne({ studentId: adminData.studentId });
+        if (!exists) {
+          // 若账号不存在，直接创建为 superadmin
+          await User.create({
+            studentId: adminData.studentId,
+            name: adminData.name,
+            email: adminData.email,
+            password: 'SIEVOX2026.', // pre-save hook 会自动加密
+            role: 'superadmin'
+          });
+          console.log(`✅ Superadmin ${adminData.studentId} created`);
+        } else if (exists.role !== 'superadmin') {
+          // 若账号已注册但非超管，则强行覆盖提权为超管
+          exists.role = 'superadmin';
+          await exists.save();
+          console.log(`✅ User ${adminData.studentId} promoted to superadmin`);
+        }
+      } catch (e) {
+        // [修复] 单个超管初始化失败(如邮箱/学号与既有账号冲突)时仅告警跳过，避免整个服务启动崩溃
+        console.warn(`⚠️  跳过超管初始化 ${adminData.studentId}: ${e.message}`);
       }
     }
 
