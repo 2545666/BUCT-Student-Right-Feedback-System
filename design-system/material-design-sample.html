@@ -1,0 +1,2517 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light" data-color="purple">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>学生权益反馈系统 — Material Design 样例</title>
+
+<!-- Material Symbols Icons -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+
+<!-- Noto Serif SC (方正大标宋 fallback) -->
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+<style>
+/* ============================================================
+   MATERIAL DESIGN 3 — DESIGN TOKENS
+   ============================================================ */
+
+/* --- Base Surface & Shared Tokens (same across all color themes) --- */
+:root {
+  /* Status Colors */
+  --md-pending: #F0A027;
+  --md-on-pending: #FFFFFF;
+  --md-pending-container: #FFEFD3;
+  --md-on-pending-container: #5C3600;
+
+  --md-processing: #3869D4;
+  --md-on-processing: #FFFFFF;
+  --md-processing-container: #DBE3FA;
+  --md-on-processing-container: #00174B;
+
+  --md-resolved: #2E8540;
+  --md-on-resolved: #FFFFFF;
+  --md-resolved-container: #D5F5DC;
+  --md-on-resolved-container: #002106;
+
+  --md-rejected: #B3261E;
+  --md-on-rejected: #FFFFFF;
+  --md-rejected-container: #F9DEDC;
+  --md-on-rejected-container: #410E0B;
+
+  /* Typography Scale */
+  --md-typescale-display-large: 700 57px/64px '方正大标宋_GBK', 'FZDaBiaoSong-B06', 'Noto Serif SC', serif;
+  --md-typescale-display-medium: 700 45px/52px '方正大标宋_GBK', 'FZDaBiaoSong-B06', 'Noto Serif SC', serif;
+  --md-typescale-display-small: 700 36px/44px '方正大标宋_GBK', 'FZDaBiaoSong-B06', 'Noto Serif SC', serif;
+  --md-typescale-headline-large: 700 32px/40px '方正大标宋_GBK', 'FZDaBiaoSong-B06', 'Noto Serif SC', serif;
+  --md-typescale-headline-medium: 700 28px/36px '方正大标宋_GBK', 'FZDaBiaoSong-B06', 'Noto Serif SC', serif;
+  --md-typescale-headline-small: 700 24px/32px '方正大标宋_GBK', 'FZDaBiaoSong-B06', 'Noto Serif SC', serif;
+  --md-typescale-title-large: 700 22px/28px '方正大标宋_GBK', 'FZDaBiaoSong-B06', 'Noto Serif SC', serif;
+  --md-typescale-title-medium: 700 16px/24px '方正大标宋_GBK', 'FZDaBiaoSong-B06', 'Noto Serif SC', serif;
+  --md-typescale-title-small: 700 14px/20px '方正大标宋_GBK', 'FZDaBiaoSong-B06', 'Noto Serif SC', serif;
+  --md-typescale-body-large: 400 16px/24px 'Noto Serif SC', '方正大标宋_GBK', serif;
+  --md-typescale-body-medium: 400 14px/20px 'Noto Serif SC', '方正大标宋_GBK', serif;
+  --md-typescale-body-small: 400 12px/16px 'Noto Serif SC', '方正大标宋_GBK', serif;
+  --md-typescale-label-large: 500 14px/20px 'Noto Serif SC', '方正大标宋_GBK', serif;
+  --md-typescale-label-medium: 500 12px/16px 'Noto Serif SC', '方正大标宋_GBK', serif;
+  --md-typescale-label-small: 500 11px/16px 'Noto Serif SC', '方正大标宋_GBK', serif;
+
+  /* Elevation */
+  --md-elevation-0: none;
+  --md-elevation-1: 0px 1px 2px 0px rgba(0,0,0,0.3), 0px 1px 3px 1px rgba(0,0,0,0.15);
+  --md-elevation-2: 0px 1px 2px 0px rgba(0,0,0,0.3), 0px 2px 6px 2px rgba(0,0,0,0.15);
+  --md-elevation-3: 0px 1px 3px 0px rgba(0,0,0,0.3), 0px 4px 8px 3px rgba(0,0,0,0.15);
+  --md-elevation-4: 0px 2px 3px 0px rgba(0,0,0,0.3), 0px 6px 10px 4px rgba(0,0,0,0.15);
+  --md-elevation-5: 0px 4px 4px 0px rgba(0,0,0,0.3), 0px 8px 12px 6px rgba(0,0,0,0.15);
+
+  /* Shape */
+  --md-shape-none: 0px;
+  --md-shape-extra-small: 4px;
+  --md-shape-small: 8px;
+  --md-shape-medium: 12px;
+  --md-shape-large: 16px;
+  --md-shape-extra-large: 28px;
+  --md-shape-full: 9999px;
+
+  /* Spacing (8dp grid) */
+  --md-spacing-1: 4px;
+  --md-spacing-2: 8px;
+  --md-spacing-3: 12px;
+  --md-spacing-4: 16px;
+  --md-spacing-5: 20px;
+  --md-spacing-6: 24px;
+  --md-spacing-8: 32px;
+  --md-spacing-10: 40px;
+  --md-spacing-12: 48px;
+
+  /* Transition */
+  --md-transition: 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* ============================================================
+   COLOR THEME: Purple (默认)
+   ============================================================ */
+[data-color="purple"] {
+  --md-primary: #6750A4;
+  --md-on-primary: #FFFFFF;
+  --md-primary-container: #EADDFF;
+  --md-on-primary-container: #21005D;
+  --md-secondary: #625B71;
+  --md-on-secondary: #FFFFFF;
+  --md-secondary-container: #E8DEF8;
+  --md-on-secondary-container: #1D192B;
+  --md-tertiary: #7D5260;
+  --md-on-tertiary: #FFFFFF;
+  --md-tertiary-container: #FFD8E4;
+  --md-on-tertiary-container: #31111D;
+  --md-error: #B3261E;
+  --md-on-error: #FFFFFF;
+  --md-error-container: #F9DEDC;
+  --md-on-error-container: #410E0B;
+  --md-theme-name: '典雅紫';
+}
+
+/* ============================================================
+   COLOR THEME: Blue (海洋蓝)
+   ============================================================ */
+[data-color="blue"] {
+  --md-primary: #1A6CE3;
+  --md-on-primary: #FFFFFF;
+  --md-primary-container: #D7E3FF;
+  --md-on-primary-container: #001A41;
+  --md-secondary: #555F71;
+  --md-on-secondary: #FFFFFF;
+  --md-secondary-container: #D9E3F9;
+  --md-on-secondary-container: #121C2B;
+  --md-tertiary: #1E6B91;
+  --md-on-tertiary: #FFFFFF;
+  --md-tertiary-container: #CAEFFF;
+  --md-on-tertiary-container: #001E2F;
+  --md-error: #BA1A1A;
+  --md-on-error: #FFFFFF;
+  --md-error-container: #FFDAD6;
+  --md-on-error-container: #410002;
+  --md-theme-name: '海洋蓝';
+}
+
+/* ============================================================
+   COLOR THEME: Green (森林绿)
+   ============================================================ */
+[data-color="green"] {
+  --md-primary: #4A8D3F;
+  --md-on-primary: #FFFFFF;
+  --md-primary-container: #C5EFBA;
+  --md-on-primary-container: #002200;
+  --md-secondary: #526B4F;
+  --md-on-secondary: #FFFFFF;
+  --md-secondary-container: #D4F3CF;
+  --md-on-secondary-container: #10260F;
+  --md-tertiary: #3A6575;
+  --md-on-tertiary: #FFFFFF;
+  --md-tertiary-container: #BDEAFD;
+  --md-on-tertiary-container: #001F29;
+  --md-error: #BA1A1A;
+  --md-on-error: #FFFFFF;
+  --md-error-container: #FFDAD6;
+  --md-on-error-container: #410002;
+  --md-theme-name: '森林绿';
+}
+
+/* ============================================================
+   COLOR THEME: Orange (暖阳橙)
+   ============================================================ */
+[data-color="orange"] {
+  --md-primary: #C85100;
+  --md-on-primary: #FFFFFF;
+  --md-primary-container: #FFDBCA;
+  --md-on-primary-container: #3A1500;
+  --md-secondary: #755845;
+  --md-on-secondary: #FFFFFF;
+  --md-secondary-container: #FFDBCA;
+  --md-on-secondary-container: #2A1708;
+  --md-tertiary: #635F39;
+  --md-on-tertiary: #FFFFFF;
+  --md-tertiary-container: #EAE3B4;
+  --md-on-tertiary-container: #1E1C00;
+  --md-error: #BA1A1A;
+  --md-on-error: #FFFFFF;
+  --md-error-container: #FFDAD6;
+  --md-on-error-container: #410002;
+  --md-theme-name: '暖阳橙';
+}
+
+/* ============================================================
+   COLOR THEME: Teal (青碧色)
+   ============================================================ */
+[data-color="teal"] {
+  --md-primary: #007B7B;
+  --md-on-primary: #FFFFFF;
+  --md-primary-container: #6FF7F7;
+  --md-on-primary-container: #002020;
+  --md-secondary: #4A6363;
+  --md-on-secondary: #FFFFFF;
+  --md-secondary-container: #CCE8E8;
+  --md-on-secondary-container: #041F1F;
+  --md-tertiary: #4A5D7A;
+  --md-on-tertiary: #FFFFFF;
+  --md-tertiary-container: #D3E1FF;
+  --md-on-tertiary-container: #031A34;
+  --md-error: #BA1A1A;
+  --md-on-error: #FFFFFF;
+  --md-error-container: #FFDAD6;
+  --md-on-error-container: #410002;
+  --md-theme-name: '青碧色';
+}
+
+/* ============================================================
+   LIGHT MODE (default surface colors)
+   ============================================================ */
+[data-theme="light"] {
+  --md-surface: #FFFBFE;
+  --md-on-surface: #1C1B1F;
+  --md-surface-variant: #E7E0EC;
+  --md-on-surface-variant: #49454F;
+  --md-surface-container-lowest: #FFFFFF;
+  --md-surface-container-low: #F7F2FA;
+  --md-surface-container: #F3EDF7;
+  --md-surface-container-high: #ECE6F0;
+  --md-surface-container-highest: #E6E0E9;
+  --md-outline: #79747E;
+  --md-outline-variant: #CAC4D0;
+}
+
+/* --- Light mode surface tints per color theme --- */
+[data-theme="light"][data-color="purple"] {
+  --md-surface-container-lowest: #FFFFFF;
+  --md-surface-container-low: #F7F2FA;
+  --md-surface-container: #F3EDF7;
+  --md-surface-container-high: #ECE6F0;
+  --md-surface-container-highest: #E6E0E9;
+}
+
+[data-theme="light"][data-color="blue"] {
+  --md-surface-container-lowest: #FFFFFF;
+  --md-surface-container-low: #F2F6FC;
+  --md-surface-container: #EDF2F9;
+  --md-surface-container-high: #E6ECF3;
+  --md-surface-container-highest: #E0E6ED;
+}
+
+[data-theme="light"][data-color="green"] {
+  --md-surface-container-lowest: #FFFFFF;
+  --md-surface-container-low: #F2F6F2;
+  --md-surface-container: #EDF2ED;
+  --md-surface-container-high: #E6ECE6;
+  --md-surface-container-highest: #E0E6E0;
+}
+
+[data-theme="light"][data-color="orange"] {
+  --md-surface-container-lowest: #FFFFFF;
+  --md-surface-container-low: #FBF5F1;
+  --md-surface-container: #F7F0EC;
+  --md-surface-container-high: #F1E9E4;
+  --md-surface-container-highest: #EBE3DE;
+}
+
+[data-theme="light"][data-color="teal"] {
+  --md-surface-container-lowest: #FFFFFF;
+  --md-surface-container-low: #F2F6F6;
+  --md-surface-container: #EDF2F2;
+  --md-surface-container-high: #E6ECEC;
+  --md-surface-container-highest: #E0E6E6;
+}
+
+/* ============================================================
+   DARK MODE
+   ============================================================ */
+[data-theme="dark"] {
+  --md-surface: #1C1B1F;
+  --md-on-surface: #E6E1E5;
+  --md-surface-variant: #49454F;
+  --md-on-surface-variant: #CAC4D0;
+  --md-surface-container-lowest: #0F0D13;
+  --md-surface-container-low: #1D1B20;
+  --md-surface-container: #211F26;
+  --md-surface-container-high: #2B2930;
+  --md-surface-container-highest: #36343B;
+  --md-outline: #938F99;
+  --md-outline-variant: #49454F;
+}
+
+/* --- Dark mode surface tints per color theme --- */
+/* Deep, richly-tinted dark surfaces — not pure black */
+[data-theme="dark"][data-color="purple"] {
+  --md-surface: #1E1630;
+  --md-surface-container-lowest: #110B1A;
+  --md-surface-container-low: #1C1428;
+  --md-surface-container: #221A32;
+  --md-surface-container-high: #2D243D;
+  --md-surface-container-highest: #382E48;
+  --md-surface-variant: #3D3550;
+  --md-outline-variant: #4D4560;
+}
+
+[data-theme="dark"][data-color="blue"] {
+  --md-surface: #111B28;
+  --md-surface-container-lowest: #0A101A;
+  --md-surface-container-low: #111A2C;
+  --md-surface-container: #162038;
+  --md-surface-container-high: #1E2842;
+  --md-surface-container-highest: #26324E;
+  --md-surface-variant: #35405A;
+  --md-outline-variant: #45506A;
+}
+
+[data-theme="dark"][data-color="green"] {
+  --md-surface: #0E1510;
+  --md-surface-container-lowest: #080F09;
+  --md-surface-container-low: #0E1A10;
+  --md-surface-container: #122216;
+  --md-surface-container-high: #1A2C1E;
+  --md-surface-container-highest: #223628;
+  --md-surface-variant: #304536;
+  --md-outline-variant: #405546;
+}
+
+[data-theme="dark"][data-color="orange"] {
+  --md-surface: #1C1410;
+  --md-surface-container-lowest: #120B07;
+  --md-surface-container-low: #1E130C;
+  --md-surface-container: #261810;
+  --md-surface-container-high: #332017;
+  --md-surface-container-highest: #402A1E;
+  --md-surface-variant: #503A2E;
+  --md-outline-variant: #604A3E;
+}
+
+[data-theme="dark"][data-color="teal"] {
+  --md-surface: #0E1A1A;
+  --md-surface-container-lowest: #081212;
+  --md-surface-container-low: #0E1E1E;
+  --md-surface-container: #122828;
+  --md-surface-container-high: #1A3434;
+  --md-surface-container-highest: #224040;
+  --md-surface-variant: #305050;
+  --md-outline-variant: #406060;
+}
+
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font: var(--md-typescale-body-medium);
+  color: var(--md-on-surface);
+  background: var(--md-surface-container-lowest);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  transition: background var(--md-transition), color var(--md-transition);
+}
+
+.material-symbols-rounded {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  vertical-align: middle;
+  user-select: none;
+}
+
+.material-symbols-rounded.fill {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* ============================================================
+   TYPOGRAPHY HELPERS
+   ============================================================ */
+.display-small { font: var(--md-typescale-display-small); }
+.headline-large { font: var(--md-typescale-headline-large); }
+.headline-medium { font: var(--md-typescale-headline-medium); }
+.headline-small { font: var(--md-typescale-headline-small); }
+.title-large { font: var(--md-typescale-title-large); }
+.title-medium { font: var(--md-typescale-title-medium); }
+.title-small { font: var(--md-typescale-title-small); }
+.body-large { font: var(--md-typescale-body-large); }
+.body-medium { font: var(--md-typescale-body-medium); }
+.body-small { font: var(--md-typescale-body-small); }
+.label-large { font: var(--md-typescale-label-large); }
+.label-medium { font: var(--md-typescale-label-medium); }
+.label-small { font: var(--md-typescale-label-small); }
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--md-spacing-6);
+}
+
+.page-section {
+  padding: var(--md-spacing-6) 0;
+}
+
+/* ============================================================
+   TOP APP BAR
+   ============================================================ */
+.top-app-bar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--md-surface-container);
+  color: var(--md-on-surface);
+  box-shadow: var(--md-elevation-2);
+  transition: background var(--md-transition);
+}
+
+.top-app-bar__content {
+  display: flex;
+  align-items: center;
+  gap: var(--md-spacing-4);
+  height: 64px;
+  padding: 0 var(--md-spacing-2);
+}
+
+.top-app-bar__logo {
+  display: flex;
+  align-items: center;
+  gap: var(--md-spacing-2);
+}
+
+.top-app-bar__logo-img {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--md-shape-medium);
+  object-fit: contain;
+  background: var(--md-surface-container-highest);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.top-app-bar__logo-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.top-app-bar__title {
+  font: var(--md-typescale-title-large);
+  white-space: nowrap;
+  flex: 1;
+}
+
+.top-app-bar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--md-spacing-1);
+}
+
+/* ============================================================
+   ICON BUTTON
+   ============================================================ */
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--md-shape-full);
+  border: none;
+  background: transparent;
+  color: var(--md-on-surface-variant);
+  cursor: pointer;
+  transition: background var(--md-transition), color var(--md-transition);
+  position: relative;
+}
+
+.icon-button:hover {
+  background: var(--md-surface-variant);
+}
+
+.icon-button .badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--md-shape-full);
+  background: var(--md-error);
+  border: 2px solid var(--md-surface-container);
+}
+
+/* ============================================================
+   BUTTON
+   ============================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--md-spacing-2);
+  height: 40px;
+  padding: 0 var(--md-spacing-6);
+  border: none;
+  border-radius: var(--md-shape-full);
+  font: var(--md-typescale-label-large);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all var(--md-transition);
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn--filled {
+  background: var(--md-primary);
+  color: var(--md-on-primary);
+  box-shadow: var(--md-elevation-1);
+}
+.btn--filled:hover { opacity: 0.92; box-shadow: var(--md-elevation-2); }
+.btn--filled:active { opacity: 0.85; }
+
+.btn--tonal {
+  background: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
+}
+.btn--tonal:hover { opacity: 0.85; }
+
+.btn--outlined {
+  background: transparent;
+  color: var(--md-primary);
+  border: 1px solid var(--md-outline);
+}
+.btn--outlined:hover { background: var(--md-primary-container); }
+
+.btn--text {
+  background: transparent;
+  color: var(--md-primary);
+}
+.btn--text:hover { background: var(--md-primary-container); }
+
+.btn--error {
+  background: var(--md-error);
+  color: var(--md-on-error);
+}
+
+.btn--large { height: 56px; padding: 0 var(--md-spacing-8); }
+.btn--small { height: 32px; padding: 0 var(--md-spacing-3); font: var(--md-typescale-label-medium); }
+
+/* ============================================================
+   FAB
+   ============================================================ */
+.fab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--md-spacing-2);
+  height: 56px;
+  padding: 0 var(--md-spacing-6);
+  border: none;
+  border-radius: var(--md-shape-large);
+  background: var(--md-primary-container);
+  color: var(--md-on-primary-container);
+  box-shadow: var(--md-elevation-3);
+  font: var(--md-typescale-label-large);
+  cursor: pointer;
+  transition: all var(--md-transition);
+  position: fixed;
+  bottom: var(--md-spacing-6);
+  right: var(--md-spacing-6);
+  z-index: 90;
+}
+.fab:hover { box-shadow: var(--md-elevation-4); opacity: 0.9; }
+
+/* ============================================================
+   CARD
+   ============================================================ */
+.card {
+  background: var(--md-surface-container-low);
+  color: var(--md-on-surface);
+  border-radius: var(--md-shape-medium);
+  box-shadow: var(--md-elevation-1);
+  overflow: hidden;
+  transition: all var(--md-transition);
+}
+
+.card--clickable { cursor: pointer; }
+.card--clickable:hover { box-shadow: var(--md-elevation-2); background: var(--md-surface-container); }
+.card--outlined { box-shadow: none; border: 1px solid var(--md-outline-variant); }
+.card--filled { background: var(--md-surface-container-highest); box-shadow: none; }
+.card__header { padding: var(--md-spacing-4) var(--md-spacing-4) 0; }
+.card__body { padding: var(--md-spacing-4); }
+.card__footer { padding: 0 var(--md-spacing-4) var(--md-spacing-4); display: flex; justify-content: flex-end; gap: var(--md-spacing-2); }
+
+/* ============================================================
+   STAT CARD
+   ============================================================ */
+.stat-card {
+  background: var(--md-surface-container-low);
+  border-radius: var(--md-shape-medium);
+  box-shadow: var(--md-elevation-1);
+  padding: var(--md-spacing-4);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--md-spacing-4);
+  transition: box-shadow var(--md-transition);
+}
+.stat-card:hover { box-shadow: var(--md-elevation-2); }
+
+.stat-card__icon {
+  width: 48px; height: 48px;
+  border-radius: var(--md-shape-medium);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.stat-card__icon--purple { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+.stat-card__icon--amber  { background: var(--md-pending-container); color: var(--md-on-pending-container); }
+.stat-card__icon--blue   { background: var(--md-processing-container); color: var(--md-on-processing-container); }
+.stat-card__icon--green  { background: var(--md-resolved-container); color: var(--md-on-resolved-container); }
+
+.stat-card__value { font: var(--md-typescale-display-small); color: var(--md-on-surface); }
+.stat-card__label { font: var(--md-typescale-body-small); color: var(--md-on-surface-variant); margin-top: var(--md-spacing-1); }
+
+/* ============================================================
+   CHIP
+   ============================================================ */
+.chip {
+  display: inline-flex; align-items: center; gap: var(--md-spacing-1);
+  height: 32px; padding: 0 var(--md-spacing-4);
+  border-radius: var(--md-shape-small);
+  border: 1px solid var(--md-outline-variant);
+  background: transparent;
+  color: var(--md-on-surface-variant);
+  font: var(--md-typescale-label-medium);
+  cursor: pointer;
+  transition: all var(--md-transition);
+  white-space: nowrap;
+}
+.chip:hover { background: var(--md-surface-variant); }
+.chip--selected { background: var(--md-secondary-container); color: var(--md-on-secondary-container); border-color: transparent; }
+.chip--assist { background: var(--md-primary-container); color: var(--md-on-primary-container); border-color: transparent; }
+
+/* ============================================================
+   TEXT FIELD
+   ============================================================ */
+.text-field { display: flex; flex-direction: column; gap: var(--md-spacing-1); }
+.text-field__label { font: var(--md-typescale-body-small); color: var(--md-on-surface-variant); }
+
+.text-field__input, .text-field__textarea {
+  width: 100%; min-height: 56px;
+  padding: var(--md-spacing-2) var(--md-spacing-4);
+  border-radius: var(--md-shape-extra-small) var(--md-shape-extra-small) 0 0;
+  border: none;
+  border-bottom: 1px solid var(--md-outline-variant);
+  background: var(--md-surface-container-highest);
+  color: var(--md-on-surface);
+  font: var(--md-typescale-body-large);
+  transition: border-color var(--md-transition), background var(--md-transition);
+  outline: none; resize: vertical;
+}
+.text-field__input:hover, .text-field__textarea:hover { border-bottom-color: var(--md-on-surface); }
+.text-field__input:focus, .text-field__textarea:focus { border-bottom: 2px solid var(--md-primary); background: var(--md-surface-container-highest); }
+.text-field__input::placeholder, .text-field__textarea::placeholder { color: var(--md-on-surface-variant); opacity: 0.6; }
+
+.text-field__textarea {
+  min-height: 120px; border-radius: var(--md-shape-extra-small);
+  border: 1px solid var(--md-outline-variant);
+  padding: var(--md-spacing-4);
+}
+.text-field__textarea:focus { border: 2px solid var(--md-primary); }
+.text-field__helper { font: var(--md-typescale-body-small); color: var(--md-on-surface-variant); padding: 0 var(--md-spacing-4); }
+
+/* ============================================================
+   SELECT
+   ============================================================ */
+.select-field { display: flex; flex-direction: column; gap: var(--md-spacing-1); }
+.select-field__label { font: var(--md-typescale-body-small); color: var(--md-on-surface-variant); }
+
+.select-field__select {
+  width: 100%; height: 56px;
+  padding: 0 var(--md-spacing-4);
+  border-radius: var(--md-shape-extra-small) var(--md-shape-extra-small) 0 0;
+  border: none; border-bottom: 1px solid var(--md-outline-variant);
+  background: var(--md-surface-container-highest);
+  color: var(--md-on-surface);
+  font: var(--md-typescale-body-large);
+  cursor: pointer; outline: none;
+  transition: border-color var(--md-transition);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%2349454F' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 8px center;
+}
+.select-field__select:focus { border-bottom: 2px solid var(--md-primary); }
+
+/* ============================================================
+   CHECKBOX
+   ============================================================ */
+.checkbox-wrapper { display: flex; align-items: center; gap: var(--md-spacing-3); cursor: pointer; }
+.checkbox-wrapper input[type="checkbox"] {
+  appearance: none; width: 18px; height: 18px;
+  border: 2px solid var(--md-on-surface-variant); border-radius: 2px;
+  cursor: pointer; position: relative;
+  transition: all var(--md-transition); flex-shrink: 0;
+}
+.checkbox-wrapper input[type="checkbox"]:checked { background: var(--md-primary); border-color: var(--md-primary); }
+.checkbox-wrapper input[type="checkbox"]:checked::after {
+  content: ''; position: absolute; left: 4px; top: 1px;
+  width: 6px; height: 10px;
+  border: solid var(--md-on-primary); border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+/* ============================================================
+   STATUS BADGE
+   ============================================================ */
+.status-badge {
+  display: inline-flex; align-items: center; gap: var(--md-spacing-1);
+  height: 28px; padding: 0 var(--md-spacing-3);
+  border-radius: var(--md-shape-small);
+  font: var(--md-typescale-label-small);
+}
+.status-badge--pending    { background: var(--md-pending-container); color: var(--md-on-pending-container); }
+.status-badge--processing { background: var(--md-processing-container); color: var(--md-on-processing-container); }
+.status-badge--resolved   { background: var(--md-resolved-container); color: var(--md-on-resolved-container); }
+.status-badge--rejected   { background: var(--md-rejected-container); color: var(--md-on-rejected-container); }
+
+/* ============================================================
+   SEGMENTED BUTTON
+   ============================================================ */
+.segmented-button-group {
+  display: inline-flex;
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-shape-full);
+  overflow: hidden;
+  background: var(--md-surface-container-low);
+}
+.segmented-button {
+  flex: 1; display: flex; align-items: center; gap: var(--md-spacing-2);
+  height: 40px; padding: 0 var(--md-spacing-5);
+  border: none; background: transparent;
+  color: var(--md-on-surface-variant);
+  font: var(--md-typescale-label-large);
+  cursor: pointer;
+  transition: all var(--md-transition);
+  white-space: nowrap;
+}
+.segmented-button:hover { background: var(--md-surface-variant); }
+.segmented-button--active { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
+
+/* ============================================================
+   DIALOG / MODAL
+   ============================================================ */
+.dialog-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200;
+  padding: var(--md-spacing-6);
+}
+.dialog {
+  background: var(--md-surface-container-high);
+  border-radius: var(--md-shape-extra-large);
+  box-shadow: var(--md-elevation-5);
+  max-width: 480px; width: 100%;
+  max-height: 90vh; overflow-y: auto;
+  padding: var(--md-spacing-6);
+}
+.dialog__title { font: var(--md-typescale-headline-small); margin-bottom: var(--md-spacing-4); }
+.dialog__actions { display: flex; justify-content: flex-end; gap: var(--md-spacing-2); margin-top: var(--md-spacing-6); }
+
+/* ============================================================
+   EXPANSION PANEL
+   ============================================================ */
+.expansion-panel {
+  background: var(--md-surface-container-low);
+  border-radius: var(--md-shape-medium);
+  box-shadow: var(--md-elevation-1);
+  overflow: hidden;
+  transition: all var(--md-transition);
+}
+.expansion-panel__header {
+  display: flex; align-items: center; gap: var(--md-spacing-4);
+  padding: var(--md-spacing-4);
+  cursor: pointer;
+  transition: background var(--md-transition);
+}
+.expansion-panel__header:hover { background: var(--md-surface-container); }
+.expansion-panel__icon {
+  width: 40px; height: 40px;
+  border-radius: var(--md-shape-full);
+  background: var(--md-secondary-container);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--md-on-secondary-container);
+  flex-shrink: 0;
+}
+.expansion-panel__content { padding: 0 var(--md-spacing-4) var(--md-spacing-4); border-top: 1px solid var(--md-outline-variant); }
+.expansion-panel__expand-icon { transition: transform var(--md-transition); color: var(--md-on-surface-variant); }
+.expansion-panel--expanded .expansion-panel__expand-icon { transform: rotate(180deg); }
+
+/* ============================================================
+   THEME TOGGLE (Light/Dark)
+   ============================================================ */
+.theme-toggle {
+  display: flex; align-items: center;
+  background: var(--md-surface-container-highest);
+  border-radius: var(--md-shape-full);
+  padding: 4px; border: none; cursor: pointer;
+}
+.theme-toggle__option {
+  width: 36px; height: 36px;
+  border-radius: var(--md-shape-full);
+  display: flex; align-items: center; justify-content: center;
+  border: none; background: transparent;
+  color: var(--md-on-surface-variant);
+  cursor: pointer;
+  transition: all var(--md-transition);
+}
+.theme-toggle__option--active { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+
+/* ============================================================
+   THEME MENU (popover from palette icon)
+   ============================================================ */
+.theme-menu-trigger {
+  position: relative;
+}
+
+.theme-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  min-width: 220px;
+  background: var(--md-surface-container-high);
+  border-radius: var(--md-shape-medium);
+  box-shadow: var(--md-elevation-4);
+  z-index: 300;
+  overflow: hidden;
+  padding: var(--md-spacing-2);
+}
+
+.theme-menu--open {
+  display: block;
+}
+
+.theme-menu__section {
+  padding: var(--md-spacing-2) 0;
+}
+
+.theme-menu__section + .theme-menu__section {
+  border-top: 1px solid var(--md-outline-variant);
+}
+
+.theme-menu__label {
+  font: var(--md-typescale-label-small);
+  color: var(--md-on-surface-variant);
+  padding: var(--md-spacing-1) var(--md-spacing-3);
+  margin-bottom: var(--md-spacing-1);
+}
+
+.theme-menu__row {
+  display: flex; align-items: center; gap: var(--md-spacing-3);
+  height: 44px; padding: 0 var(--md-spacing-3);
+  border-radius: var(--md-shape-small);
+  cursor: pointer;
+  border: none; background: transparent;
+  color: var(--md-on-surface);
+  font: var(--md-typescale-body-medium);
+  width: 100%; text-align: left;
+  transition: background var(--md-transition);
+}
+.theme-menu__row:hover { background: var(--md-surface-variant); }
+
+.theme-menu__swatch {
+  width: 24px; height: 24px;
+  border-radius: var(--md-shape-full);
+  flex-shrink: 0;
+  border: 2px solid transparent;
+  transition: border-color var(--md-transition);
+}
+.theme-menu__row--active .theme-menu__swatch { border-color: var(--md-on-surface); }
+
+.theme-menu__swatch--purple { background: #6750A4; }
+.theme-menu__swatch--blue   { background: #1A6CE3; }
+.theme-menu__swatch--green  { background: #4A8D3F; }
+.theme-menu__swatch--orange { background: #C85100; }
+.theme-menu__swatch--teal   { background: #007B7B; }
+
+.theme-menu__mode-icon {
+  width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  color: var(--md-on-surface-variant);
+}
+
+.theme-menu__check {
+  margin-left: auto;
+  color: var(--md-primary);
+  font-size: 18px;
+  visibility: hidden;
+}
+.theme-menu__row--active .theme-menu__check { visibility: visible; }
+
+/* ============================================================
+   LOGIN PAGE — SPLIT LAYOUT
+   ============================================================ */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  background: var(--md-surface-container-lowest);
+}
+
+/* --- Left: Hero Panel (Desktop only) --- */
+.login-hero {
+  display: none;
+  flex: 1;
+  position: relative;
+  background: var(--md-primary-container);
+  overflow: hidden;
+}
+
+.login-hero__overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 30% 50%, var(--md-primary) 0%, transparent 70%),
+    radial-gradient(ellipse at 70% 30%, var(--md-tertiary) 0%, transparent 60%);
+  opacity: 0.15;
+}
+
+.login-hero__pattern {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 3px 3px, var(--md-primary) 1.5px, transparent 0);
+  background-size: 48px 48px;
+  opacity: 0.25;
+}
+
+.login-hero__content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: var(--md-spacing-8);
+}
+
+/* --- Top-left: School + College logos (hero panel) --- */
+.login-hero__top-logos {
+  display: flex;
+  align-items: center;
+  gap: var(--md-spacing-4);
+}
+
+.login-hero__top-logo {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--md-shape-medium);
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(8px);
+  box-shadow: var(--md-elevation-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.login-hero__top-logo img {
+  width: 80%;
+  height: 80%;
+  object-fit: contain;
+}
+
+.login-hero__top-divider {
+  width: 1px;
+  height: 32px;
+  background: rgba(0,0,0,0.2);
+}
+
+.login-hero__top-text {
+  font: var(--md-typescale-title-small);
+  color: var(--md-on-primary-container);
+  opacity: 0.85;
+}
+
+/* --- Hero center: big placeholder image --- */
+.login-hero__image-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: var(--md-spacing-8) 0;
+}
+
+.login-hero__placeholder {
+  width: 80%;
+  max-width: 520px;
+  aspect-ratio: 4/3;
+  background: rgba(255,255,255,0.2);
+  backdrop-filter: blur(4px);
+  border-radius: var(--md-shape-extra-large);
+  border: 2px dashed rgba(255,255,255,0.4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--md-spacing-4);
+  color: var(--md-on-primary-container);
+  opacity: 0.7;
+}
+
+.login-hero__placeholder .material-symbols-rounded {
+  font-size: 72px;
+  opacity: 0.5;
+}
+
+/* --- Hero bottom: tagline --- */
+.login-hero__tagline {
+  font: var(--md-typescale-headline-small);
+  color: var(--md-on-primary-container);
+  opacity: 0.9;
+  line-height: 1.4;
+}
+
+.login-hero__subtitle {
+  font: var(--md-typescale-body-large);
+  color: var(--md-on-primary-container);
+  opacity: 0.7;
+  margin-top: var(--md-spacing-2);
+}
+
+/* --- Right: Form Panel --- */
+.login-form-panel {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--md-spacing-8);
+  background: var(--md-surface-container-lowest);
+  min-width: 0;
+  position: relative;
+}
+
+/* --- Top-right theme controls (login page) --- */
+.login-theme-bar {
+  position: absolute;
+  top: var(--md-spacing-4);
+  right: var(--md-spacing-4);
+  display: flex;
+  align-items: center;
+  gap: var(--md-spacing-1);
+  z-index: 10;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 420px;
+}
+
+.login-card__branding {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--md-spacing-4);
+  margin-bottom: var(--md-spacing-8);
+}
+
+/* --- Mobile-only: logos inside card --- */
+.login-card__logos-mobile {
+  display: flex;
+  align-items: center;
+  gap: var(--md-spacing-6);
+}
+
+.login-card__logo {
+  width: 64px; height: 64px;
+  border-radius: var(--md-shape-medium);
+  object-fit: contain;
+  background: var(--md-surface-container);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+
+.login-card__logo img {
+  width: 80%; height: 80%;
+  object-fit: contain;
+}
+
+.login-card__divider {
+  width: 1px; height: 48px;
+  background: var(--md-outline-variant);
+}
+
+.login-card__school-name {
+  font: 700 16px/24px '方正大标宋_GBK', 'FZDaBiaoSong-B06', 'Noto Serif SC', serif;
+  color: var(--md-on-surface-variant);
+}
+
+.login-card__app-title {
+  font: 700 28px/36px '方正大标宋_GBK', 'FZDaBiaoSong-B06', 'Noto Serif SC', serif;
+  color: var(--md-primary);
+}
+
+.login-card__error {
+  background: var(--md-error-container);
+  color: var(--md-on-error-container);
+  padding: var(--md-spacing-3) var(--md-spacing-4);
+  border-radius: var(--md-shape-small);
+  font: var(--md-typescale-body-small);
+  display: flex; align-items: center; gap: var(--md-spacing-2);
+  margin-bottom: var(--md-spacing-4);
+}
+
+/* --- Mobile-only: top-left school/college logos --- */
+.login-mobile-corner {
+  display: none;
+  position: absolute;
+  top: var(--md-spacing-4);
+  left: var(--md-spacing-4);
+  align-items: center;
+  gap: var(--md-spacing-2);
+  z-index: 10;
+}
+
+.login-mobile-corner__logo {
+  width: 32px; height: 32px;
+  border-radius: var(--md-shape-small);
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(8px);
+  box-shadow: var(--md-elevation-1);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+
+.login-mobile-corner__logo img {
+  width: 75%; height: 75%;
+  object-fit: contain;
+}
+
+.login-mobile-corner__divider {
+  width: 1px; height: 18px;
+  background: rgba(0,0,0,0.2);
+}
+
+.login-mobile-corner__text {
+  font: var(--md-typescale-label-medium);
+  color: var(--md-on-surface);
+  opacity: 0.7;
+}
+
+/* ============================================================
+   ADMIN — Table, Filter Bar, Accordion
+   ============================================================ */
+.admin-table { width: 100%; border-collapse: collapse; font: var(--md-typescale-body-small); }
+.admin-table thead { border-bottom: 2px solid var(--md-outline-variant); }
+.admin-table th { padding: 10px 12px; text-align: left; color: var(--md-on-surface-variant); font: var(--md-typescale-label-small); font-weight: 600; white-space: nowrap; }
+.admin-table td { padding: 10px 12px; border-bottom: 1px solid var(--md-outline-variant); color: var(--md-on-surface); vertical-align: middle; }
+.admin-table tbody tr { transition: background var(--md-transition); }
+.admin-table tbody tr:hover { background: var(--md-surface-container); }
+.admin-table__badge { display: inline-block; padding: 2px 7px; border-radius: var(--md-shape-extra-small); font: var(--md-typescale-label-small); font-weight: 600; }
+.admin-table__badge--blue { background: var(--md-processing-container); color: var(--md-on-processing-container); }
+.admin-table__badge--green { background: var(--md-resolved-container); color: var(--md-on-resolved-container); }
+.admin-table__badge--amber { background: var(--md-pending-container); color: var(--md-on-pending-container); }
+.admin-table__badge--red { background: var(--md-error-container); color: var(--md-on-error-container); }
+
+.filter-bar { display: flex; flex-wrap: wrap; gap: var(--md-spacing-2); align-items: center; margin-bottom: var(--md-spacing-4); }
+.filter-bar input, .filter-bar select { height: 36px; padding: 0 10px; border-radius: var(--md-shape-extra-small); border: 1px solid var(--md-outline-variant); background: var(--md-surface-container-highest); color: var(--md-on-surface); font: var(--md-typescale-body-small); outline: none; }
+.filter-bar input:focus, .filter-bar select:focus { border-color: var(--md-primary); }
+.filter-bar input { min-width: 160px; }
+.filter-bar select { min-width: 100px; }
+
+.stat-card--sm { padding: var(--md-spacing-3) var(--md-spacing-4); }
+.stat-card__row { display: flex; align-items: center; gap: var(--md-spacing-3); }
+.stat-card__big { font: var(--md-typescale-headline-small); font-weight: 700; }
+
+.cat-stat-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--md-spacing-2); margin-bottom: var(--md-spacing-4); }
+.cat-stat-item { text-align: center; padding: var(--md-spacing-3); border-radius: var(--md-shape-medium); background: var(--md-surface-container-low); box-shadow: var(--md-elevation-1); }
+.cat-stat-item__icon { font-size: 28px; margin-bottom: var(--md-spacing-1); }
+.cat-stat-item__count { font: var(--md-typescale-title-medium); font-weight: 700; color: var(--md-primary); }
+.cat-stat-item__label { font: var(--md-typescale-label-small); color: var(--md-on-surface-variant); }
+
+.detail-panel { width: 100%; background: var(--md-surface-container-low); border-radius: var(--md-shape-medium); box-shadow: var(--md-elevation-2); padding: var(--md-spacing-4); margin-top: var(--md-spacing-4); }
+.detail-panel h4 { font: var(--md-typescale-title-small); margin-bottom: var(--md-spacing-3); }
+
+.progress-bar { height: 8px; background: var(--md-surface-variant); border-radius: 4px; overflow: hidden; margin-top: var(--md-spacing-1); }
+.progress-bar__fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+.progress-bar__fill--purple { background: var(--md-primary); }
+.progress-bar__fill--blue { background: var(--md-processing); }
+.progress-bar__fill--green { background: var(--md-resolved); }
+.progress-bar__fill--amber { background: var(--md-pending); }
+.progress-bar__fill--red { background: var(--md-error); }
+
+.scoreboard-table td:last-child { font: var(--md-typescale-title-medium); font-weight: 700; color: var(--md-primary); }
+
+@media (max-width: 768px) {
+  .cat-stat-row { grid-template-columns: repeat(3, 1fr); }
+  .admin-table { font-size: 10px; }
+  .admin-table th, .admin-table td { padding: 6px 4px; }
+  .filter-bar { flex-direction: column; align-items: stretch; }
+  .filter-bar input, .filter-bar select { width: 100%; }
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (min-width: 769px) {
+  .login-hero { display: flex; flex-direction: column; }
+  .login-form-panel { max-width: 520px; }
+}
+
+@media (max-width: 768px) {
+  .login-page { position: relative; flex-direction: column; align-items: center; justify-content: center; }
+  .login-hero { display: none; }
+  .login-form-panel { flex: none; padding: var(--md-spacing-4); padding-top: 72px; }
+  .login-card__logos-mobile { display: flex; }
+  .login-mobile-corner { display: flex; }
+  .login-card__branding { margin-bottom: var(--md-spacing-6); }
+
+  .top-app-bar__title { font: var(--md-typescale-title-medium); }
+  .hide-mobile { display: none !important; }
+  .container { padding: 0 var(--md-spacing-4); }
+  .fab { height: 48px; padding: 0 var(--md-spacing-4); }
+}
+
+/* ============================================================
+   UTILITY
+   ============================================================ */
+.gap-2 { gap: var(--md-spacing-2); }
+.gap-4 { gap: var(--md-spacing-4); }
+.gap-6 { gap: var(--md-spacing-6); }
+.flex { display: flex; }
+.flex-center { display: flex; align-items: center; }
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+.flex-wrap { flex-wrap: wrap; }
+.flex-col { flex-direction: column; }
+.flex-1 { flex: 1; }
+.grid { display: grid; }
+.grid-2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.grid-4 { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+.mt-1 { margin-top: var(--md-spacing-1); }
+.mt-2 { margin-top: var(--md-spacing-2); }
+.mt-4 { margin-top: var(--md-spacing-4); }
+.mt-6 { margin-top: var(--md-spacing-6); }
+.mb-2 { margin-bottom: var(--md-spacing-2); }
+.mb-4 { margin-bottom: var(--md-spacing-4); }
+.mb-6 { margin-bottom: var(--md-spacing-6); }
+.text-center { text-align: center; }
+.w-full { width: 100%; }
+
+.surface-variant-bg {
+  background: var(--md-surface-variant);
+  padding: var(--md-spacing-4);
+  border-radius: var(--md-shape-medium);
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     PAGE 1: LOGIN PAGE (SPLIT LAYOUT)
+     ============================================================ -->
+<section id="page-login" class="login-page">
+
+  <!-- Mobile-only: top-left corner school + college logos -->
+  <div class="login-mobile-corner">
+    <div class="login-mobile-corner__logo">
+      <span class="material-symbols-rounded" style="font-size:20px;color:var(--md-primary);">school</span>
+    </div>
+    <div class="login-mobile-corner__divider"></div>
+    <div class="login-mobile-corner__logo">
+      <span class="material-symbols-rounded" style="font-size:20px;color:var(--md-primary);">account_balance</span>
+    </div>
+    <span class="login-mobile-corner__text">北京化工大学国际教育学院</span>
+  </div>
+
+  <!-- ===== LEFT: Hero Panel (Desktop only) ===== -->
+  <div class="login-hero">
+    <div class="login-hero__overlay"></div>
+    <div class="login-hero__pattern"></div>
+
+    <div class="login-hero__content">
+      <!-- Top-left: School + College logos -->
+      <div class="login-hero__top-logos">
+        <div class="login-hero__top-logo">
+          <span class="material-symbols-rounded" style="font-size:28px;color:var(--md-primary);">school</span>
+        </div>
+        <div class="login-hero__top-divider"></div>
+        <div class="login-hero__top-logo">
+          <span class="material-symbols-rounded" style="font-size:28px;color:var(--md-primary);">account_balance</span>
+        </div>
+        <span class="login-hero__top-text">北京化工大学<br>国际教育学院</span>
+      </div>
+
+      <!-- Center: Placeholder for big image -->
+      <div class="login-hero__image-area">
+        <div class="login-hero__placeholder">
+          <span class="material-symbols-rounded">image</span>
+          <span class="title-large">校园风貌 / 宣传大图</span>
+          <span class="body-medium">此处放置学校或学院宣传图片</span>
+        </div>
+      </div>
+
+      <!-- Bottom: Tagline -->
+      <div>
+        <p class="login-hero__tagline">你的声音，<br>我们用心倾听。</p>
+        <p class="login-hero__subtitle">学生权益反馈平台 · 让每一次诉求都有回音</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== RIGHT: Form Panel ===== -->
+  <div class="login-form-panel">
+
+    <!-- Top-right: theme controls -->
+    <div class="login-theme-bar">
+      <button class="icon-button" id="login-mode-btn" title="切换深浅模式" onclick="toggleLightDark()">
+        <span class="material-symbols-rounded">light_mode</span>
+      </button>
+      <div class="theme-menu-trigger">
+        <button class="icon-button" title="配色主题" onclick="toggleThemeMenu('login-theme-menu', event)">
+          <span class="material-symbols-rounded">palette</span>
+        </button>
+        <div id="login-theme-menu" class="theme-menu">
+          <div class="theme-menu__section">
+            <p class="theme-menu__label">配色方案</p>
+            <button class="theme-menu__row" data-color="purple" onclick="setColor('purple')">
+              <span class="theme-menu__swatch theme-menu__swatch--purple"></span> 典雅紫
+              <span class="material-symbols-rounded theme-menu__check">check</span>
+            </button>
+            <button class="theme-menu__row" data-color="blue" onclick="setColor('blue')">
+              <span class="theme-menu__swatch theme-menu__swatch--blue"></span> 海洋蓝
+              <span class="material-symbols-rounded theme-menu__check">check</span>
+            </button>
+            <button class="theme-menu__row" data-color="green" onclick="setColor('green')">
+              <span class="theme-menu__swatch theme-menu__swatch--green"></span> 森林绿
+              <span class="material-symbols-rounded theme-menu__check">check</span>
+            </button>
+            <button class="theme-menu__row" data-color="orange" onclick="setColor('orange')">
+              <span class="theme-menu__swatch theme-menu__swatch--orange"></span> 暖阳橙
+              <span class="material-symbols-rounded theme-menu__check">check</span>
+            </button>
+            <button class="theme-menu__row" data-color="teal" onclick="setColor('teal')">
+              <span class="theme-menu__swatch theme-menu__swatch--teal"></span> 青碧色
+              <span class="material-symbols-rounded theme-menu__check">check</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="login-card">
+
+      <!-- Branding (contains mobile logos + title) -->
+      <div class="login-card__branding">
+        <!-- Mobile/Tablet: System + College logos inside card -->
+        <div class="login-card__logos-mobile">
+          <div class="login-card__logo">
+            <span class="material-symbols-rounded" style="font-size:36px;color:var(--md-primary);">school</span>
+          </div>
+          <div class="login-card__divider"></div>
+          <div class="login-card__logo">
+            <span class="material-symbols-rounded" style="font-size:36px;color:var(--md-primary);">feedback</span>
+          </div>
+        </div>
+        <p class="login-card__school-name">北京化工大学国际教育学院</p>
+        <h1 class="login-card__app-title">学生权益反馈系统</h1>
+      </div>
+
+      <!-- Tab Switcher -->
+      <div style="display:flex;gap:0;margin-bottom:var(--md-spacing-6);">
+        <button id="tab-login-btn" class="segmented-button segmented-button--active"
+          style="flex:1;border-radius:var(--md-shape-full) 0 0 var(--md-shape-full);"
+          onclick="switchAuthTab('login')">登录</button>
+        <button id="tab-register-btn" class="segmented-button"
+          style="flex:1;border-radius:0 var(--md-shape-full) var(--md-shape-full) 0;"
+          onclick="switchAuthTab('register')">注册</button>
+      </div>
+
+      <!-- Error -->
+      <div id="login-error" class="login-card__error" style="display:none;">
+        <span class="material-symbols-rounded" style="font-size:18px;">error</span>
+        <span id="login-error-text"></span>
+      </div>
+
+      <!-- Login Form -->
+      <form id="login-form" onsubmit="return false;" style="display:flex;flex-direction:column;gap:var(--md-spacing-4);">
+        <div class="text-field">
+          <label class="text-field__label">学号</label>
+          <input class="text-field__input" type="text" placeholder="请输入学号" />
+        </div>
+        <div class="text-field">
+          <label class="text-field__label">密码</label>
+          <input class="text-field__input" type="password" placeholder="请输入密码" />
+        </div>
+        <div style="display:flex;justify-content:flex-end;">
+          <button type="button" class="btn btn--text btn--small">忘记密码？</button>
+        </div>
+        <button type="submit" class="btn btn--filled w-full" onclick="navigateTo('page-dashboard')">
+          <span>登录系统</span>
+          <span class="material-symbols-rounded">arrow_forward</span>
+        </button>
+      </form>
+
+      <!-- Register Form (hidden) -->
+      <form id="register-form" onsubmit="return false;" style="display:none;flex-direction:column;gap:var(--md-spacing-4);">
+        <div class="text-field">
+          <label class="text-field__label">学号</label>
+          <input class="text-field__input" type="text" placeholder="请输入学号" />
+        </div>
+        <div class="text-field">
+          <label class="text-field__label">姓名</label>
+          <input class="text-field__input" type="text" placeholder="请输入真实姓名" />
+        </div>
+        <div class="text-field">
+          <label class="text-field__label">邮箱</label>
+          <input class="text-field__input" type="email" placeholder="请输入邮箱地址" />
+        </div>
+        <div class="text-field">
+          <label class="text-field__label">手机号</label>
+          <input class="text-field__input" type="tel" placeholder="请输入手机号码" />
+        </div>
+        <div class="text-field">
+          <label class="text-field__label">密码</label>
+          <input class="text-field__input" type="password" placeholder="请输入密码" />
+        </div>
+        <div class="text-field">
+          <label class="text-field__label">确认密码</label>
+          <input class="text-field__input" type="password" placeholder="请再次输入密码" />
+        </div>
+        <button type="submit" class="btn btn--filled w-full" onclick="navigateTo('page-dashboard')">
+          <span>注册账户</span>
+          <span class="material-symbols-rounded">how_to_reg</span>
+        </button>
+      </form>
+
+      <!-- Footer -->
+      <div class="body-small text-center" style="color:var(--md-on-surface-variant);margin-top:var(--md-spacing-6);">
+        <p>©2026 赵启涵. All Rights Reserved.</p>
+        <p>京ICP备2026010091号-1 | 京公网安备11011402055565号</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     PAGE 2: STUDENT DASHBOARD
+     ============================================================ -->
+<section id="page-dashboard" style="display:none;">
+
+  <!-- TOP APP BAR -->
+  <header class="top-app-bar">
+    <div class="top-app-bar__content container">
+      <div class="top-app-bar__logo">
+        <div class="top-app-bar__logo-img">
+          <span class="material-symbols-rounded" style="color:var(--md-primary);">school</span>
+        </div>
+        <div class="top-app-bar__logo-img">
+          <span class="material-symbols-rounded" style="color:var(--md-primary);">feedback</span>
+        </div>
+      </div>
+
+      <h1 class="top-app-bar__title hide-mobile">学生权益反馈系统</h1>
+
+      <div class="top-app-bar__actions">
+        <!-- Light/Dark toggle -->
+        <button class="icon-button" id="dash-mode-btn" title="切换深浅模式" onclick="toggleLightDark()">
+          <span class="material-symbols-rounded">light_mode</span>
+        </button>
+
+        <!-- Palette → popover -->
+        <div class="theme-menu-trigger">
+          <button class="icon-button" title="配色主题" onclick="toggleThemeMenu('dash-theme-menu', event)">
+            <span class="material-symbols-rounded">palette</span>
+          </button>
+          <div id="dash-theme-menu" class="theme-menu">
+            <div class="theme-menu__section">
+              <p class="theme-menu__label">配色方案</p>
+              <button class="theme-menu__row" data-color="purple" onclick="setColor('purple')">
+                <span class="theme-menu__swatch theme-menu__swatch--purple"></span> 典雅紫
+                <span class="material-symbols-rounded theme-menu__check">check</span>
+              </button>
+              <button class="theme-menu__row" data-color="blue" onclick="setColor('blue')">
+                <span class="theme-menu__swatch theme-menu__swatch--blue"></span> 海洋蓝
+                <span class="material-symbols-rounded theme-menu__check">check</span>
+              </button>
+              <button class="theme-menu__row" data-color="green" onclick="setColor('green')">
+                <span class="theme-menu__swatch theme-menu__swatch--green"></span> 森林绿
+                <span class="material-symbols-rounded theme-menu__check">check</span>
+              </button>
+              <button class="theme-menu__row" data-color="orange" onclick="setColor('orange')">
+                <span class="theme-menu__swatch theme-menu__swatch--orange"></span> 暖阳橙
+                <span class="material-symbols-rounded theme-menu__check">check</span>
+              </button>
+              <button class="theme-menu__row" data-color="teal" onclick="setColor('teal')">
+                <span class="theme-menu__swatch theme-menu__swatch--teal"></span> 青碧色
+                <span class="material-symbols-rounded theme-menu__check">check</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notifications -->
+        <button class="icon-button" title="消息通知">
+          <span class="material-symbols-rounded">notifications</span>
+          <span class="badge"></span>
+        </button>
+
+        <!-- User menu -->
+        <button class="icon-button" title="个人设置" onclick="toggleModal('modal-settings')">
+          <span class="material-symbols-rounded">account_circle</span>
+        </button>
+
+        <!-- Logout -->
+        <button class="btn btn--text btn--small" onclick="navigateTo('page-login')" style="margin-left:var(--md-spacing-2);">
+          <span class="hide-mobile">退出</span>
+          <span class="material-symbols-rounded">logout</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <main class="container page-section">
+
+    <!-- ===== STATS ROW ===== -->
+    <div class="grid grid-4 gap-4" style="margin-bottom:var(--md-spacing-6);">
+      <div class="stat-card">
+        <div class="stat-card__icon stat-card__icon--purple">
+          <span class="material-symbols-rounded">forum</span>
+        </div>
+        <div>
+          <div class="stat-card__value">12</div>
+          <div class="stat-card__label">总反馈</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__icon stat-card__icon--amber">
+          <span class="material-symbols-rounded">hourglass_empty</span>
+        </div>
+        <div>
+          <div class="stat-card__value">3</div>
+          <div class="stat-card__label">待处理</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__icon stat-card__icon--blue">
+          <span class="material-symbols-rounded">engineering</span>
+        </div>
+        <div>
+          <div class="stat-card__value">5</div>
+          <div class="stat-card__label">处理中</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__icon stat-card__icon--green">
+          <span class="material-symbols-rounded">check_circle</span>
+        </div>
+        <div>
+          <div class="stat-card__value">4</div>
+          <div class="stat-card__label">已解决</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TAB SWITCHER ===== -->
+    <div style="margin-bottom:var(--md-spacing-6);">
+      <div class="segmented-button-group">
+        <button id="tab-submit-btn" class="segmented-button segmented-button--active" onclick="switchTab('submit')">
+          <span class="material-symbols-rounded">edit_note</span>
+          提交反馈
+        </button>
+        <button id="tab-history-btn" class="segmented-button" onclick="switchTab('history')">
+          <span class="material-symbols-rounded">history</span>
+          我的反馈
+        </button>
+      </div>
+    </div>
+
+    <!-- ===== TAB: SUBMIT FEEDBACK ===== -->
+    <div id="tab-content-submit">
+      <div class="grid grid-2 gap-6">
+        <!-- Left: Category Selector -->
+        <div>
+          <h3 class="title-medium" style="margin-bottom:var(--md-spacing-4);">选择问题类别</h3>
+          <div style="display:flex;flex-direction:column;gap:var(--md-spacing-3);">
+            <div class="card card--clickable card--outlined" onclick="selectCategory(this, 'academic')" style="padding:var(--md-spacing-4);">
+              <div class="flex-center gap-4">
+                <div class="stat-card__icon stat-card__icon--purple" style="width:40px;height:40px;">
+                  <span class="material-symbols-rounded">menu_book</span>
+                </div>
+                <div class="flex-1">
+                  <p class="title-small">教学教务</p>
+                  <p class="body-small" style="color:var(--md-on-surface-variant);">课程、考试与规划</p>
+                </div>
+                <span class="material-symbols-rounded" style="color:var(--md-outline);">chevron_right</span>
+              </div>
+            </div>
+            <div class="card card--clickable card--outlined" onclick="selectCategory(this, 'accommodation')" style="padding:var(--md-spacing-4);">
+              <div class="flex-center gap-4">
+                <div class="stat-card__icon stat-card__icon--green" style="width:40px;height:40px;">
+                  <span class="material-symbols-rounded">night_shelter</span>
+                </div>
+                <div class="flex-1">
+                  <p class="title-small">宿舍住宿</p>
+                  <p class="body-small" style="color:var(--md-on-surface-variant);">环境与配套服务</p>
+                </div>
+                <span class="material-symbols-rounded" style="color:var(--md-outline);">chevron_right</span>
+              </div>
+            </div>
+            <div class="card card--clickable card--outlined" onclick="selectCategory(this, 'catering')" style="padding:var(--md-spacing-4);">
+              <div class="flex-center gap-4">
+                <div class="stat-card__icon stat-card__icon--amber" style="width:40px;height:40px;">
+                  <span class="material-symbols-rounded">restaurant</span>
+                </div>
+                <div class="flex-1">
+                  <p class="title-small">餐饮服务</p>
+                  <p class="body-small" style="color:var(--md-on-surface-variant);">食品、运营与价格</p>
+                </div>
+                <span class="material-symbols-rounded" style="color:var(--md-outline);">chevron_right</span>
+              </div>
+            </div>
+            <div class="card card--clickable card--outlined" onclick="selectCategory(this, 'safety')" style="padding:var(--md-spacing-4);">
+              <div class="flex-center gap-4">
+                <div class="stat-card__icon stat-card__icon--blue" style="width:40px;height:40px;">
+                  <span class="material-symbols-rounded">security</span>
+                </div>
+                <div class="flex-1">
+                  <p class="title-small">安全保卫</p>
+                  <p class="body-small" style="color:var(--md-on-surface-variant);">人身、消防与网络</p>
+                </div>
+                <span class="material-symbols-rounded" style="color:var(--md-outline);">chevron_right</span>
+              </div>
+            </div>
+            <div class="card card--clickable card--outlined" onclick="selectCategory(this, 'comprehensive')" style="padding:var(--md-spacing-4);">
+              <div class="flex-center gap-4">
+                <div class="stat-card__icon" style="width:40px;height:40px;background:var(--md-tertiary-container);color:var(--md-on-tertiary-container);">
+                  <span class="material-symbols-rounded">category</span>
+                </div>
+                <div class="flex-1">
+                  <p class="title-small">综合服务与其他</p>
+                  <p class="body-small" style="color:var(--md-on-surface-variant);">活动、心理与行政</p>
+                </div>
+                <span class="material-symbols-rounded" style="color:var(--md-outline);">chevron_right</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sub-category chips -->
+          <div id="sub-category-section" style="display:none;margin-top:var(--md-spacing-4);" class="surface-variant-bg">
+            <p class="label-medium" style="color:var(--md-on-surface-variant);margin-bottom:var(--md-spacing-3);">详细诉求分类 <span style="color:var(--md-error);">*必选</span></p>
+            <div id="sub-category-chips" class="flex flex-wrap gap-2"></div>
+          </div>
+        </div>
+
+        <!-- Right: Feedback Form -->
+        <div class="card" style="padding:var(--md-spacing-6);">
+          <h3 class="title-medium" style="margin-bottom:var(--md-spacing-6);">填写反馈内容</h3>
+          <form onsubmit="return false;" style="display:flex;flex-direction:column;gap:var(--md-spacing-5);">
+            <div class="text-field">
+              <label class="text-field__label">问题标题</label>
+              <input class="text-field__input" type="text" placeholder="简要描述您遇到的问题" />
+            </div>
+            <div class="text-field">
+              <label class="text-field__label">详细描述</label>
+              <textarea class="text-field__textarea" placeholder="请详细描述问题情况，包括时间、地点、涉及人员等信息..."></textarea>
+            </div>
+            <div class="text-field">
+              <label class="text-field__label">补充附件 (图片/视频/文档，可选)</label>
+              <input class="text-field__input" type="file" multiple style="padding-top:14px;" />
+            </div>
+            <div class="select-field">
+              <label class="select-field__label">优先级</label>
+              <select class="select-field__select">
+                <option value="normal">普通 — 日常权益、校园生活问题</option>
+                <option value="urgent">紧急 — 人身安全、重大财产损失</option>
+                <option value="high">高 — 影响正常学习秩序</option>
+                <option value="low">低 — 长期优化建议</option>
+              </select>
+            </div>
+            <div class="surface-variant-bg body-small" style="color:var(--md-on-surface-variant);line-height:1.6;">
+              <p><strong style="color:var(--md-error);">紧急：</strong>涉及人身安全、重大财产损失、严重设施损坏等需立即干预处置。</p>
+              <p><strong style="color:var(--md-pending);">高：</strong>影响正常学习秩序、涉及核心权益受损、需快速响应。</p>
+              <p><strong style="color:var(--md-processing);">普通：</strong>日常权益、校园生活、服务体验等常规问题。</p>
+              <p><strong style="color:var(--md-on-surface-variant);">低：</strong>长期优化建议、功能改进等建设性意见。</p>
+            </div>
+            <label class="checkbox-wrapper">
+              <input type="checkbox" />
+              <span class="body-medium">匿名提交（您的个人信息将被保护）</span>
+            </label>
+            <button type="submit" class="btn btn--filled btn--large w-full">
+              <span>提交反馈</span>
+              <span class="material-symbols-rounded">send</span>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: MY FEEDBACKS ===== -->
+    <div id="tab-content-history" style="display:none;">
+      <div style="display:flex;flex-direction:column;gap:var(--md-spacing-3);">
+
+        <!-- Feedback Item 1 -->
+        <div class="expansion-panel" onclick="toggleExpansion(this)">
+          <div class="expansion-panel__header">
+            <div class="expansion-panel__icon">
+              <span class="material-symbols-rounded">restaurant</span>
+            </div>
+            <div class="flex-1">
+              <p class="title-small">食堂三楼麻辣烫窗口卫生问题</p>
+              <div class="flex-center gap-2 mt-1">
+                <span class="body-small" style="color:var(--md-on-surface-variant);">餐饮服务 › 食品安全与卫生</span>
+                <span class="body-small" style="color:var(--md-outline);">2026-07-15</span>
+              </div>
+            </div>
+            <span class="status-badge status-badge--processing">处理中</span>
+            <span class="expansion-panel__expand-icon material-symbols-rounded" style="margin-left:var(--md-spacing-2);">expand_more</span>
+          </div>
+          <div class="expansion-panel__content" style="display:none;">
+            <p class="body-medium" style="white-space:pre-wrap;margin-bottom:var(--md-spacing-4);">近期发现食堂三楼麻辣烫窗口存在以下问题：
+1. 食材未按规定冷藏保存
+2. 工作人员未佩戴手套和口罩
+3. 操作台面有明显油污堆积
+
+希望相关部门尽快检查整改。</p>
+            <div class="flex flex-wrap gap-2 mb-4">
+              <span class="chip chip--assist">
+                <span class="material-symbols-rounded" style="font-size:18px;">image</span>
+                现场照片.jpg
+              </span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:var(--md-spacing-3);margin-bottom:var(--md-spacing-4);">
+              <p class="label-medium" style="color:var(--md-on-surface-variant);">对话流转记录</p>
+              <div class="card card--filled" style="padding:var(--md-spacing-3);margin-right:var(--md-spacing-8);border-left:4px solid var(--md-primary);">
+                <div class="flex-between mb-2">
+                  <span class="label-small" style="color:var(--md-primary);">管理员 · 张老师</span>
+                  <span class="body-small" style="color:var(--md-on-surface-variant);">2026-07-16 14:30</span>
+                </div>
+                <p class="body-medium">已收到您的反馈，我们已经联系后勤部门前往现场核实，将尽快处理。</p>
+              </div>
+              <div class="card card--outlined" style="padding:var(--md-spacing-3);margin-left:var(--md-spacing-8);border-right:4px solid var(--md-secondary);">
+                <div class="flex-between mb-2">
+                  <span class="label-small" style="color:var(--md-secondary);">我的留言</span>
+                  <div class="flex-center gap-2">
+                    <button class="btn btn--text btn--small" style="color:var(--md-error);">撤回</button>
+                    <span class="body-small" style="color:var(--md-on-surface-variant);">2026-07-17 09:15</span>
+                  </div>
+                </div>
+                <p class="body-medium">谢谢张老师！希望能尽快看到整改结果。</p>
+              </div>
+            </div>
+            <div class="text-field mb-2">
+              <textarea class="text-field__textarea" rows="2" placeholder="对处理结果有疑问或需要补充信息，请在此留言..."></textarea>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:var(--md-spacing-2);">
+              <button class="btn btn--text btn--small" style="color:var(--md-error);">撤销反馈</button>
+              <button class="btn btn--filled btn--small">
+                <span class="material-symbols-rounded" style="font-size:18px;">send</span>
+                发送补充留言
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feedback Item 2 -->
+        <div class="expansion-panel" onclick="toggleExpansion(this)">
+          <div class="expansion-panel__header">
+            <div class="expansion-panel__icon">
+              <span class="material-symbols-rounded">menu_book</span>
+            </div>
+            <div class="flex-1">
+              <p class="title-small">图书馆周末开放时间不足</p>
+              <div class="flex-center gap-2 mt-1">
+                <span class="body-small" style="color:var(--md-on-surface-variant);">教学教务 › 设施维修与维护</span>
+                <span class="body-small" style="color:var(--md-outline);">2026-07-10</span>
+              </div>
+            </div>
+            <span class="status-badge status-badge--resolved">已解决</span>
+            <span class="expansion-panel__expand-icon material-symbols-rounded" style="margin-left:var(--md-spacing-2);">expand_more</span>
+          </div>
+          <div class="expansion-panel__content" style="display:none;">
+            <p class="body-medium" style="white-space:pre-wrap;margin-bottom:var(--md-spacing-4);">建议图书馆在考试周期间延长周末开放时间至晚上10点。</p>
+            <div style="display:flex;flex-direction:column;gap:var(--md-spacing-3);margin-bottom:var(--md-spacing-4);">
+              <p class="label-medium" style="color:var(--md-on-surface-variant);">对话流转记录</p>
+              <div class="card card--filled" style="padding:var(--md-spacing-3);margin-right:var(--md-spacing-8);border-left:4px solid var(--md-primary);">
+                <div class="flex-between mb-2">
+                  <span class="label-small" style="color:var(--md-primary);">管理员 · 李老师</span>
+                  <span class="body-small" style="color:var(--md-on-surface-variant);">2026-07-12 10:00</span>
+                </div>
+                <p class="body-medium">已与图书馆协调，考试周期间(第16-18周)周末开放时间延长至22:00。感谢您的建议！</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feedback Item 3 -->
+        <div class="expansion-panel" onclick="toggleExpansion(this)">
+          <div class="expansion-panel__header">
+            <div class="expansion-panel__icon">
+              <span class="material-symbols-rounded">security</span>
+            </div>
+            <div class="flex-1">
+              <p class="title-small">宿舍楼门禁系统频繁故障</p>
+              <div class="flex-center gap-2 mt-1">
+                <span class="body-small" style="color:var(--md-on-surface-variant);">安全保卫 › 人身与财产安全</span>
+                <span class="body-small" style="color:var(--md-outline);">2026-07-18</span>
+              </div>
+            </div>
+            <span class="status-badge status-badge--pending">待处理</span>
+            <span class="expansion-panel__expand-icon material-symbols-rounded" style="margin-left:var(--md-spacing-2);">expand_more</span>
+          </div>
+          <div class="expansion-panel__content" style="display:none;">
+            <p class="body-medium" style="white-space:pre-wrap;margin-bottom:var(--md-spacing-4);">北区3号楼门禁系统本周已出现3次刷卡无响应的情况，存在安全隐患。</p>
+            <p class="body-small" style="color:var(--md-on-surface-variant);">暂无管理员回复</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- FAB -->
+  <button class="fab" onclick="switchTab('submit');document.getElementById('page-dashboard').scrollIntoView({behavior:'smooth'});">
+    <span class="material-symbols-rounded">edit</span>
+    快速反馈
+  </button>
+</section>
+
+<!-- ============================================================
+     PAGE 3: ADMIN DASHBOARD
+     ============================================================ -->
+<section id="page-admin" style="display:none;">
+
+  <!-- TOP APP BAR -->
+  <header class="top-app-bar">
+    <div class="top-app-bar__content container">
+      <div class="top-app-bar__logo">
+        <div class="top-app-bar__logo-img" style="display:flex;align-items:center;justify-content:center;"><span class="material-symbols-rounded" style="color:var(--md-primary);">school</span></div>
+        <div class="top-app-bar__logo-img" style="display:flex;align-items:center;justify-content:center;"><span class="material-symbols-rounded" style="color:var(--md-primary);">admin_panel_settings</span></div>
+      </div>
+      <h1 class="top-app-bar__title hide-mobile">管理控制台</h1>
+      <span class="body-small hide-mobile" style="color:var(--md-on-surface-variant);">学生权益反馈系统</span>
+      <div class="top-app-bar__actions">
+        <div class="theme-menu-trigger">
+          <button class="icon-button" title="配色主题" onclick="toggleThemeMenu('adm-theme-menu', event)"><span class="material-symbols-rounded">palette</span></button>
+          <div id="adm-theme-menu" class="theme-menu">
+            <div class="theme-menu__section">
+              <p class="theme-menu__label">配色方案</p>
+              <button class="theme-menu__row" data-color="purple" onclick="setColor('purple')"><span class="theme-menu__swatch theme-menu__swatch--purple"></span>典雅紫<span class="material-symbols-rounded theme-menu__check">check</span></button>
+              <button class="theme-menu__row" data-color="blue" onclick="setColor('blue')"><span class="theme-menu__swatch theme-menu__swatch--blue"></span>海洋蓝<span class="material-symbols-rounded theme-menu__check">check</span></button>
+              <button class="theme-menu__row" data-color="green" onclick="setColor('green')"><span class="theme-menu__swatch theme-menu__swatch--green"></span>森林绿<span class="material-symbols-rounded theme-menu__check">check</span></button>
+              <button class="theme-menu__row" data-color="orange" onclick="setColor('orange')"><span class="theme-menu__swatch theme-menu__swatch--orange"></span>暖阳橙<span class="material-symbols-rounded theme-menu__check">check</span></button>
+              <button class="theme-menu__row" data-color="teal" onclick="setColor('teal')"><span class="theme-menu__swatch theme-menu__swatch--teal"></span>青碧色<span class="material-symbols-rounded theme-menu__check">check</span></button>
+            </div>
+          </div>
+        </div>
+        <button class="icon-button" id="adm-mode-btn" title="切换深浅模式" onclick="toggleLightDark()"><span class="material-symbols-rounded">light_mode</span></button>
+        <button class="icon-button" title="通知"><span class="material-symbols-rounded">notifications</span><span class="badge"></span></button>
+        <button class="btn btn--text btn--small" style="margin-left:var(--md-spacing-1);" onclick="navigateTo('page-login')"><span class="hide-mobile">退出</span><span class="material-symbols-rounded">logout</span></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container page-section">
+
+    <!-- Admin Tab Switcher -->
+    <div style="margin-bottom:var(--md-spacing-4);display:flex;flex-wrap:wrap;gap:var(--md-spacing-1);">
+      <div class="segmented-button-group">
+        <button id="adm-tab-feedback" class="segmented-button segmented-button--active" onclick="switchAdminTab('feedback')">
+          <span class="material-symbols-rounded">forum</span> 业务反馈处理
+        </button>
+        <button id="adm-tab-accounts" class="segmented-button admin-only" onclick="switchAdminTab('accounts')">
+          <span class="material-symbols-rounded">group</span> 账号管理
+        </button>
+        <button id="adm-tab-perf" class="segmented-button" onclick="switchAdminTab('performance')">
+          <span class="material-symbols-rounded">bar_chart</span> 部门绩效管理
+        </button>
+      </div>
+      <span style="font:var(--md-typescale-label-small);color:var(--md-on-surface-variant);margin-left:auto;align-self:center;" class="hide-mobile" id="admin-role-badge">
+        <span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;">shield_person</span> 超级管理员 · 赵启涵 · BUCT-SIE
+      </span>
+    </div>
+
+    <!-- ===== TAB 1: FEEDBACK PROCESSING ===== -->
+    <div id="adm-content-feedback">
+
+      <!-- Stats Row -->
+      <div class="grid grid-4 gap-4" style="margin-bottom:var(--md-spacing-4);">
+        <div class="stat-card stat-card--sm"><div class="stat-card__row"><div class="stat-card__icon stat-card__icon--purple" style="width:40px;height:40px;"><span class="material-symbols-rounded">forum</span></div><div><div class="stat-card__big">128</div><div class="stat-card__label">总反馈</div></div></div></div>
+        <div class="stat-card stat-card--sm"><div class="stat-card__row"><div class="stat-card__icon stat-card__icon--amber" style="width:40px;height:40px;"><span class="material-symbols-rounded">pending</span></div><div><div class="stat-card__big">12</div><div class="stat-card__label">待处理</div></div></div></div>
+        <div class="stat-card stat-card--sm"><div class="stat-card__row"><div class="stat-card__icon stat-card__icon--blue" style="width:40px;height:40px;"><span class="material-symbols-rounded">engineering</span></div><div><div class="stat-card__big">28</div><div class="stat-card__label">处理中</div></div></div></div>
+        <div class="stat-card stat-card--sm"><div class="stat-card__row"><div class="stat-card__icon stat-card__icon--green" style="width:40px;height:40px;"><span class="material-symbols-rounded">check_circle</span></div><div><div class="stat-card__big">88</div><div class="stat-card__label">已解决</div></div></div></div>
+      </div>
+
+      <!-- Category Breakdown -->
+      <div class="cat-stat-row">
+        <div class="cat-stat-item"><div class="cat-stat-item__icon">📚</div><div class="cat-stat-item__count">31</div><div class="cat-stat-item__label">教学教务</div></div>
+        <div class="cat-stat-item"><div class="cat-stat-item__icon">🏠</div><div class="cat-stat-item__count">22</div><div class="cat-stat-item__label">宿舍住宿</div></div>
+        <div class="cat-stat-item"><div class="cat-stat-item__icon">🍽️</div><div class="cat-stat-item__count">26</div><div class="cat-stat-item__label">餐饮服务</div></div>
+        <div class="cat-stat-item"><div class="cat-stat-item__icon">🛡️</div><div class="cat-stat-item__count">19</div><div class="cat-stat-item__label">安全保卫</div></div>
+        <div class="cat-stat-item"><div class="cat-stat-item__icon">📋</div><div class="cat-stat-item__count">30</div><div class="cat-stat-item__label">综合服务</div></div>
+      </div>
+
+      <!-- Password Reset Panel -->
+      <div class="card card--outlined" style="padding:var(--md-spacing-4);margin-bottom:var(--md-spacing-4);">
+        <h4 class="title-small" style="margin-bottom:var(--md-spacing-3);"><span class="material-symbols-rounded" style="font-size:20px;vertical-align:middle;margin-right:4px;">key</span>快速密码重置</h4>
+        <div style="display:flex;gap:var(--md-spacing-2);flex-wrap:wrap;">
+          <input placeholder="学号" style="flex:1;min-width:120px;height:36px;padding:0 10px;border-radius:var(--md-shape-extra-small);border:1px solid var(--md-outline-variant);background:var(--md-surface-container-highest);color:var(--md-on-surface);font:var(--md-typescale-body-small);outline:none;" />
+          <input placeholder="新密码" type="password" style="flex:1;min-width:120px;height:36px;padding:0 10px;border-radius:var(--md-shape-extra-small);border:1px solid var(--md-outline-variant);background:var(--md-surface-container-highest);color:var(--md-on-surface);font:var(--md-typescale-body-small);outline:none;" />
+          <button class="btn btn--filled btn--small" onclick="alert('密码已重置为 123456')">确认重置</button>
+        </div>
+      </div>
+
+      <!-- Search & Filter -->
+      <div class="filter-bar">
+        <input placeholder="🔍 搜索关键词（学号/标题/内容）..." style="flex:2;min-width:180px;" />
+        <input type="date" style="width:130px;" title="开始日期" />
+        <input type="date" style="width:130px;" title="结束日期" />
+        <select><option value="">全部状态</option><option>待处理</option><option>处理中</option><option>已解决</option><option>已拒绝</option></select>
+        <select><option value="">全部类别</option><option>教学教务</option><option>宿舍住宿</option><option>餐饮服务</option><option>安全保卫</option><option>综合服务</option></select>
+        <select><option value="">全部优先级</option><option>紧急</option><option>高</option><option>普通</option></select>
+        <button class="btn btn--text btn--small" style="margin-left:auto;">清除筛选</button>
+      </div>
+
+      <!-- Feedback Queue List -->
+      <div style="display:flex;flex-direction:column;gap:var(--md-spacing-2);">
+        <!-- canteen item -->
+        <div class="card" style="cursor:pointer;" onclick="toggleAdminDetail('adm-detail-1', this)">
+          <div style="padding:var(--md-spacing-3);display:flex;align-items:center;gap:var(--md-spacing-3);flex-wrap:wrap;">
+            <span style="font-size:28px;">🍽️</span>
+            <div style="flex:1;min-width:150px;">
+              <div class="flex-center gap-2"><span class="title-small">食堂三楼麻辣烫窗口卫生问题</span><span class="admin-table__badge admin-table__badge--red" style="font-size:9px;">紧急</span></div>
+              <div class="body-small" style="color:var(--md-on-surface-variant);">餐饮服务 › 食品安全 · 匿名学生 · 2026-07-20 18:32</div>
+            </div>
+            <span class="status-badge status-badge--processing">处理中</span>
+            <span class="material-symbols-rounded" style="color:var(--md-on-surface-variant);">expand_more</span>
+          </div>
+          <div id="adm-detail-1" style="display:none;padding:0 var(--md-spacing-4) var(--md-spacing-4);border-top:1px solid var(--md-outline-variant);">
+            <p class="body-medium" style="white-space:pre-wrap;margin:var(--md-spacing-3) 0;">近期发现食堂三楼麻辣烫窗口存在食材未按规定冷藏保存、工作人员未佩戴手套和口罩、操作台面有明显油污堆积等问题。</p>
+            <div class="flex flex-wrap gap-2" style="margin-bottom:var(--md-spacing-3);"><span class="chip chip--assist"><span class="material-symbols-rounded" style="font-size:16px;">image</span>现场照片.jpg</span></div>
+            <div style="display:flex;flex-direction:column;gap:var(--md-spacing-2);margin-bottom:var(--md-spacing-3);">
+              <p class="label-medium" style="color:var(--md-on-surface-variant);">对话记录</p>
+              <div class="card card--filled" style="padding:var(--md-spacing-2);margin-right:var(--md-spacing-6);border-left:3px solid var(--md-primary);"><span class="label-small" style="color:var(--md-primary);">张老师 · 后勤服务中心</span><span class="body-small" style="color:var(--md-on-surface-variant);display:block;margin-top:2px;">已收到反馈，已联系后勤现场核实。</span></div>
+            </div>
+            <textarea class="text-field__textarea" rows="2" placeholder="输入处理回复..."></textarea>
+            <div style="display:flex;gap:var(--md-spacing-2);margin-top:var(--md-spacing-2);align-items:center;flex-wrap:wrap;">
+              <input type="file" multiple style="font:var(--md-typescale-body-small);" />
+              <button class="btn btn--filled btn--small" onclick="event.stopPropagation();alert('状态已更新')"><span class="material-symbols-rounded" style="font-size:16px;">send</span>发送回复</button>
+              <button class="btn btn--text btn--small" style="color:var(--md-resolved);" onclick="event.stopPropagation();alert('已标记为已解决')"><span class="material-symbols-rounded" style="font-size:16px;">check_circle</span>标记已解决</button>
+              <button class="btn btn--text btn--small" style="color:var(--md-error);" onclick="event.stopPropagation();alert('已拒绝')"><span class="material-symbols-rounded" style="font-size:16px;">cancel</span>拒绝</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- gate item -->
+        <div class="card" style="cursor:pointer;" onclick="toggleAdminDetail('adm-detail-2', this)">
+          <div style="padding:var(--md-spacing-3);display:flex;align-items:center;gap:var(--md-spacing-3);flex-wrap:wrap;">
+            <span style="font-size:28px;">🛡️</span>
+            <div style="flex:1;min-width:150px;">
+              <div class="flex-center gap-2"><span class="title-small">宿舍楼门禁系统频繁故障</span><span class="admin-table__badge admin-table__badge--red" style="font-size:9px;">紧急</span></div>
+              <div class="body-small" style="color:var(--md-on-surface-variant);">安全保卫 › 人身财产安全 · 王嘉宁 · 2026-07-20 15:20</div>
+            </div>
+            <span class="status-badge status-badge--pending">待处理</span>
+            <span class="material-symbols-rounded" style="color:var(--md-on-surface-variant);">expand_more</span>
+          </div>
+          <div id="adm-detail-2" style="display:none;padding:0 var(--md-spacing-4) var(--md-spacing-4);border-top:1px solid var(--md-outline-variant);">
+            <p class="body-medium" style="white-space:pre-wrap;margin:var(--md-spacing-3) 0;">北区3号楼门禁系统本周已出现3次刷卡无响应的情况，存在安全隐患。</p>
+            <textarea class="text-field__textarea" rows="2" placeholder="输入处理回复..."></textarea>
+            <div style="display:flex;gap:var(--md-spacing-2);margin-top:var(--md-spacing-2);flex-wrap:wrap;">
+              <button class="btn btn--filled btn--small" style="background:var(--md-processing);" onclick="event.stopPropagation();alert('已开始处理')"><span class="material-symbols-rounded" style="font-size:16px;">play_arrow</span>开始处理</button>
+              <button class="btn btn--filled btn--small" onclick="event.stopPropagation();alert('状态已更新')"><span class="material-symbols-rounded" style="font-size:16px;">send</span>仅添加回复</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- library item -->
+        <div class="card" style="cursor:pointer;" onclick="toggleAdminDetail('adm-detail-3', this)">
+          <div style="padding:var(--md-spacing-3);display:flex;align-items:center;gap:var(--md-spacing-3);flex-wrap:wrap;">
+            <span style="font-size:28px;">📚</span>
+            <div style="flex:1;min-width:150px;">
+              <div class="flex-center gap-2"><span class="title-small">图书馆周末开放时间不足</span></div>
+              <div class="body-small" style="color:var(--md-on-surface-variant);">教学教务 › 设施维修 · 陈思远 · 2026-07-10 14:00</div>
+            </div>
+            <span class="status-badge status-badge--resolved">已解决</span>
+            <span class="material-symbols-rounded" style="color:var(--md-on-surface-variant);">expand_more</span>
+          </div>
+          <div id="adm-detail-3" style="display:none;padding:0 var(--md-spacing-4) var(--md-spacing-4);border-top:1px solid var(--md-outline-variant);">
+            <p class="body-medium" style="white-space:pre-wrap;margin:var(--md-spacing-3) 0;">建议图书馆在考试周期间延长周末开放时间至晚上10点。</p>
+            <div style="display:flex;flex-direction:column;gap:var(--md-spacing-2);margin-bottom:var(--md-spacing-3);">
+              <p class="label-medium" style="color:var(--md-on-surface-variant);">处理记录</p>
+              <div class="card card--filled" style="padding:var(--md-spacing-2);border-left:3px solid var(--md-resolved);"><span class="label-small" style="color:var(--md-resolved);">李老师 · 图书馆</span><span class="body-small" style="color:var(--md-on-surface-variant);display:block;margin-top:2px;">已与图书馆协调，考试周期间延长至22:00。</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TAB 2: ACCOUNT MANAGEMENT (superadmin only) ===== -->
+    <div id="adm-content-accounts" style="display:none;">
+      <div class="card card--outlined" style="padding:var(--md-spacing-4);margin-bottom:var(--md-spacing-4);">
+        <h4 class="title-small" style="margin-bottom:var(--md-spacing-3);">赋予管理员权限</h4>
+        <div style="display:flex;gap:var(--md-spacing-2);">
+          <input placeholder="输入要升级的学生学号" style="flex:1;height:36px;padding:0 10px;border-radius:var(--md-shape-extra-small);border:1px solid var(--md-outline-variant);background:var(--md-surface-container-highest);color:var(--md-on-surface);font:var(--md-typescale-body-small);outline:none;" />
+          <button class="btn btn--filled btn--small" onclick="alert('已升级为管理员')">确认设置</button>
+        </div>
+      </div>
+
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:var(--md-spacing-4);">
+        <!-- Admin table -->
+        <div class="card" style="padding:var(--md-spacing-4);max-height:420px;overflow-y:auto;">
+          <h4 class="title-small" style="margin-bottom:var(--md-spacing-3);">子管理员账号</h4>
+          <table class="admin-table">
+            <thead><tr><th>人员</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr><td><span class="body-medium">张老师</span><span class="body-small" style="color:var(--md-on-surface-variant);display:block;">2023090001</span></td><td><button class="btn btn--text btn--small" onclick="alert('查看操作日志')">日志</button><button class="btn btn--text btn--small" style="color:var(--md-pending);" onclick="alert('密码已重置')">重置</button><button class="btn btn--text btn--small" style="color:var(--md-error);" onclick="alert('已降级')">降级</button></td></tr>
+              <tr><td><span class="body-medium">李老师<span class="admin-table__badge admin-table__badge--amber" style="font-size:8px;margin-left:4px;">超管</span></span><span class="body-small" style="color:var(--md-on-surface-variant);display:block;">2024090107</span></td><td><button class="btn btn--text btn--small" onclick="alert('查看操作日志')">日志</button><button class="btn btn--text btn--small" style="color:var(--md-pending);" onclick="alert('密码已重置')">重置</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Student table -->
+        <div class="card" style="padding:var(--md-spacing-4);max-height:420px;overflow-y:auto;">
+          <h4 class="title-small" style="margin-bottom:var(--md-spacing-3);">学生账号</h4>
+          <table class="admin-table">
+            <thead><tr><th>人员</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr><td><span class="body-medium">王嘉宁</span><span class="body-small" style="color:var(--md-on-surface-variant);display:block;">2024090128</span></td><td><button class="btn btn--text btn--small" style="color:var(--md-primary);" onclick="alert('查看反馈记录')">查阅</button><button class="btn btn--text btn--small" style="color:var(--md-pending);" onclick="alert('密码已重置')">重置</button><button class="btn btn--text btn--small" style="color:var(--md-resolved);" onclick="alert('已升级')">升级</button><button class="btn btn--text btn--small" style="color:var(--md-error);" onclick="alert('账号已注销')">注销</button></td></tr>
+              <tr><td><span class="body-medium">陈思远</span><span class="body-small" style="color:var(--md-on-surface-variant);display:block;">2024090068</span></td><td><button class="btn btn--text btn--small" style="color:var(--md-primary);" onclick="alert('查看反馈记录')">查阅</button><button class="btn btn--text btn--small" style="color:var(--md-pending);" onclick="alert('密码已重置')">重置</button><button class="btn btn--text btn--small" style="color:var(--md-resolved);" onclick="alert('已升级')">升级</button></td></tr>
+              <tr><td><span class="body-medium">李沐阳</span><span class="body-small" style="color:var(--md-on-surface-variant);display:block;">2025090042</span></td><td><button class="btn btn--text btn--small" style="color:var(--md-primary);" onclick="alert('查看反馈记录')">查阅</button><button class="btn btn--text btn--small" style="color:var(--md-pending);" onclick="alert('密码已重置')">重置</button><button class="btn btn--text btn--small" style="color:var(--md-resolved);" onclick="alert('已升级')">升级</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TAB 3: PERFORMANCE MANAGEMENT ===== -->
+    <div id="adm-content-performance" style="display:none;">
+
+      <!-- Rules Accordion -->
+      <details class="card card--outlined" style="padding:var(--md-spacing-3);margin-bottom:var(--md-spacing-4);" open>
+        <summary style="cursor:pointer;font:var(--md-typescale-label-large);color:var(--md-primary);list-style:none;display:flex;align-items:center;gap:var(--md-spacing-2);">
+          <span class="material-symbols-rounded" style="font-size:20px;">description</span>《SIE学生权益部志愿者考核细则》
+          <span class="material-symbols-rounded" style="margin-left:auto;transition:transform 0.2s;" id="rules-chevron">expand_more</span>
+        </summary>
+        <div style="margin-top:var(--md-spacing-3);padding-top:var(--md-spacing-3);border-top:1px solid var(--md-outline-variant);font:var(--md-typescale-body-small);color:var(--md-on-surface-variant);line-height:1.7;">
+          <p style="color:var(--md-pending);font-weight:700;margin-bottom:var(--md-spacing-2);">全员初始为 0 分。通过完成任务积攒分数，各模块达到上限后即封顶，期末满分 100 分及以上。</p>
+          <table class="admin-table">
+            <thead><tr><th>考核维度</th><th>封顶分</th><th>加分标准 (每次/每周)</th></tr></thead>
+            <tbody>
+              <tr><td style="color:var(--md-primary);">考勤积分</td><td>20分</td><td>准时出勤/合规请假 +2分；迟到早退 +1分；无故缺席 0分。</td></tr>
+              <tr><td style="color:var(--md-processing);">活动贡献</td><td>35分</td><td>核心统筹策划 +4~5分；主要骨干 +2~3分；普通参与 +1分。</td></tr>
+              <tr><td style="color:var(--md-resolved);">权益跟进</td><td>25分</td><td>按时巡检系统与规范回复留言 +2分/周。</td></tr>
+              <tr><td style="color:var(--md-pending);">文案与策划</td><td>15分</td><td>主笔大型活动策划案 +4~5分；推送文案 +2~3分。</td></tr>
+              <tr><td style="color:var(--md-on-surface-variant);">其他常规</td><td>5分</td><td>完成物资管理、资料整理 +1分/次。</td></tr>
+              <tr><td style="color:var(--md-error);font-weight:700;">特别加分</td><td>附加</td><td>获校级表彰、突出贡献 +2~5分，计入总分。</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+
+      <!-- Semester Header -->
+      <div class="flex-between flex-wrap gap-4" style="margin-bottom:var(--md-spacing-4);background:var(--md-surface-container-low);padding:var(--md-spacing-3) var(--md-spacing-4);border-radius:var(--md-shape-medium);box-shadow:var(--md-elevation-1);">
+        <div class="flex-center gap-3">
+          <span class="label-medium" style="color:var(--md-on-surface);">管理学期：</span>
+          <select style="height:36px;padding:0 8px;border-radius:var(--md-shape-extra-small);border:1px solid var(--md-outline-variant);background:var(--md-surface-container-highest);color:var(--md-on-surface);font:var(--md-typescale-body-small);">
+            <option>2025-2026 第二学期 (当前运行中)</option>
+            <option>2025-2026 第一学期 (历史归档)</option>
+          </select>
+          <button class="btn btn--text btn--small" title="重命名" onclick="alert('学期已重命名')"><span class="material-symbols-rounded" style="font-size:16px;">edit</span></button>
+        </div>
+        <div class="flex-center gap-2">
+          <button class="btn btn--outlined btn--small admin-only" onclick="openAdminModal('roster-modal')"><span class="material-symbols-rounded" style="font-size:16px;">group</span>管理成员名单</button>
+          <button class="btn btn--outlined btn--small admin-only" onclick="openAdminModal('weight-modal')"><span class="material-symbols-rounded" style="font-size:16px;">calculate</span>加权结算</button>
+          <button class="btn btn--error btn--small admin-only" onclick="alert('新学期已开启')"><span class="material-symbols-rounded" style="font-size:16px;">archive</span>归档新学期</button>
+        </div>
+      </div>
+
+      <!-- Scoreboard (superadmin) -->
+      <div class="admin-only">
+        <div class="card" style="padding:var(--md-spacing-4);margin-bottom:var(--md-spacing-4);overflow-x:auto;">
+          <h4 class="title-small" style="margin-bottom:var(--md-spacing-3);"><span class="material-symbols-rounded" style="font-size:20px;vertical-align:middle;margin-right:4px;">trophy</span>部门全员期末核算总榜单</h4>
+          <table class="admin-table scoreboard-table">
+            <thead><tr><th>志愿者</th><th>考勤(20)</th><th>活动(35)</th><th>跟进(25)</th><th>文案(15)</th><th>常规(5)</th><th>+附加</th><th>总计</th></tr></thead>
+            <tbody>
+              <tr><td>张老师</td><td>18</td><td>30</td><td>22<span class="admin-table__badge admin-table__badge--green" style="font-size:7px;margin-left:2px;">已加权</span></td><td>12</td><td>5</td><td>+3</td><td>90</td></tr>
+              <tr><td>李老师</td><td>20</td><td>28</td><td>20</td><td>14</td><td>4</td><td>-</td><td>86</td></tr>
+              <tr><td>王管理员</td><td>16</td><td>32</td><td>18</td><td>10</td><td>3</td><td>+5</td><td>84</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Quick Scoring Form -->
+        <div class="card" style="padding:var(--md-spacing-4);margin-bottom:var(--md-spacing-4);">
+          <h4 class="title-small" style="margin-bottom:var(--md-spacing-3);"><span class="material-symbols-rounded" style="font-size:20px;vertical-align:middle;margin-right:4px;">edit_note</span>快捷赋分录入</h4>
+          <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:var(--md-spacing-2);margin-bottom:var(--md-spacing-3);">
+            <select style="height:36px;padding:0 8px;border-radius:var(--md-shape-extra-small);border:1px solid var(--md-outline-variant);background:var(--md-surface-container-highest);color:var(--md-on-surface);font:var(--md-typescale-body-small);"><option>考勤积分</option><option>活动贡献</option><option>权益跟进</option><option>文案与策划</option><option>其他常规</option><option>特别加分</option></select>
+            <input placeholder="活动名称" style="height:36px;padding:0 8px;border-radius:var(--md-shape-extra-small);border:1px solid var(--md-outline-variant);background:var(--md-surface-container-highest);color:var(--md-on-surface);font:var(--md-typescale-body-small);" />
+            <input type="date" style="height:36px;padding:0 8px;border-radius:var(--md-shape-extra-small);border:1px solid var(--md-outline-variant);background:var(--md-surface-container-highest);color:var(--md-on-surface);font:var(--md-typescale-body-small);" />
+            <input type="number" placeholder="分值" style="height:36px;width:80px;padding:0 8px;border-radius:var(--md-shape-extra-small);border:1px solid var(--md-outline-variant);background:var(--md-surface-container-highest);color:var(--md-on-surface);font:var(--md-typescale-body-small);" />
+          </div>
+          <input placeholder="加分理由..." style="width:100%;height:36px;padding:0 8px;margin-bottom:var(--md-spacing-2);border-radius:var(--md-shape-extra-small);border:1px solid var(--md-outline-variant);background:var(--md-surface-container-highest);color:var(--md-on-surface);font:var(--md-typescale-body-small);" />
+          <div style="display:flex;flex-wrap:wrap;gap:var(--md-spacing-2);align-items:center;">
+            <span class="label-small" style="color:var(--md-on-surface-variant);">选择志愿者：</span>
+            <label class="checkbox-wrapper"><input type="checkbox" checked />张老师</label>
+            <label class="checkbox-wrapper"><input type="checkbox" />李老师</label>
+            <label class="checkbox-wrapper"><input type="checkbox" />王管理员</label>
+          </div>
+          <button class="btn btn--filled" style="margin-top:var(--md-spacing-3);" onclick="alert('绩效录入成功')"><span class="material-symbols-rounded" style="font-size:18px;">check</span>确认发放积分</button>
+        </div>
+
+        <!-- Scoring Ledger -->
+        <div class="card" style="padding:var(--md-spacing-4);overflow-x:auto;">
+          <h4 class="title-small" style="margin-bottom:var(--md-spacing-3);"><span class="material-symbols-rounded" style="font-size:20px;vertical-align:middle;margin-right:4px;">receipt_long</span>部门打分流水账库</h4>
+          <div style="margin-bottom:var(--md-spacing-2);display:flex;gap:var(--md-spacing-2);align-items:center;">
+            <label class="checkbox-wrapper"><input type="checkbox" id="select-all-ledger" onchange="document.querySelectorAll('.ledger-cb').forEach(cb=>cb.checked=this.checked);" />全选</label>
+            <button class="btn btn--error btn--small" onclick="alert('已撤回选中记录')">批量撤回</button>
+          </div>
+          <table class="admin-table">
+            <thead><tr><th>☐</th><th>日期</th><th>志愿者</th><th>分值</th><th>维度</th><th>事由</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr><td><input type="checkbox" class="ledger-cb" /></td><td>2026-07-18</td><td>张老师</td><td style="color:var(--md-primary);font-weight:600;">+2</td><td><span class="admin-table__badge admin-table__badge--blue">权益跟进</span></td><td>规范回复留言</td><td><button class="btn btn--text btn--small" style="color:var(--md-error);" onclick="alert('已撤回')">撤回</button></td></tr>
+              <tr><td><input type="checkbox" class="ledger-cb" /></td><td>2026-07-15</td><td>李老师</td><td style="color:var(--md-primary);font-weight:600;">+4</td><td><span class="admin-table__badge admin-table__badge--green">活动贡献</span></td><td>迎新晚会统筹</td><td><button class="btn btn--text btn--small" style="color:var(--md-error);" onclick="alert('已撤回')">撤回</button></td></tr>
+              <tr><td><input type="checkbox" class="ledger-cb" /></td><td>2026-07-12</td><td>王管理员</td><td style="color:var(--md-primary);font-weight:600;">+2</td><td><span class="admin-table__badge admin-table__badge--purple" style="background:var(--md-primary-container);color:var(--md-on-primary-container);">考勤积分</span></td><td>准时出勤</td><td><button class="btn btn--text btn--small" style="color:var(--md-error);" onclick="alert('已撤回')">撤回</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Personal Performance (non-superadmin view) -->
+      <div class="admin-user-only" style="display:none;">
+        <div class="card" style="padding:var(--md-spacing-6);text-align:center;margin-bottom:var(--md-spacing-4);">
+          <h3 class="headline-small" style="margin-bottom:var(--md-spacing-4);">我的绩效档案 · 2025-2026第二学期</h3>
+          <div style="display:inline-block;padding:var(--md-spacing-4) var(--md-spacing-8);background:var(--md-primary-container);border-radius:var(--md-shape-large);color:var(--md-on-primary-container);margin-bottom:var(--md-spacing-4);">
+            <span class="display-small" style="display:block;">82 /100</span>
+            <span class="label-medium">当前总评分</span>
+          </div>
+          <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:var(--md-spacing-3);text-align:left;">
+            <div><span class="label-small">考勤</span><div class="progress-bar"><div class="progress-bar__fill progress-bar__fill--purple" style="width:90%;"></div></div><span class="body-small" style="color:var(--md-on-surface-variant);">18/20</span></div>
+            <div><span class="label-small">活动贡献</span><div class="progress-bar"><div class="progress-bar__fill progress-bar__fill--blue" style="width:86%;"></div></div><span class="body-small" style="color:var(--md-on-surface-variant);">30/35</span></div>
+            <div><span class="label-small">权益跟进</span><div class="progress-bar"><div class="progress-bar__fill progress-bar__fill--green" style="width:80%;"></div></div><span class="body-small" style="color:var(--md-on-surface-variant);">20/25</span></div>
+            <div><span class="label-small">文案策划</span><div class="progress-bar"><div class="progress-bar__fill progress-bar__fill--amber" style="width:67%;"></div></div><span class="body-small" style="color:var(--md-on-surface-variant);">10/15</span></div>
+            <div><span class="label-small">其他常规</span><div class="progress-bar"><div class="progress-bar__fill progress-bar__fill--red" style="width:80%;"></div></div><span class="body-small" style="color:var(--md-on-surface-variant);">4/5</span></div>
+          </div>
+        </div>
+        <div class="card" style="padding:var(--md-spacing-4);">
+          <h4 class="title-small" style="margin-bottom:var(--md-spacing-3);">历史记录</h4>
+          <div style="display:flex;flex-direction:column;gap:var(--md-spacing-2);">
+            <div class="card card--filled" style="padding:var(--md-spacing-2);"><span class="label-small">2026-07-18</span><span class="body-small" style="margin-left:var(--md-spacing-2);color:var(--md-on-surface-variant);">权益跟进 · 规范回复留言 +2</span></div>
+            <div class="card card--filled" style="padding:var(--md-spacing-2);"><span class="label-small">2026-07-15</span><span class="body-small" style="margin-left:var(--md-spacing-2);color:var(--md-on-surface-variant);">活动贡献 · 迎新晚会统筹 +4</span></div>
+            <div class="card card--filled" style="padding:var(--md-spacing-2);"><span class="label-small">2026-07-12</span><span class="body-small" style="margin-left:var(--md-spacing-2);color:var(--md-on-surface-variant);">考勤积分 · 准时出勤 +2</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</section>
+
+<!-- Admin Modals -->
+<div id="roster-modal" class="dialog-overlay" style="display:none;" onclick="if(event.target===this)closeAdminModal('roster-modal')">
+  <div class="dialog">
+    <h3 class="dialog__title">管理本学期成员名单</h3>
+    <p class="body-small" style="color:var(--md-on-surface-variant);margin-bottom:var(--md-spacing-3);">当前学期：2025-2026 第二学期 · 已选 3 人</p>
+    <div class="flex-center gap-2" style="margin-bottom:var(--md-spacing-3);"><button class="btn btn--text btn--small" onclick="alert('全选')">全选</button><button class="btn btn--text btn--small" onclick="alert('清空')">清空</button></div>
+    <div style="display:flex;flex-direction:column;gap:var(--md-spacing-1);">
+      <label class="checkbox-wrapper"><input type="checkbox" checked />张老师 (2023090001)</label>
+      <label class="checkbox-wrapper"><input type="checkbox" checked />李老师 (2024090107)</label>
+      <label class="checkbox-wrapper"><input type="checkbox" checked />王管理员 (2025090042)</label>
+    </div>
+    <div class="dialog__actions">
+      <button class="btn btn--text" onclick="closeAdminModal('roster-modal')">取消</button>
+      <button class="btn btn--filled" onclick="closeAdminModal('roster-modal');alert('成员名单已保存')">保存名单</button>
+    </div>
+  </div>
+</div>
+
+<div id="weight-modal" class="dialog-overlay" style="display:none;" onclick="if(event.target===this)closeAdminModal('weight-modal')">
+  <div class="dialog" style="max-width:520px;">
+    <h3 class="dialog__title">期末动态加权结算</h3>
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:var(--md-spacing-2);margin-bottom:var(--md-spacing-3);">
+      <div class="text-field"><label class="text-field__label">考核维度</label><select class="text-field__input" style="height:40px;"><option>活动贡献</option><option>权益跟进</option></select></div>
+      <div class="text-field"><label class="text-field__label">活动总次数</label><input class="text-field__input" type="number" value="10" style="height:40px;" /></div>
+    </div>
+    <p class="label-small" style="color:var(--md-on-surface-variant);margin-bottom:var(--md-spacing-2);">活动权重配置</p>
+    <div style="display:flex;flex-direction:column;gap:var(--md-spacing-1);margin-bottom:var(--md-spacing-3);">
+      <div class="flex-between" style="padding:4px 0;"><span class="body-small">迎新晚会统筹</span><input type="number" value="3.5" min="0" max="10" step="0.5" style="width:70px;height:28px;padding:0 6px;border-radius:var(--md-shape-extra-small);border:1px solid var(--md-outline-variant);background:var(--md-surface-container-highest);color:var(--md-on-surface);text-align:center;" /></div>
+      <div class="flex-between" style="padding:4px 0;"><span class="body-small">运动会组织</span><input type="number" value="2.0" min="0" max="10" step="0.5" style="width:70px;height:28px;text-align:center;padding:0 6px;border-radius:var(--md-shape-extra-small);border:1px solid var(--md-outline-variant);background:var(--md-surface-container-highest);color:var(--md-on-surface);" /></div>
+      <div class="flex-between" style="padding:4px 0;"><span class="body-small">常规活动</span><input type="number" value="1.0" min="0" max="10" step="0.5" style="width:70px;height:28px;text-align:center;padding:0 6px;border-radius:var(--md-shape-extra-small);border:1px solid var(--md-outline-variant);background:var(--md-surface-container-highest);color:var(--md-on-surface);" /></div>
+    </div>
+    <div class="dialog__actions">
+      <button class="btn btn--text" onclick="closeAdminModal('weight-modal')">取消</button>
+      <button class="btn btn--filled" onclick="closeAdminModal('weight-modal');alert('加权已应用')">确认并应用</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================
+     MODAL: SETTINGS
+     ============================================================ -->
+<div id="modal-settings" class="dialog-overlay" style="display:none;" onclick="if(event.target===this)toggleModal('modal-settings')">
+  <div class="dialog">
+    <h2 class="dialog__title">个人设置</h2>
+    <div style="display:flex;gap:0;margin-bottom:var(--md-spacing-6);">
+      <button id="settings-tab-profile" class="segmented-button segmented-button--active"
+        style="flex:1;border-radius:var(--md-shape-full) 0 0 var(--md-shape-full);"
+        onclick="switchSettingsTab('profile')">个人资料</button>
+      <button id="settings-tab-password" class="segmented-button"
+        style="flex:1;border-radius:0 var(--md-shape-full) var(--md-shape-full) 0;"
+        onclick="switchSettingsTab('password')">修改密码</button>
+    </div>
+    <form id="settings-profile-form" onsubmit="return false;" style="display:flex;flex-direction:column;gap:var(--md-spacing-4);">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--md-spacing-4);">
+        <div class="text-field">
+          <label class="text-field__label">学号</label>
+          <input class="text-field__input" type="text" value="2024090107" />
+        </div>
+        <div class="text-field">
+          <label class="text-field__label">姓名</label>
+          <input class="text-field__input" type="text" value="赵启涵" />
+        </div>
+      </div>
+      <div class="text-field">
+        <label class="text-field__label">邮箱</label>
+        <input class="text-field__input" type="email" value="zhaoqh@example.com" />
+      </div>
+      <div class="text-field">
+        <label class="text-field__label">手机号</label>
+        <input class="text-field__input" type="tel" />
+      </div>
+      <div class="dialog__actions" style="margin-top:0;">
+        <button class="btn btn--text" onclick="toggleModal('modal-settings')">取消</button>
+        <button class="btn btn--filled">保存资料</button>
+      </div>
+    </form>
+    <form id="settings-password-form" onsubmit="return false;" style="display:none;flex-direction:column;gap:var(--md-spacing-4);">
+      <div class="text-field">
+        <label class="text-field__label">当前密码</label>
+        <input class="text-field__input" type="password" placeholder="输入当前使用的密码" />
+      </div>
+      <div class="text-field">
+        <label class="text-field__label">新密码</label>
+        <input class="text-field__input" type="password" placeholder="设置新密码（至少6位）" />
+      </div>
+      <div class="dialog__actions" style="margin-top:0;">
+        <button class="btn btn--text" onclick="toggleModal('modal-settings')">取消</button>
+        <button class="btn btn--filled">修改密码</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+
+<!-- ============================================================
+     JAVASCRIPT — Theme persistence + page logic
+     ============================================================ -->
+<script>
+// =============================================================
+// THEME SYSTEM — persists to localStorage, survives refresh
+// =============================================================
+const STORAGE_KEY_MODE  = 'md_sample_mode';   // 'light' | 'dark'
+const STORAGE_KEY_COLOR = 'md_sample_color';  // 'purple' | 'blue' | 'green' | 'orange' | 'teal'
+
+function getStoredMode() {
+  return localStorage.getItem(STORAGE_KEY_MODE) || 'light';
+}
+
+function getStoredColor() {
+  return localStorage.getItem(STORAGE_KEY_COLOR) || 'purple';
+}
+
+function applyMode(mode) {
+  document.documentElement.setAttribute('data-theme', mode);
+  // Update all sun/moon icon buttons
+  document.querySelectorAll('[id$="-mode-btn"]').forEach(btn => {
+    const icon = btn.querySelector('.material-symbols-rounded');
+    if (icon) icon.textContent = mode === 'light' ? 'light_mode' : 'dark_mode';
+  });
+}
+
+function toggleLightDark() {
+  const current = document.documentElement.getAttribute('data-theme');
+  setMode(current === 'light' ? 'dark' : 'light');
+}
+
+function applyColor(color) {
+  document.documentElement.setAttribute('data-color', color);
+  // Update all color rows in theme menus
+  document.querySelectorAll('.theme-menu__row[data-color]').forEach(row => {
+    row.classList.toggle('theme-menu__row--active', row.dataset.color === color);
+  });
+}
+
+function setMode(mode) {
+  applyMode(mode);
+  localStorage.setItem(STORAGE_KEY_MODE, mode);
+}
+
+function setColor(color) {
+  applyColor(color);
+  localStorage.setItem(STORAGE_KEY_COLOR, color);
+}
+
+// Initialize theme from localStorage (survives refresh!)
+function initTheme() {
+  applyMode(getStoredMode());
+  applyColor(getStoredColor());
+}
+
+// Run immediately
+initTheme();
+
+// Close theme menus when clicking outside
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.theme-menu-trigger')) {
+    document.querySelectorAll('.theme-menu--open').forEach(m => m.classList.remove('theme-menu--open'));
+  }
+});
+
+// Toggle theme popover menu
+function toggleThemeMenu(menuId, event) {
+  event.stopPropagation();
+  const menu = document.getElementById(menuId);
+  const isOpen = menu.classList.contains('theme-menu--open');
+  // Close all menus first
+  document.querySelectorAll('.theme-menu--open').forEach(m => m.classList.remove('theme-menu--open'));
+  // Then open this one if it was closed
+  if (!isOpen) {
+    menu.classList.add('theme-menu--open');
+  }
+}
+
+// =============================================================
+// PAGE NAVIGATION
+// =============================================================
+function navigateTo(pageId) {
+  document.querySelectorAll('[id^="page-"]').forEach(el => el.style.display = 'none');
+  const target = document.getElementById(pageId);
+  if (target) target.style.display = (pageId === 'page-dashboard') ? 'block' : 'flex';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  // Re-sync toggle buttons since dashboard ones may have just appeared
+  initTheme();
+}
+
+// =============================================================
+// TAB SWITCHERS
+// =============================================================
+function switchTab(tab) {
+  document.getElementById('tab-submit-btn').classList.toggle('segmented-button--active', tab === 'submit');
+  document.getElementById('tab-history-btn').classList.toggle('segmented-button--active', tab === 'history');
+  document.getElementById('tab-content-submit').style.display = (tab === 'submit') ? 'block' : 'none';
+  document.getElementById('tab-content-history').style.display = (tab === 'history') ? 'block' : 'none';
+}
+
+function switchAuthTab(tab) {
+  document.getElementById('tab-login-btn').classList.toggle('segmented-button--active', tab === 'login');
+  document.getElementById('tab-register-btn').classList.toggle('segmented-button--active', tab === 'register');
+  document.getElementById('login-form').style.display = (tab === 'login') ? 'flex' : 'none';
+  document.getElementById('register-form').style.display = (tab === 'register') ? 'flex' : 'none';
+}
+
+function switchSettingsTab(tab) {
+  document.getElementById('settings-tab-profile').classList.toggle('segmented-button--active', tab === 'profile');
+  document.getElementById('settings-tab-password').classList.toggle('segmented-button--active', tab === 'password');
+  document.getElementById('settings-profile-form').style.display = (tab === 'profile') ? 'flex' : 'none';
+  document.getElementById('settings-password-form').style.display = (tab === 'password') ? 'flex' : 'none';
+}
+
+// =============================================================
+// MODAL
+// =============================================================
+function toggleModal(modalId) {
+  const modal = document.getElementById(modalId);
+  modal.style.display = modal.style.display === 'none' ? 'flex' : 'none';
+}
+
+// =============================================================
+// CATEGORY SELECTOR
+// =============================================================
+function selectCategory(cardElement, category) {
+  const container = cardElement.parentElement;
+  container.querySelectorAll('.card').forEach(c => {
+    c.style.border = '';
+    c.style.borderColor = '';
+    c.style.background = '';
+  });
+  cardElement.style.border = '2px solid var(--md-primary)';
+  cardElement.style.borderColor = 'var(--md-primary)';
+  cardElement.style.background = 'var(--md-primary-container)';
+
+  const subCategories = {
+    academic: ['课程与教学管理', '学辅答疑与讲座安排', '考试与成绩管理', '发展与规划指导', '学籍与培养方案', '设施维修与维护', '其他教学相关'],
+    accommodation: ['住宿环境与管理', '生活配套服务', '其他宿舍相关'],
+    catering: ['食品安全与卫生', '菜品与价格管理', '食堂运营与服务', '其他餐饮相关'],
+    safety: ['人身与财产安全', '消防安全与隐患', '交通与出行安全', '网络与信息安全', '其他安全相关'],
+    comprehensive: ['学院活动与文化建设', '心理健康与成长支持', '行政服务与流程优化', '校园公共设施与环境', '其他未分类诉求']
+  };
+
+  const section = document.getElementById('sub-category-section');
+  const chipsContainer = document.getElementById('sub-category-chips');
+  chipsContainer.innerHTML = '';
+
+  if (subCategories[category]) {
+    subCategories[category].forEach(sub => {
+      const chip = document.createElement('button');
+      chip.className = 'chip';
+      chip.textContent = sub;
+      chip.onclick = function(e) {
+        e.stopPropagation();
+        chipsContainer.querySelectorAll('.chip').forEach(c => c.classList.remove('chip--selected'));
+        chip.classList.add('chip--selected');
+      };
+      chipsContainer.appendChild(chip);
+    });
+    section.style.display = 'block';
+  }
+}
+
+// =============================================================
+// EXPANSION PANEL
+// =============================================================
+function toggleExpansion(panel) {
+  panel.classList.toggle('expansion-panel--expanded');
+  const content = panel.querySelector('.expansion-panel__content');
+  content.style.display = content.style.display === 'none' ? 'block' : 'none';
+}
+
+// ========== ADMIN FUNCTIONS ==========
+function switchAdminTab(tab) {
+  document.getElementById('adm-tab-feedback').classList.toggle('segmented-button--active', tab === 'feedback');
+  document.getElementById('adm-tab-accounts').classList.toggle('segmented-button--active', tab === 'accounts');
+  document.getElementById('adm-tab-perf').classList.toggle('segmented-button--active', tab === 'performance');
+  document.getElementById('adm-content-feedback').style.display = tab === 'feedback' ? 'block' : 'none';
+  document.getElementById('adm-content-accounts').style.display = tab === 'accounts' ? 'block' : 'none';
+  document.getElementById('adm-content-performance').style.display = tab === 'performance' ? 'block' : 'none';
+}
+
+function toggleAdminDetail(id, card) {
+  const el = document.getElementById(id);
+  const isOpen = el.style.display === 'block';
+  el.style.display = isOpen ? 'none' : 'block';
+  const chevron = card.querySelector('.material-symbols-rounded:last-child');
+  if (chevron) chevron.textContent = isOpen ? 'expand_more' : 'expand_less';
+}
+
+function openAdminModal(id) {
+  document.getElementById(id).style.display = 'flex';
+}
+function closeAdminModal(id) {
+  document.getElementById(id).style.display = 'none';
+}
+
+// Role toggle: switch between superadmin and regular admin views
+let currentAdminRole = 'superadmin';
+function setAdminRole(role) {
+  currentAdminRole = role;
+  document.querySelectorAll('.admin-only').forEach(el => el.style.display = role === 'superadmin' ? '' : 'none');
+  document.querySelectorAll('.admin-user-only').forEach(el => el.style.display = role === 'superadmin' ? 'none' : '');
+  const badge = document.getElementById('admin-role-badge');
+  if (badge) {
+    badge.innerHTML = role === 'superadmin'
+      ? '<span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;">shield_person</span> 超级管理员 · 赵启涵 · BUCT-SIE'
+      : '<span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;">person</span> 管理员 · 赵启涵';
+  }
+  // Hide accounts tab for non-superadmin
+  document.getElementById('adm-tab-accounts').style.display = role === 'superadmin' ? '' : 'none';
+}
+// Initialize: show admin sections based on role
+document.addEventListener('DOMContentLoaded', function() {
+  setAdminRole('superadmin');
+  // Add role toggle button to admin page
+  const roleBadge = document.getElementById('admin-role-badge');
+  if (roleBadge) {
+    roleBadge.style.cursor = 'pointer';
+    roleBadge.title = '点击切换管理员角色演示';
+    roleBadge.addEventListener('click', function() {
+      setAdminRole(currentAdminRole === 'superadmin' ? 'admin' : 'superadmin');
+    });
+  }
+  // Rules accordion chevron rotation
+  const rulesDetails = document.querySelector('#adm-content-performance details');
+  if (rulesDetails) {
+    rulesDetails.addEventListener('toggle', function() {
+      const chev = document.getElementById('rules-chevron');
+      if (chev) chev.style.transform = this.open ? 'rotate(180deg)' : 'rotate(0deg)';
+    });
+  }
+});
+
+// Update navigateTo for admin page
+const origNavigateTo = navigateTo;
+navigateTo = function(pageId) {
+  document.querySelectorAll('[id^="page-"]').forEach(el => el.style.display = 'none');
+  const target = document.getElementById(pageId);
+  if (target) target.style.display = (pageId === 'page-dashboard') ? 'block' : (pageId === 'page-admin' ? 'block' : 'flex');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  initTheme();
+};
+
+// Add admin access from student dashboard: role badge click
+document.addEventListener('DOMContentLoaded', function() {
+  // Small role toggle link in the dashboard header
+  const dashHeader = document.querySelector('#page-dashboard .top-app-bar__actions');
+  if (dashHeader) {
+    const roleLink = document.createElement('button');
+    roleLink.className = 'btn btn--text btn--small hide-mobile';
+    roleLink.textContent = '管理端';
+    roleLink.title = '切换到管理端演示';
+    roleLink.addEventListener('click', function() { navigateTo('page-admin'); });
+    dashHeader.insertBefore(roleLink, dashHeader.firstChild);
+  }
+  // Also add student link from admin
+  const admHeader = document.querySelector('#page-admin .top-app-bar__actions');
+  if (admHeader) {
+    const studentLink = document.createElement('button');
+    studentLink.className = 'btn btn--text btn--small hide-mobile';
+    studentLink.textContent = '学生端';
+    studentLink.title = '切换到学生端演示';
+    studentLink.addEventListener('click', function() { navigateTo('page-dashboard'); });
+    admHeader.insertBefore(studentLink, admHeader.firstChild);
+  }
+});
+</script>
+
+</body>
+</html>

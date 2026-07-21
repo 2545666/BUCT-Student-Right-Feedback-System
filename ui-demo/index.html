@@ -1,0 +1,576 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light" data-color="blue">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#12355b" />
+  <title>SIEVOX UI Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body class="auth-active">
+  <section class="login-view" aria-label="SIEVOX 登录">
+    <div class="login-art" aria-hidden="true">
+      <div class="login-art-header">
+        <div class="institution-mark">
+          <img src="../frontend/src/assets/LOGO_1.png" alt="" />
+          <div><strong>SIEVOX</strong><span>STUDENT RIGHTS &amp; INTERESTS</span></div>
+        </div>
+        <span class="edition-mark">SIE · 2026</span>
+      </div>
+
+      <div class="art-orbit orbit-one"></div>
+      <div class="art-orbit orbit-two"></div>
+      <div class="art-seal"><i data-lucide="message-circle-more"></i><span>倾听</span></div>
+      <div class="art-cross cross-one"></div>
+      <div class="art-cross cross-two"></div>
+
+      <div class="login-art-copy">
+        <p class="art-kicker">BE HEARD · BE SEEN</p>
+        <h1>每一种声音，<br />都值得被认真回应。</h1>
+        <div class="art-caption">
+          <span>01</span>
+          <p>连接学生与学院，让问题有回应、处理有进度、权益有保障。</p>
+        </div>
+      </div>
+
+      <div class="login-art-footer">
+        <span>北京化工大学</span>
+        <span>国际教育学院</span>
+        <b></b>
+        <span>BUCT</span>
+      </div>
+    </div>
+
+    <div class="login-panel">
+      <div class="login-panel-top">
+        <div class="college-signature">
+          <span class="signature-rule"></span>
+          <div><strong>北京化工大学</strong><span>国际教育学院</span></div>
+        </div>
+        <button class="icon-button theme-trigger" type="button" data-action="toggle-theme-panel" aria-label="外观设置" title="外观设置"><i data-lucide="palette"></i></button>
+      </div>
+
+      <form class="login-form" id="demo-login-form">
+        <div class="login-heading">
+          <span class="login-index">01 / ACCESS</span>
+          <h2>欢迎回来</h2>
+          <p>登录 SIEVOX，继续查看你的反馈进展。</p>
+        </div>
+
+        <div class="login-role-switch" aria-label="登录身份">
+          <button class="is-active" type="button" data-login-role="student"><i data-lucide="graduation-cap"></i>学生登录</button>
+          <button type="button" data-login-role="admin"><i data-lucide="badge-check"></i>管理登录</button>
+          <button type="button" data-login-role="superadmin"><i data-lucide="shield-check"></i>超级管理员</button>
+        </div>
+
+        <label class="login-field">
+          <span>学号</span>
+          <div><i data-lucide="id-card"></i><input id="login-student-id" name="studentId" inputmode="numeric" autocomplete="username" value="2024090107" placeholder="请输入学号" /></div>
+        </label>
+        <label class="login-field">
+          <span>密码</span>
+          <div><i data-lucide="lock-keyhole"></i><input id="login-password" name="password" type="password" autocomplete="current-password" value="demo2026" placeholder="请输入密码" /><button type="button" data-action="toggle-password" aria-label="显示密码" title="显示密码"><i data-lucide="eye"></i></button></div>
+        </label>
+
+        <div class="login-options">
+          <label><input type="checkbox" checked /><i></i><span>保持登录</span></label>
+          <button type="button">忘记密码？</button>
+        </div>
+
+        <button class="login-submit" type="submit"><span>进入权益反馈系统</span><i data-lucide="arrow-up-right"></i></button>
+        <div class="login-register"><span>首次使用 SIEVOX？</span><button type="button">创建学生账号</button></div>
+      </form>
+
+      <div class="login-help">
+        <i data-lucide="shield-check"></i>
+        <p><strong>统一身份安全认证</strong><span>个人信息仅用于校内身份核验与反馈进度通知。</span></p>
+      </div>
+      <footer class="login-legal"><span>© 2026 BUCT SIE</span><span>隐私保护</span><span>使用帮助</span></footer>
+    </div>
+  </section>
+  <button class="preview-exit icon-button" type="button" data-action="close-preview" aria-label="退出手机预览" title="退出手机预览">
+    <i data-lucide="x"></i>
+  </button>
+
+  <div class="desktop-shell">
+    <aside class="sidebar" aria-label="主导航">
+      <div class="brand-lockup">
+        <img src="../frontend/src/assets/LOGO_1.png" alt="SIEVOX" />
+        <div>
+          <strong>SIEVOX</strong>
+          <span>学生权益反馈系统</span>
+        </div>
+      </div>
+
+      <nav class="side-nav">
+        <p class="nav-label">学生服务</p>
+        <button class="nav-item is-active" type="button" data-student-nav="dashboard">
+          <i data-lucide="layout-dashboard"></i><span>权益工作台</span>
+        </button>
+        <button class="nav-item" type="button" data-action="open-compose">
+          <i data-lucide="square-pen"></i><span>发起反馈</span>
+          <kbd>N</kbd>
+        </button>
+        <button class="nav-item" type="button" data-student-nav="feedbacks">
+          <i data-lucide="messages-square"></i><span>我的反馈</span>
+          <span class="nav-count">3</span>
+        </button>
+        <button class="nav-item" type="button" data-student-nav="guide">
+          <i data-lucide="book-open"></i><span>服务指南</span>
+        </button>
+      </nav>
+
+      <div class="service-note">
+        <div class="service-note-head">
+          <span class="live-dot"></span>
+          <span>反馈通道正常</span>
+        </div>
+        <strong>3.2 小时</strong>
+        <p>本学期平均首次响应</p>
+      </div>
+
+      <div class="sidebar-user">
+        <span class="avatar">赵</span>
+        <div><strong>赵启涵</strong><span>2024090107</span></div>
+        <button class="icon-button on-dark" type="button" aria-label="个人设置" title="个人设置"><i data-lucide="settings"></i></button>
+      </div>
+    </aside>
+
+    <main class="desktop-main">
+      <header class="topbar">
+        <div class="breadcrumb"><span>国际教育学院</span><i data-lucide="chevron-right"></i><strong id="page-title">权益工作台</strong></div>
+        <div class="topbar-actions">
+          <div class="role-switch" aria-label="Demo 角色切换">
+            <button class="is-active" type="button" data-role="student">学生端</button>
+            <button type="button" data-role="admin">管理端</button>
+            <button type="button" data-role="superadmin">超级管理员</button>
+          </div>
+          <button class="icon-button theme-trigger" type="button" data-action="toggle-theme-panel" aria-label="外观设置" title="外观设置"><i data-lucide="palette"></i></button>
+          <button class="outline-button" type="button" data-action="open-preview"><i data-lucide="smartphone"></i>手机端预览</button>
+          <button class="icon-button" type="button" aria-label="通知" title="通知"><i data-lucide="bell"></i><span class="notification-dot"></span></button>
+        </div>
+      </header>
+
+      <section id="student-desktop" class="role-view">
+        <div class="page-panel is-active" data-student-page="dashboard">
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow">MONDAY · 21 JULY</p>
+              <h1>晚上好，赵启涵</h1>
+              <p>你有 1 条反馈正在处理，最近一次更新于今天 16:42。</p>
+            </div>
+            <button class="primary-button" type="button" data-action="open-compose"><i data-lucide="plus"></i>发起新反馈</button>
+          </div>
+
+          <div class="stats-strip" aria-label="反馈统计">
+            <div><span>本学期反馈</span><strong>08</strong><small>较上学期 +2</small></div>
+            <div><span>处理中</span><strong class="text-blue">01</strong><small>预计明天更新</small></div>
+            <div><span>已解决</span><strong class="text-green">06</strong><small>解决率 75%</small></div>
+            <div><span>平均用时</span><strong>2.4<em>天</em></strong><small>快于学院均值</small></div>
+          </div>
+
+          <div class="workspace-grid">
+            <div class="workspace-primary">
+              <section class="content-section">
+                <div class="section-heading">
+                  <div><h2>从哪里开始？</h2><p>选择问题领域，我们会自动匹配负责部门。</p></div>
+                </div>
+                <div class="category-grid">
+                  <button class="category-tile academic" type="button" data-category="教学教务"><span><i data-lucide="graduation-cap"></i></span><strong>教学教务</strong><small>课程、考试与学籍</small><i data-lucide="arrow-up-right"></i></button>
+                  <button class="category-tile housing" type="button" data-category="宿舍住宿"><span><i data-lucide="bed-double"></i></span><strong>宿舍住宿</strong><small>环境与生活服务</small><i data-lucide="arrow-up-right"></i></button>
+                  <button class="category-tile dining" type="button" data-category="餐饮服务"><span><i data-lucide="utensils"></i></span><strong>餐饮服务</strong><small>食品、价格与运营</small><i data-lucide="arrow-up-right"></i></button>
+                  <button class="category-tile safety" type="button" data-category="安全保卫"><span><i data-lucide="shield-check"></i></span><strong>安全保卫</strong><small>人身、消防与网络</small><i data-lucide="arrow-up-right"></i></button>
+                  <button class="category-tile service" type="button" data-category="综合服务"><span><i data-lucide="sparkles"></i></span><strong>综合服务</strong><small>活动、心理与行政</small><i data-lucide="arrow-up-right"></i></button>
+                </div>
+              </section>
+
+              <section class="content-section feedback-section">
+                <div class="section-heading">
+                  <div><h2>最近反馈</h2><p>所有进度与回复会在这里持续留痕。</p></div>
+                  <button class="text-button" type="button" data-student-nav="feedbacks">查看全部<i data-lucide="arrow-right"></i></button>
+                </div>
+                <div class="feedback-list">
+                  <button class="feedback-row" type="button" data-feedback="canteen">
+                    <span class="case-icon dining"><i data-lucide="utensils"></i></span>
+                    <span class="feedback-copy"><strong>食堂三楼麻辣烫窗口卫生问题</strong><small>餐饮服务 · #SVX-0721</small></span>
+                    <span class="status processing"><i></i>处理中</span>
+                    <span class="feedback-time"><strong>今天 16:42</strong><small>后勤服务中心已回复</small></span>
+                    <i data-lucide="chevron-right"></i>
+                  </button>
+                  <button class="feedback-row" type="button" data-feedback="library">
+                    <span class="case-icon academic"><i data-lucide="book-open"></i></span>
+                    <span class="feedback-copy"><strong>图书馆周末开放时间不足</strong><small>教学教务 · #SVX-0710</small></span>
+                    <span class="status resolved"><i></i>已解决</span>
+                    <span class="feedback-time"><strong>7 月 12 日</strong><small>已公布考试周安排</small></span>
+                    <i data-lucide="chevron-right"></i>
+                  </button>
+                  <button class="feedback-row" type="button" data-feedback="gate">
+                    <span class="case-icon safety"><i data-lucide="shield"></i></span>
+                    <span class="feedback-copy"><strong>宿舍楼门禁系统频繁故障</strong><small>安全保卫 · #SVX-0708</small></span>
+                    <span class="status pending"><i></i>待受理</span>
+                    <span class="feedback-time"><strong>7 月 8 日</strong><small>已进入受理队列</small></span>
+                    <i data-lucide="chevron-right"></i>
+                  </button>
+                </div>
+              </section>
+            </div>
+
+            <aside class="insight-rail">
+              <section class="active-case">
+                <div class="section-heading compact"><div><p class="eyebrow">ACTIVE CASE</p><h2>处理中</h2></div><span class="status processing"><i></i>预计 1 天</span></div>
+                <p class="case-number">#SVX-0721</p>
+                <h3>食堂三楼麻辣烫窗口卫生问题</h3>
+                <p class="case-summary">后勤服务中心已前往现场核实，新的处理进展将通过站内通知同步。</p>
+                <ol class="case-timeline">
+                  <li class="is-done"><span><i data-lucide="check"></i></span><div><strong>提交成功</strong><small>7 月 20 日 18:32</small></div></li>
+                  <li class="is-current"><span><i data-lucide="loader-circle"></i></span><div><strong>部门核实中</strong><small>今天 16:42 更新</small></div></li>
+                  <li><span></span><div><strong>处理完成</strong><small>等待部门反馈</small></div></li>
+                </ol>
+                <button class="wide-outline-button" type="button" data-feedback="canteen">查看完整对话<i data-lucide="arrow-right"></i></button>
+              </section>
+
+              <section class="response-note">
+                <i data-lucide="message-circle-heart"></i>
+                <div><strong>你的声音，会抵达。</strong><p>匿名反馈不会向处理部门展示个人身份，所有操作均保留审计记录。</p></div>
+              </section>
+            </aside>
+          </div>
+        </div>
+
+        <div class="page-panel simple-page" data-student-page="feedbacks">
+          <div class="page-heading"><div><p class="eyebrow">MY FEEDBACK</p><h1>我的反馈</h1><p>按状态查看提交记录、部门回复与处理结果。</p></div><button class="primary-button" type="button" data-action="open-compose"><i data-lucide="plus"></i>发起新反馈</button></div>
+          <div class="filter-row"><button class="filter-chip is-active">全部 8</button><button class="filter-chip">待受理 1</button><button class="filter-chip">处理中 1</button><button class="filter-chip">已解决 6</button><span></span><label class="search-field"><i data-lucide="search"></i><input placeholder="搜索标题或编号" /></label></div>
+          <div class="feedback-list full-list"></div>
+        </div>
+
+        <div class="page-panel simple-page" data-student-page="guide">
+          <div class="page-heading"><div><p class="eyebrow">SERVICE GUIDE</p><h1>服务指南</h1><p>了解各类事项的受理范围、预计时效和紧急联系渠道。</p></div></div>
+          <div class="guide-grid">
+            <section><i data-lucide="route"></i><h2>反馈如何流转</h2><p>提交后由学生权益中心初审，并按问题领域分派至责任部门，全程可查看节点与回复。</p></section>
+            <section><i data-lucide="clock-3"></i><h2>响应时效</h2><p>普通事项原则上 1 个工作日内首次响应；高优先级问题会进入加急队列。</p></section>
+            <section><i data-lucide="phone-call"></i><h2>紧急事项</h2><p>涉及人身安全、火情或突发疾病时，请直接联系校园应急电话，不要仅依赖在线反馈。</p></section>
+          </div>
+        </div>
+      </section>
+
+      <section id="admin-desktop" class="role-view" hidden>
+        <div class="admin-heading">
+          <div><p class="eyebrow">OPERATIONS DESK</p><h1>权益事务处理台</h1><p>2025–2026 学年第二学期 · 国际教育学院</p></div>
+          <div class="admin-actions"><button class="outline-button"><i data-lucide="download"></i>导出报表</button><button class="primary-button"><i data-lucide="user-plus"></i>账号管理</button></div>
+        </div>
+
+        <div class="admin-metrics">
+          <div><span>待受理</span><strong>12</strong><small class="warning-text">3 条即将超时</small></div>
+          <div><span>处理中</span><strong>28</strong><small>较昨日 +4</small></div>
+          <div><span>本周解决</span><strong>46</strong><small class="success-text">解决率 87%</small></div>
+          <div class="sla-meter"><span>24h 首响达标率</span><strong>92.4%</strong><div><i></i></div><small>目标值 90%</small></div>
+        </div>
+
+        <div class="admin-workspace">
+          <section class="queue-panel">
+            <div class="queue-toolbar">
+              <div><h2>待办队列</h2><span>共 40 条开放事项</span></div>
+              <label class="search-field"><i data-lucide="search"></i><input placeholder="搜索学生、标题或编号" /></label>
+              <button class="icon-button" title="筛选"><i data-lucide="list-filter"></i></button>
+            </div>
+            <div class="queue-tabs"><button class="is-active">全部 <span>40</span></button><button>待受理 <span>12</span></button><button>处理中 <span>28</span></button><button>高优先级 <span>5</span></button></div>
+            <div class="case-table" role="table">
+              <div class="case-tr table-head" role="row"><span>事项</span><span>提交人</span><span>状态</span><span>优先级</span><span>更新时间</span></div>
+              <button class="case-tr is-selected" type="button" data-admin-case="canteen"><span><i class="priority-mark high"></i><strong>食堂三楼麻辣烫窗口卫生问题</strong><small>#SVX-0721 · 餐饮服务</small></span><span><strong>匿名学生</strong><small>身份受保护</small></span><span><b class="status processing"><i></i>处理中</b></span><span><b class="priority high">高</b></span><span><strong>16:42</strong><small>今天</small></span></button>
+              <button class="case-tr" type="button" data-admin-case="gate"><span><i class="priority-mark urgent"></i><strong>宿舍楼门禁系统频繁故障</strong><small>#SVX-0720 · 安全保卫</small></span><span><strong>王嘉宁</strong><small>2024090128</small></span><span><b class="status pending"><i></i>待受理</b></span><span><b class="priority urgent">紧急</b></span><span><strong>15:20</strong><small>今天</small></span></button>
+              <button class="case-tr" type="button"><span><i class="priority-mark normal"></i><strong>希望增加英语角活动场次</strong><small>#SVX-0719 · 综合服务</small></span><span><strong>李沐阳</strong><small>2025090042</small></span><span><b class="status pending"><i></i>待受理</b></span><span><b class="priority normal">普通</b></span><span><strong>13:05</strong><small>今天</small></span></button>
+              <button class="case-tr" type="button"><span><i class="priority-mark normal"></i><strong>期末成绩复核流程咨询</strong><small>#SVX-0718 · 教学教务</small></span><span><strong>陈思远</strong><small>2023090068</small></span><span><b class="status processing"><i></i>处理中</b></span><span><b class="priority normal">普通</b></span><span><strong>11:48</strong><small>今天</small></span></button>
+            </div>
+          </section>
+
+          <aside class="case-inspector">
+            <div class="inspector-head"><div><span class="status processing"><i></i>处理中</span><p>#SVX-0721</p></div><button class="icon-button" title="更多操作"><i data-lucide="ellipsis"></i></button></div>
+            <h2>食堂三楼麻辣烫窗口卫生问题</h2>
+            <div class="case-tags"><span>餐饮服务</span><span>食品安全与卫生</span><span class="high">高优先级</span></div>
+            <p class="case-body">近期发现食堂三楼麻辣烫窗口存在食材未按规定冷藏、工作人员未佩戴手套等问题，希望相关部门尽快检查整改。</p>
+            <button class="attachment"><i data-lucide="image"></i><span><strong>现场照片.jpg</strong><small>1.8 MB · 点击预览</small></span><i data-lucide="external-link"></i></button>
+            <dl class="case-meta"><div><dt>提交时间</dt><dd>7 月 20 日 18:32</dd></div><div><dt>负责部门</dt><dd>后勤服务中心</dd></div><div><dt>处理人</dt><dd>张老师</dd></div></dl>
+            <div class="reply-box"><label for="admin-reply">回复学生</label><textarea id="admin-reply" placeholder="输入处理进展或需要学生补充的信息…">已收到你的反馈，我们已经联系后勤部门前往现场核实。</textarea><div><button class="icon-button" title="添加附件"><i data-lucide="paperclip"></i></button><button class="send-button" type="button" data-action="admin-reply">发送回复<i data-lucide="send"></i></button></div></div>
+            <button class="resolve-button" type="button" data-action="resolve-case"><i data-lucide="circle-check-big"></i>标记为已解决</button>
+          </aside>
+        </div>
+      </section>
+
+      <section id="superadmin-desktop" class="role-view superadmin-view" hidden>
+        <div class="superadmin-hero">
+          <div>
+            <p class="eyebrow">SUPER ADMIN CONSOLE</p>
+            <h1>学院权益治理总控台</h1>
+            <p>统一查看账号权限、子管理员处理轨迹、学期绩效与成员名单，给系统运行留下一条清楚的治理账本。</p>
+          </div>
+          <div class="superadmin-badge">
+            <i data-lucide="shield-check"></i>
+            <span>负责人权限</span>
+            <strong>2025-2026 第二学期</strong>
+          </div>
+        </div>
+
+        <div class="superadmin-metrics">
+          <div><span>系统账户</span><strong>326</strong><small>学生 309 · 管理员 14 · 超管 3</small></div>
+          <div><span>活跃子管理员</span><strong>12</strong><small class="success-text">本周均有处理记录</small></div>
+          <div><span>待复核操作</span><strong>07</strong><small class="warning-text">含 2 条撤回回复</small></div>
+          <div><span>绩效平均分</span><strong>86.5</strong><small>较上月 +4.2</small></div>
+        </div>
+
+        <div class="superadmin-tabs" aria-label="超级管理员功能">
+          <button class="is-active" type="button" data-super-tab="people"><i data-lucide="users-round"></i>人员管理</button>
+          <button type="button" data-super-tab="performance"><i data-lucide="chart-no-axes-combined"></i>绩效管理</button>
+        </div>
+
+        <div class="superadmin-panel is-active" data-super-panel="people">
+          <section class="people-command">
+            <div>
+              <h2>人员与权限</h2>
+              <p>从现有系统迁移账号列表、角色升降级、密码重置、用户注销、学生反馈查看和管理员日志入口。</p>
+            </div>
+            <div class="people-actions">
+              <label class="search-field"><i data-lucide="search"></i><input placeholder="搜索姓名、学号、角色" /></label>
+              <button class="outline-button" type="button" data-action="super-export"><i data-lucide="download"></i>导出名单</button>
+              <button class="primary-button" type="button" data-action="super-add-user"><i data-lucide="user-plus"></i>新增账号</button>
+            </div>
+          </section>
+
+          <div class="people-layout">
+            <section class="role-ledger">
+              <div class="ledger-head"><h3>管理员队列</h3><span>14 人</span></div>
+              <div class="person-row is-selected">
+                <span class="avatar admin-avatar">赵</span>
+                <div><strong>赵启涵</strong><small>2024090107 · 超级管理员</small></div>
+                <b class="role-pill super">超管</b>
+                <button class="icon-button" type="button" title="查看日志" data-action="super-log"><i data-lucide="scroll-text"></i></button>
+              </div>
+              <div class="person-row">
+                <span class="avatar admin-avatar">张</span>
+                <div><strong>张老师</strong><small>admin_sie · 后勤服务中心</small></div>
+                <b class="role-pill admin">管理员</b>
+                <button class="icon-button" type="button" title="降级为学生" data-action="super-demote"><i data-lucide="arrow-down-to-line"></i></button>
+              </div>
+              <div class="person-row">
+                <span class="avatar admin-avatar">陈</span>
+                <div><strong>陈思远</strong><small>2023090068 · 教学教务组</small></div>
+                <b class="role-pill admin">管理员</b>
+                <button class="icon-button" type="button" title="重置密码" data-action="super-reset"><i data-lucide="key-round"></i></button>
+              </div>
+            </section>
+
+            <section class="role-ledger">
+              <div class="ledger-head"><h3>学生账户</h3><span>309 人</span></div>
+              <div class="person-row">
+                <span class="avatar student-avatar">王</span>
+                <div><strong>王嘉宁</strong><small>2024090128 · 3 条反馈</small></div>
+                <b class="role-pill student">学生</b>
+                <button class="icon-button" type="button" title="查看反馈" data-action="super-feedbacks"><i data-lucide="messages-square"></i></button>
+              </div>
+              <div class="person-row">
+                <span class="avatar student-avatar">李</span>
+                <div><strong>李沐阳</strong><small>2025090042 · 1 条反馈</small></div>
+                <b class="role-pill student">学生</b>
+                <button class="icon-button" type="button" title="提升为管理员" data-action="super-promote"><i data-lucide="arrow-up-to-line"></i></button>
+              </div>
+              <div class="person-row">
+                <span class="avatar student-avatar">何</span>
+                <div><strong>何雨桐</strong><small>2024090186 · 账号正常</small></div>
+                <b class="role-pill student">学生</b>
+                <button class="icon-button danger" type="button" title="注销账户" data-action="super-delete"><i data-lucide="trash-2"></i></button>
+              </div>
+            </section>
+
+            <aside class="audit-inspector">
+              <div class="inspector-head"><div><span class="status processing"><i></i>操作审计</span><p>管理员处理日志</p></div><button class="icon-button" type="button" data-action="super-refresh"><i data-lucide="refresh-cw"></i></button></div>
+              <h2>张老师 · 本周 18 次处理</h2>
+              <ol class="audit-list">
+                <li><span>16:42</span><div><strong>回复 #SVX-0721</strong><p>联系后勤服务中心核实食堂卫生问题。</p></div></li>
+                <li><span>14:18</span><div><strong>状态更新 #SVX-0718</strong><p>将成绩复核咨询标记为处理中。</p></div></li>
+                <li><span>昨天</span><div><strong>撤回回复</strong><p>超管可查看撤回原因与原始操作痕迹。</p></div></li>
+              </ol>
+            </aside>
+          </div>
+        </div>
+
+        <div class="superadmin-panel" data-super-panel="performance">
+          <section class="performance-command">
+            <div>
+              <h2>部门绩效管理</h2>
+              <p>迁移学期管理、成员名单、批量赋分、自动汇总和绩效流水撤回能力。</p>
+            </div>
+            <div class="performance-actions">
+              <select aria-label="选择学期">
+                <option>2025-2026 第二学期</option>
+                <option>2025-2026 第一学期</option>
+                <option>2024-2025 第二学期</option>
+              </select>
+              <button class="outline-button" type="button" data-action="super-roster"><i data-lucide="users"></i>管理本学期成员</button>
+              <button class="primary-button" type="button" data-action="super-semester"><i data-lucide="calendar-plus"></i>开启新学期</button>
+            </div>
+          </section>
+
+          <div class="performance-layout">
+            <section class="scoreboard">
+              <div class="scoreboard-head"><span>本学期排名</span><strong>TOP 3</strong></div>
+              <div class="score-person first"><b>1</b><div><strong>张老师</strong><small>总分 94.5 · 后勤响应优秀</small></div><span>94.5</span></div>
+              <div class="score-person"><b>2</b><div><strong>陈思远</strong><small>总分 88.0 · 教务事项稳定</small></div><span>88.0</span></div>
+              <div class="score-person"><b>3</b><div><strong>李沐阳</strong><small>总分 82.5 · 新增成员</small></div><span>82.5</span></div>
+              <div class="radar-card" aria-label="绩效雷达图">
+                <svg viewBox="0 0 220 170" role="img" aria-label="绩效维度雷达图">
+                  <polygon points="110,10 190,50 175,135 45,135 30,50" class="radar-grid"></polygon>
+                  <polygon points="110,22 176,55 160,121 58,124 43,57" class="radar-fill"></polygon>
+                  <g class="radar-labels">
+                    <text x="99" y="9">出勤</text><text x="183" y="48">活动</text><text x="160" y="158">权益</text><text x="26" y="158">文案</text><text x="2" y="48">其他</text>
+                  </g>
+                </svg>
+              </div>
+            </section>
+
+            <section class="score-form">
+              <h3>批量录入绩效</h3>
+              <div class="form-grid">
+                <label><span>成员</span><select multiple aria-label="选择成员"><option selected>张老师</option><option selected>陈思远</option><option>李沐阳</option></select></label>
+                <label><span>维度</span><select><option>权益跟进</option><option>活动参与</option><option>考勤纪律</option><option>文案宣传</option><option>特殊加分</option></select></label>
+                <label><span>分值</span><input type="number" value="2.0" step="0.5" /></label>
+                <label><span>发生日期</span><input type="date" value="2026-07-21" /></label>
+              </div>
+              <label class="reason-field"><span>赋分说明</span><textarea>按时巡检系统并规范回复学生留言，计入权益跟进周积分。</textarea></label>
+              <button class="primary-button" type="button" data-action="super-score"><i data-lucide="circle-plus"></i>确认录入绩效</button>
+            </section>
+
+            <section class="record-ledger">
+              <div class="ledger-head"><h3>绩效流水</h3><button class="text-button" type="button" data-action="super-revoke"><i data-lucide="undo-2"></i>批量撤回</button></div>
+              <div class="record-table">
+                <div class="record-tr table-head"><span>人员</span><span>维度</span><span>事由</span><span>分值</span><span>日期</span></div>
+                <div class="record-tr"><span>张老师</span><span>权益跟进</span><span>规范回复 #SVX-0721</span><b>+2.0</b><span>07-21</span></div>
+                <div class="record-tr"><span>陈思远</span><span>教学协同</span><span>处理成绩复核咨询</span><b>+1.5</b><span>07-20</span></div>
+                <div class="record-tr"><span>李沐阳</span><span>活动参与</span><span>英语角现场支持</span><b>+3.0</b><span>07-18</span></div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="mobile-stage">
+    <div class="mobile-shell">
+      <header class="mobile-header">
+        <div class="mobile-brand"><img src="../frontend/src/assets/LOGO_1.png" alt="SIEVOX" /><div><strong>SIEVOX</strong><span>学生权益反馈</span></div></div>
+        <div class="mobile-header-actions"><button class="icon-button theme-trigger" type="button" data-action="toggle-theme-panel" aria-label="外观设置"><i data-lucide="palette"></i></button><button class="icon-button" aria-label="通知"><i data-lucide="bell"></i><span class="notification-dot"></span></button></div>
+      </header>
+
+      <main class="mobile-main">
+        <section class="mobile-page is-active" data-mobile-page="home">
+          <div class="mobile-greeting"><p>晚上好，赵启涵</p><h1>今天想反馈什么？</h1></div>
+          <button class="mobile-active-case" type="button" data-feedback="canteen">
+            <span class="case-state"><i></i>处理中</span><span class="case-code">#SVX-0721</span>
+            <strong>食堂三楼麻辣烫窗口卫生问题</strong>
+            <p>后勤服务中心已回复 · 今天 16:42</p>
+            <span class="mobile-progress"><i></i></span>
+            <span class="progress-labels"><small>已提交</small><small>核实中</small><small>待完成</small></span>
+          </button>
+
+          <section class="mobile-section">
+            <div class="mobile-section-head"><h2>快速反馈</h2><span>选择问题领域</span></div>
+            <div class="mobile-categories">
+              <button data-category="教学教务"><span class="academic"><i data-lucide="graduation-cap"></i></span><small>教学</small></button>
+              <button data-category="宿舍住宿"><span class="housing"><i data-lucide="bed-double"></i></span><small>住宿</small></button>
+              <button data-category="餐饮服务"><span class="dining"><i data-lucide="utensils"></i></span><small>餐饮</small></button>
+              <button data-category="安全保卫"><span class="safety"><i data-lucide="shield-check"></i></span><small>安全</small></button>
+              <button data-category="综合服务"><span class="service"><i data-lucide="sparkles"></i></span><small>综合</small></button>
+            </div>
+          </section>
+
+          <section class="mobile-section recent-mobile">
+            <div class="mobile-section-head"><h2>最近反馈</h2><button type="button" data-mobile-target="feedbacks">全部 8 条<i data-lucide="chevron-right"></i></button></div>
+            <button class="mobile-feedback" type="button" data-feedback="library"><span class="case-icon academic"><i data-lucide="book-open"></i></span><span><strong>图书馆周末开放时间不足</strong><small>7 月 12 日 · 教学教务</small></span><b class="status resolved"><i></i>已解决</b></button>
+            <button class="mobile-feedback" type="button" data-feedback="gate"><span class="case-icon safety"><i data-lucide="shield"></i></span><span><strong>宿舍楼门禁系统频繁故障</strong><small>7 月 8 日 · 安全保卫</small></span><b class="status pending"><i></i>待受理</b></button>
+          </section>
+        </section>
+
+        <section class="mobile-page" data-mobile-page="feedbacks">
+          <div class="mobile-page-title"><button class="icon-button" data-mobile-target="home" aria-label="返回"><i data-lucide="arrow-left"></i></button><div><span>我的记录</span><h1>我的反馈</h1></div></div>
+          <div class="mobile-filter-scroll"><button class="is-active">全部 8</button><button>处理中 1</button><button>待受理 1</button><button>已解决 6</button></div>
+          <div class="mobile-history">
+            <button type="button" data-feedback="canteen"><span><b class="status processing"><i></i>处理中</b><small>#SVX-0721</small></span><strong>食堂三楼麻辣烫窗口卫生问题</strong><p>后勤服务中心已前往现场核实</p><time>更新于今天 16:42</time></button>
+            <button type="button" data-feedback="library"><span><b class="status resolved"><i></i>已解决</b><small>#SVX-0710</small></span><strong>图书馆周末开放时间不足</strong><p>考试周开放时间已延长至 22:00</p><time>更新于 7 月 12 日</time></button>
+            <button type="button" data-feedback="gate"><span><b class="status pending"><i></i>待受理</b><small>#SVX-0708</small></span><strong>宿舍楼门禁系统频繁故障</strong><p>已进入学生权益中心受理队列</p><time>提交于 7 月 8 日</time></button>
+          </div>
+        </section>
+
+        <section class="mobile-page" data-mobile-page="guide">
+          <div class="mobile-page-title"><div><span>帮助中心</span><h1>服务指南</h1></div></div>
+          <div class="mobile-guide"><button><i data-lucide="route"></i><span><strong>反馈如何流转</strong><small>查看受理和分派规则</small></span><i data-lucide="chevron-right"></i></button><button><i data-lucide="clock-3"></i><span><strong>处理需要多久</strong><small>各类型事项响应时效</small></span><i data-lucide="chevron-right"></i></button><button><i data-lucide="shield-alert"></i><span><strong>紧急情况处理</strong><small>校园应急联系电话</small></span><i data-lucide="chevron-right"></i></button></div>
+        </section>
+      </main>
+
+      <nav class="mobile-tabbar" aria-label="手机端导航">
+        <button class="is-active" type="button" data-mobile-target="home"><i data-lucide="house"></i><span>首页</span></button>
+        <button type="button" data-mobile-target="feedbacks"><i data-lucide="messages-square"></i><span>反馈</span></button>
+        <button class="mobile-compose" type="button" data-action="open-mobile-compose" aria-label="发起反馈"><i data-lucide="plus"></i></button>
+        <button type="button" data-mobile-target="guide"><i data-lucide="book-open"></i><span>指南</span></button>
+        <button type="button"><i data-lucide="user-round"></i><span>我的</span></button>
+      </nav>
+    </div>
+  </div>
+
+  <div class="drawer-backdrop" data-action="close-overlays"></div>
+
+  <aside class="compose-drawer" aria-hidden="true" aria-label="发起反馈">
+    <header><div><span>NEW FEEDBACK</span><h2>发起反馈</h2></div><button class="icon-button" type="button" data-action="close-overlays" aria-label="关闭"><i data-lucide="x"></i></button></header>
+    <div class="compose-body">
+      <div class="step-indicator"><span class="is-active">1</span><i></i><span>2</span><i></i><span>3</span><small>描述问题</small><small>补充信息</small><small>确认提交</small></div>
+      <label class="field-label">问题领域</label>
+      <div class="compose-categories"><button class="is-active" data-value="教学教务">教学教务</button><button data-value="宿舍住宿">宿舍住宿</button><button data-value="餐饮服务">餐饮服务</button><button data-value="安全保卫">安全保卫</button><button data-value="综合服务">综合服务</button></div>
+      <label class="input-field"><span>问题标题</span><input id="compose-title" maxlength="50" placeholder="用一句话概括你遇到的问题" /><small>0 / 50</small></label>
+      <label class="input-field textarea-field"><span>详细描述</span><textarea id="compose-content" maxlength="500" placeholder="请描述时间、地点、具体情况，以及你希望得到的帮助…"></textarea><small>0 / 500</small></label>
+      <div class="upload-area"><i data-lucide="image-plus"></i><div><strong>添加图片或视频</strong><p>最多 10 个文件，单个不超过 20MB</p></div><button class="outline-button" type="button">选择文件</button></div>
+      <div class="compose-options"><div><span>优先级</span><div class="priority-switch"><button class="is-active">普通</button><button>高</button><button>紧急</button></div></div><label><span><strong>匿名提交</strong><small>处理部门不可见你的身份</small></span><input class="switch-input" type="checkbox" /><i></i></label></div>
+    </div>
+    <footer><button class="text-button" type="button" data-action="close-overlays">暂存草稿</button><button class="primary-button" type="button" data-action="submit-feedback">确认并提交<i data-lucide="send"></i></button></footer>
+  </aside>
+
+  <section class="mobile-sheet" aria-hidden="true">
+    <div class="sheet-handle"></div>
+    <header><div><span>STEP 1 OF 3</span><h2>告诉我们发生了什么</h2></div><button class="icon-button" type="button" data-action="close-overlays"><i data-lucide="x"></i></button></header>
+    <div class="sheet-body"><label>问题领域</label><button class="mobile-select" type="button"><span id="mobile-category">请选择问题领域</span><i data-lucide="chevron-down"></i></button><label>问题标题</label><input id="mobile-title" placeholder="用一句话概括问题" /><label>详细描述</label><textarea placeholder="时间、地点、具体情况…"></textarea><div class="sheet-actions"><button class="sheet-attach" aria-label="添加附件"><i data-lucide="paperclip"></i></button><label class="mobile-anonymous"><input type="checkbox" /><i></i><span>匿名</span></label><button class="sheet-next" type="button" data-action="submit-feedback">提交反馈<i data-lucide="arrow-right"></i></button></div></div>
+  </section>
+
+  <dialog class="feedback-dialog">
+    <button class="dialog-close icon-button" type="button" data-action="close-dialog" aria-label="关闭"><i data-lucide="x"></i></button>
+    <div class="dialog-status"><span class="status processing"><i></i>处理中</span><small>#SVX-0721</small></div>
+    <h2>食堂三楼麻辣烫窗口卫生问题</h2>
+    <p>后勤服务中心正在核实现场情况，预计将在 1 个工作日内同步处理结果。</p>
+    <ol class="dialog-timeline"><li class="done"><i data-lucide="check"></i><div><strong>提交成功</strong><small>7 月 20 日 18:32</small></div></li><li class="current"><i data-lucide="message-square"></i><div><strong>后勤服务中心回复</strong><small>今天 16:42</small><p>已收到你的反馈，我们已经联系工作人员前往现场核实。</p></div></li><li><span></span><div><strong>等待处理结果</strong><small>预计 1 个工作日内</small></div></li></ol>
+    <div class="dialog-reply"><input placeholder="补充信息或回复处理老师…" /><button type="button" data-action="send-message"><i data-lucide="send"></i><span>发送</span></button></div>
+  </dialog>
+
+  <aside class="theme-panel" aria-hidden="true" aria-label="外观设置">
+    <header><div><span>APPEARANCE</span><h2>外观设置</h2></div><button class="icon-button" type="button" data-action="close-theme-panel" aria-label="关闭"><i data-lucide="x"></i></button></header>
+    <div class="theme-section">
+      <p>显示模式</p>
+      <div class="theme-mode-switch"><button class="is-active" type="button" data-theme-mode="light"><i data-lucide="sun"></i>浅色</button><button type="button" data-theme-mode="dark"><i data-lucide="moon"></i>深色</button></div>
+    </div>
+    <div class="theme-section">
+      <p>主题色</p>
+      <div class="palette-list">
+        <button type="button" data-theme-color="purple"><i class="palette-swatch purple"></i><span><strong>典雅紫</strong><small>#6750A4</small></span><i data-lucide="check"></i></button>
+        <button class="is-active" type="button" data-theme-color="blue"><i class="palette-swatch blue"></i><span><strong>海洋蓝</strong><small>#1A6CE3</small></span><i data-lucide="check"></i></button>
+        <button type="button" data-theme-color="green"><i class="palette-swatch green"></i><span><strong>森林绿</strong><small>#4A8D3F</small></span><i data-lucide="check"></i></button>
+        <button type="button" data-theme-color="orange"><i class="palette-swatch orange"></i><span><strong>暖阳橙</strong><small>#C85100</small></span><i data-lucide="check"></i></button>
+        <button type="button" data-theme-color="teal"><i class="palette-swatch teal"></i><span><strong>青碧色</strong><small>#007B7B</small></span><i data-lucide="check"></i></button>
+      </div>
+    </div>
+    <p class="theme-note"><i data-lucide="info"></i>外观选择会自动保存在当前浏览器中。</p>
+  </aside>
+
+  <div class="toast" role="status"><i data-lucide="circle-check"></i><span>反馈已提交，我们会尽快处理。</span></div>
+
+  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
