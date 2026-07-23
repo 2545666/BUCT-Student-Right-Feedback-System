@@ -73,7 +73,7 @@ const runAppEntrance = () => {
   void document.body.offsetWidth;
   document.body.classList.add("app-entering");
   const visibleRoot = $("#superadmin-desktop:not([hidden])") || $("#admin-desktop:not([hidden])") || $("#student-desktop:not([hidden])") || document;
-  $$(".stats-strip strong, .admin-metrics strong, .superadmin-metrics strong", visibleRoot).forEach(animateMetric);
+  $$(".stats-strip strong, .admin-metrics strong, .superadmin-metrics strong, .score-total strong, .score-meta strong", visibleRoot).forEach(animateMetric);
   window.clearTimeout(runAppEntrance.timer);
   runAppEntrance.timer = window.setTimeout(() => document.body.classList.remove("app-entering"), 1350);
 };
@@ -98,6 +98,14 @@ const setDemoRole = (role) => {
     superadmin: "学院权益治理总控台"
   };
   $("#page-title").textContent = titles[safeRole];
+  if (safeRole === "admin") setAdminView("cases");
+  if (!document.body.classList.contains("auth-active")) runAppEntrance();
+};
+
+const setAdminView = (view) => {
+  const safeView = view === "performance" ? "performance" : "cases";
+  $$("[data-admin-view]").forEach((button) => button.classList.toggle("is-active", button.dataset.adminView === safeView));
+  $$("[data-admin-panel]").forEach((panel) => panel.classList.toggle("is-active", panel.dataset.adminPanel === safeView));
   if (!document.body.classList.contains("auth-active")) runAppEntrance();
 };
 
@@ -167,6 +175,7 @@ const populateFullList = () => {
 };
 
 $$('[data-role]').forEach((button) => button.addEventListener("click", () => setDemoRole(button.dataset.role)));
+$$("[data-admin-view]").forEach((button) => button.addEventListener("click", () => setAdminView(button.dataset.adminView)));
 $$('[data-student-nav]').forEach((button) => button.addEventListener("click", () => setStudentPage(button.dataset.studentNav)));
 $$('[data-mobile-target]').forEach((button) => button.addEventListener("click", () => setMobilePage(button.dataset.mobileTarget)));
 

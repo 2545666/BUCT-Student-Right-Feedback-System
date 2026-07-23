@@ -5,7 +5,7 @@ import beian from './assets/beian.png';
 import collegeLogo from './assets/SIE_LOGO.svg';
 // API Configuration
 // 开发环境使用完整地址，生产环境使用相对路径（通过 Nginx 代理）
-const API_BASE = import.meta.env.DEV ? 'http://localhost:3001/api' : '/api';
+const API_BASE = import.meta.env.DEV ? `${window.location.protocol}//${window.location.hostname}:3001/api` : '/api';
 
 // [新增] 全局附件渲染组件
 // ======= 替换现有的 AttachmentViewer (App.jsx) =======
@@ -278,6 +278,15 @@ const StatusBadge = ({ status }) => {
   
   return (
     <span className={`px-3 py-1 rounded-full text-xs font-medium ${bg} ${text}`}>
+      {label}
+    </span>
+  );
+};
+
+const RoleTag = ({ user }) => {
+  const label = user?.identityLabel || (user?.role === 'superadmin' ? '超级管理员' : user?.role === 'admin' ? '志愿者' : '学生');
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full border border-purple-400/40 bg-purple-500/15 text-[10px] md:text-xs text-purple-100 whitespace-nowrap">
       {label}
     </span>
   );
@@ -765,9 +774,12 @@ const LoginPage = ({ onLogin, onRegister }) => {
               </button>
             </div>
             
-            <p className="text-xs md:text-sm font-bold text-white leading-tight">
-              {user?.name || '用户'}
-            </p>
+            <div className="flex items-center justify-end gap-2">
+              <p className="text-xs md:text-sm font-bold text-white leading-tight">
+                {user?.name || '用户'}
+              </p>
+              <RoleTag user={user} />
+            </div>
             
             <p className="text-[10px] md:text-xs text-purple-200/50 font-mono leading-tight">
               {user?.studentId}

@@ -4,7 +4,7 @@ import beian from './assets/beian.png';
 import collegeLogo from './assets/SIE_LOGO.svg';
 
 
-const API_BASE = import.meta.env.DEV ? 'http://localhost:3001/api' : '/api';
+const API_BASE = import.meta.env.DEV ? `${window.location.protocol}//${window.location.hostname}:3001/api` : '/api';
 
 // ===================== 全局配置字典 =====================
 const categories = {
@@ -26,6 +26,485 @@ const priorityConfig = {
   'low': { label: '较低', color: 'gray' },
   'normal': { label: '一般', color: 'blue' },
   'high': { label: '紧急', color: 'red' }
+};
+
+const RoleTag = ({ user }) => {
+  const label = user?.identityLabel || (user?.role === 'superadmin' ? '超级管理员' : user?.role === 'admin' ? '志愿者' : '学生');
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full border border-purple-400/40 bg-purple-500/15 text-[10px] md:text-xs text-purple-100 whitespace-nowrap">
+      {label}
+    </span>
+  );
+};
+
+const ORGANIZATION_FRAMEWORK = [
+  {
+    key: 'youth_league',
+    title: '团委',
+    accent: 'from-red-500/30 to-orange-400/10',
+    leadership: '团委学生兼职团干部',
+    departments: ['组织部', '宣传部', '实践部', '志愿者工作部']
+  },
+  {
+    key: 'student_union',
+    title: '学生会',
+    accent: 'from-blue-500/30 to-cyan-400/10',
+    leadership: '部门负责人',
+    departments: ['综合办公室', '学生权益部', '文体艺术部', '学术科技部', '新媒体工作部']
+  }
+];
+
+const DEPARTMENT_OPTIONS = [
+  { organization: 'youth_league', organizationLabel: '团委', department: 'organization', departmentLabel: '组织部' },
+  { organization: 'youth_league', organizationLabel: '团委', department: 'publicity', departmentLabel: '宣传部' },
+  { organization: 'youth_league', organizationLabel: '团委', department: 'practice', departmentLabel: '实践部' },
+  { organization: 'youth_league', organizationLabel: '团委', department: 'volunteer_service', departmentLabel: '志愿者工作部' },
+  { organization: 'student_union', organizationLabel: '学生会', department: 'general_office', departmentLabel: '综合办公室' },
+  { organization: 'student_union', organizationLabel: '学生会', department: 'student_rights', departmentLabel: '学生权益部' },
+  { organization: 'student_union', organizationLabel: '学生会', department: 'culture_sports_arts', departmentLabel: '文体艺术部' },
+  { organization: 'student_union', organizationLabel: '学生会', department: 'academic_technology', departmentLabel: '学术科技部' },
+  { organization: 'student_union', organizationLabel: '学生会', department: 'new_media', departmentLabel: '新媒体工作部' }
+];
+
+const TITLE_OPTIONS_BY_MEMBER_ROLE = {
+  student: [{ value: 'student', label: '学生' }],
+  volunteer: [{ value: 'volunteer', label: '志愿者' }],
+  department_lead: [
+    { value: 'department_head', label: '部门负责人' },
+    { value: 'youth_league_cadre', label: '团委学生兼职团干部' }
+  ],
+  presidium: [
+    { value: 'presidium_member', label: '主席团成员' },
+    { value: 'youth_league_deputy_secretary', label: '团委学生兼职副书记' }
+  ]
+};
+
+const MEMBER_ROLE_LABELS = {
+  student: '学生',
+  volunteer: '志愿者',
+  department_lead: '部门负责人层级',
+  presidium: '主席团层级'
+};
+
+const emptyMemberForm = {
+  studentId: '',
+  memberRole: 'volunteer',
+  positionTitle: 'volunteer',
+  organization: '',
+  department: '',
+  managedDepartments: []
+};
+
+const OrganizationFrameworkPanel = ({ token }) => {
+  const [cohorts, setCohorts] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [members, setMembers] = useState([]);
+  const [selectedCohortId, setSelectedCohortId] = useState('');
+  const [cohortForm, setCohortForm] = useState({ name: '2026届团委学生会', semesters: '', status: 'active' });
+  const [memberForm, setMemberForm] = useState(emptyMemberForm);
+  const [archivePreview, setArchivePreview] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const titleOptions = TITLE_OPTIONS_BY_MEMBER_ROLE[memberForm.memberRole] || TITLE_OPTIONS_BY_MEMBER_ROLE.student;
+  const selectedCohort = cohorts.find(c => (c.id || c._id) === selectedCohortId);
+  const visibleUsers = users.filter(item => item.isActive !== false);
+  const singleDepartmentOptions = memberForm.positionTitle === 'youth_league_cadre'
+    ? DEPARTMENT_OPTIONS.filter(item => item.organization === 'youth_league')
+    : memberForm.positionTitle === 'department_head'
+      ? DEPARTMENT_OPTIONS.filter(item => item.organization === 'student_union')
+      : DEPARTMENT_OPTIONS;
+
+  const authHeaders = { 'Authorization': `Bearer ${token}` };
+  const jsonHeaders = { 'Content-Type': 'application/json', ...authHeaders };
+
+  const loadBase = useCallback(async () => {
+    try {
+      const [cohortRes, userRes] = await Promise.all([
+        fetch(`${API_BASE}/ultimate/cohorts`, { headers: authHeaders }),
+        fetch(`${API_BASE}/ultimate/users`, { headers: authHeaders })
+      ]);
+      const cohortData = await cohortRes.json();
+      const userData = await userRes.json();
+      if (cohortData.success) {
+        const nextCohorts = cohortData.cohorts || [];
+        setCohorts(nextCohorts);
+        if (!selectedCohortId && nextCohorts.length > 0) setSelectedCohortId(nextCohorts[0].id || nextCohorts[0]._id);
+      }
+      if (userData.success) setUsers(userData.users || []);
+    } catch (error) {
+      console.error('加载组织归档基础数据失败:', error);
+    }
+  }, [token, selectedCohortId]);
+
+  const loadMembers = useCallback(async (cohortId = selectedCohortId) => {
+    if (!cohortId) {
+      setMembers([]);
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/ultimate/members?cohortId=${encodeURIComponent(cohortId)}`, { headers: authHeaders });
+      const data = await res.json();
+      if (data.success) setMembers(data.members || []);
+    } catch (error) {
+      console.error('加载届次成员失败:', error);
+    }
+  }, [token, selectedCohortId]);
+
+  useEffect(() => { loadBase(); }, [loadBase]);
+  useEffect(() => { loadMembers(selectedCohortId); setArchivePreview(null); }, [loadMembers, selectedCohortId]);
+
+  const handleCreateCohort = async (e) => {
+    e.preventDefault();
+    if (!cohortForm.name.trim()) return alert('请填写届次名称');
+    setBusy(true);
+    try {
+      const res = await fetch(`${API_BASE}/ultimate/cohorts`, {
+        method: 'POST',
+        headers: jsonHeaders,
+        body: JSON.stringify({
+          name: cohortForm.name.trim(),
+          status: cohortForm.status,
+          semesters: cohortForm.semesters.split(/[\s,，]+/).map(item => item.trim()).filter(Boolean)
+        })
+      });
+      const data = await res.json();
+      if (!data.success) return alert(data.message || '创建届次失败');
+      setSelectedCohortId(data.cohort.id || data.cohort._id);
+      await loadBase();
+      alert('届次已创建');
+    } catch (error) {
+      alert('创建届次失败');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const updateMemberRole = (memberRole) => {
+    const nextTitle = TITLE_OPTIONS_BY_MEMBER_ROLE[memberRole]?.[0]?.value || 'student';
+    setMemberForm({
+      ...memberForm,
+      memberRole,
+      positionTitle: nextTitle,
+      organization: '',
+      department: '',
+      managedDepartments: []
+    });
+  };
+
+  const updatePositionTitle = (positionTitle) => {
+    setMemberForm({
+      ...memberForm,
+      positionTitle,
+      organization: '',
+      department: ''
+    });
+  };
+
+  const updateSingleDepartment = (value) => {
+    const selected = DEPARTMENT_OPTIONS.find(item => `${item.organization}:${item.department}` === value);
+    setMemberForm({
+      ...memberForm,
+      organization: selected?.organization || '',
+      department: selected?.department || ''
+    });
+  };
+
+  const toggleManagedDepartment = (item) => {
+    const exists = memberForm.managedDepartments.some(current => current.organization === item.organization && current.department === item.department);
+    setMemberForm({
+      ...memberForm,
+      managedDepartments: exists
+        ? memberForm.managedDepartments.filter(current => !(current.organization === item.organization && current.department === item.department))
+        : [...memberForm.managedDepartments, { organization: item.organization, department: item.department }]
+    });
+  };
+
+  const handleSaveMember = async (e) => {
+    e.preventDefault();
+    if (!selectedCohortId) return alert('请先创建或选择届次');
+    if (!memberForm.studentId) return alert('请选择成员账号');
+    if (memberForm.memberRole === 'department_lead' && (!memberForm.organization || !memberForm.department)) {
+      return alert('部门负责人层级需要选择所属组织和部门');
+    }
+    setBusy(true);
+    try {
+      const res = await fetch(`${API_BASE}/ultimate/members`, {
+        method: 'POST',
+        headers: jsonHeaders,
+        body: JSON.stringify({
+          cohortId: selectedCohortId,
+          studentId: memberForm.studentId,
+          memberRole: memberForm.memberRole,
+          positionTitle: memberForm.positionTitle,
+          organization: memberForm.organization || null,
+          department: memberForm.department || null,
+          managedDepartments: memberForm.memberRole === 'presidium' ? memberForm.managedDepartments : []
+        })
+      });
+      const data = await res.json();
+      if (!data.success) return alert(data.message || '保存成员失败');
+      setMemberForm(emptyMemberForm);
+      await Promise.all([loadBase(), loadMembers(selectedCohortId)]);
+      alert('成员身份与分管部门已保存');
+    } catch (error) {
+      alert('保存成员失败');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handlePreviewArchive = async () => {
+    if (!selectedCohortId) return alert('请先选择届次');
+    setBusy(true);
+    try {
+      const res = await fetch(`${API_BASE}/ultimate/cohorts/${selectedCohortId}/archive-preview`, { headers: authHeaders });
+      const data = await res.json();
+      if (!data.success) return alert(data.message || '生成归档预览失败');
+      setArchivePreview(data);
+    } catch (error) {
+      alert('生成归档预览失败');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleArchive = async () => {
+    if (!selectedCohortId) return alert('请先选择届次');
+    if (!window.confirm('确认归档该届次吗？归档会冻结成员账号信息、身份与绩效快照。')) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`${API_BASE}/ultimate/cohorts/${selectedCohortId}/archive`, {
+        method: 'POST',
+        headers: authHeaders
+      });
+      const data = await res.json();
+      if (!data.success) return alert(data.message || '归档失败');
+      await Promise.all([loadBase(), loadMembers(selectedCohortId)]);
+      setArchivePreview(null);
+      alert(`归档完成，共归档 ${data.archivedMembers || 0} 名成员`);
+    } catch (error) {
+      alert('归档失败');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="animate-fadeIn space-y-6">
+      <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 md:p-8">
+        <div className="absolute right-0 top-0 h-40 w-40 bg-purple-500/20 blur-3xl" />
+        <div className="relative flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div>
+            <p className="text-sm text-purple-200/60 font-medium">终极管理员 · 组织框架</p>
+            <h2 className="mt-2 text-2xl md:text-4xl font-black text-white tracking-tight">团委学生会架构</h2>
+            <p className="mt-3 max-w-3xl text-sm md:text-base leading-7 text-purple-100/70">
+              团委与学生会分开管理，主席团成员 / 团委学生兼职副书记可分管多个部门，部门负责人层级只拥有对应部门权限。
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+              <div className="text-2xl font-black text-white">2</div>
+              <div className="text-[10px] text-purple-200/50">组织</div>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+              <div className="text-2xl font-black text-white">9</div>
+              <div className="text-[10px] text-purple-200/50">部门</div>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+              <div className="text-2xl font-black text-white">{members.length}</div>
+              <div className="text-[10px] text-purple-200/50">当前届成员</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {ORGANIZATION_FRAMEWORK.map(org => (
+          <section key={org.key} className="overflow-hidden rounded-2xl border border-white/10 bg-slate-950/40">
+            <div className={`bg-gradient-to-br ${org.accent} border-b border-white/10 p-5`}>
+              <p className="text-xs text-purple-100/60">组织</p>
+              <h3 className="mt-1 text-2xl font-black text-white">{org.title}</h3>
+              <div className="mt-3 inline-flex rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs text-purple-100/80">
+                对应负责人标签：{org.leadership}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-5">
+              {org.departments.map((department, index) => (
+                <div key={department} className="group rounded-xl border border-white/10 bg-white/[0.04] p-4 transition-all hover:-translate-y-0.5 hover:border-purple-400/40 hover:bg-white/[0.08]">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="grid h-9 w-9 place-items-center rounded-lg bg-purple-500/15 text-sm font-black text-purple-100">{String(index + 1).padStart(2, '0')}</span>
+                    <span className="text-[10px] text-purple-200/40">{org.title}</span>
+                  </div>
+                  <h4 className="mt-4 text-lg font-bold text-white">{department}</h4>
+                </div>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+
+      <section className="rounded-2xl border border-white/10 bg-white/5 p-5 md:p-6">
+        <h3 className="text-lg font-bold text-white mb-4">身份与权限映射</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+          {[
+            ['学生', '学生端', '仅提交与查看自己的反馈'],
+            ['志愿者', '子管理员端', '处理反馈并查看本人绩效'],
+            ['部门负责人 / 团委学生兼职团干部', '超级管理员端', '管理所属单一部门'],
+            ['主席团成员 / 团委学生兼职副书记', '超级管理员端', '管理被分配的多个分管部门']
+          ].map(([role, portal, scope]) => (
+            <div key={role} className="rounded-xl border border-white/10 bg-slate-900/50 p-4">
+              <div className="text-sm font-bold text-white">{role}</div>
+              <div className="mt-2 text-xs text-purple-300">{portal}</div>
+              <p className="mt-3 text-xs leading-6 text-purple-100/60">{scope}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
+        <section className="xl:col-span-2 rounded-2xl border border-white/10 bg-white/5 p-5 md:p-6 space-y-5">
+          <div>
+            <p className="text-xs text-purple-200/60">Cohort Archive</p>
+            <h3 className="mt-1 text-xl font-black text-white">届次与归档</h3>
+          </div>
+          <form onSubmit={handleCreateCohort} className="space-y-3">
+            <input value={cohortForm.name} onChange={e => setCohortForm({ ...cohortForm, name: e.target.value })} placeholder="例：2026届团委学生会" className="w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-purple-500" />
+            <input value={cohortForm.semesters} onChange={e => setCohortForm({ ...cohortForm, semesters: e.target.value })} placeholder="包含绩效学期，可用空格或逗号分隔" className="w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-purple-500" />
+            <select value={cohortForm.status} onChange={e => setCohortForm({ ...cohortForm, status: e.target.value })} className="w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500">
+              <option value="active" className="bg-slate-900">当前届</option>
+              <option value="draft" className="bg-slate-900">草稿届次</option>
+            </select>
+            <button disabled={busy} className="w-full px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-bold transition-all">
+              创建届次
+            </button>
+          </form>
+          <div className="space-y-2 max-h-72 overflow-y-auto custom-scrollbar">
+            {cohorts.map(cohort => {
+              const id = cohort.id || cohort._id;
+              return (
+                <button key={id} onClick={() => setSelectedCohortId(id)} className={`w-full text-left rounded-xl border px-4 py-3 transition-all ${selectedCohortId === id ? 'border-purple-400 bg-purple-500/20' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-bold text-white">{cohort.name}</span>
+                    <span className="text-[10px] rounded-full border border-white/10 px-2 py-0.5 text-purple-100/70">{cohort.status}</span>
+                  </div>
+                  <div className="mt-1 text-xs text-purple-200/50">{(cohort.semesters || []).join('、') || '未绑定绩效学期'}</div>
+                </button>
+              );
+            })}
+            {cohorts.length === 0 && <div className="rounded-xl border border-dashed border-white/10 p-4 text-center text-sm text-purple-100/50">暂无届次，请先创建</div>}
+          </div>
+        </section>
+
+        <section className="xl:col-span-3 rounded-2xl border border-white/10 bg-white/5 p-5 md:p-6 space-y-5">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+            <div>
+              <p className="text-xs text-purple-200/60">Member Assignment</p>
+              <h3 className="mt-1 text-xl font-black text-white">成员身份与分管部门</h3>
+              <p className="mt-1 text-xs text-purple-100/50">当前届次：{selectedCohort?.name || '未选择'}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button onClick={handlePreviewArchive} disabled={busy || !selectedCohortId} className="px-3 py-2 rounded-lg bg-blue-600/30 hover:bg-blue-600 text-blue-100 text-xs font-bold disabled:opacity-50 transition-all">生成归档预览</button>
+              <button onClick={handleArchive} disabled={busy || !selectedCohortId} className="px-3 py-2 rounded-lg bg-red-600/30 hover:bg-red-600 text-red-100 text-xs font-bold disabled:opacity-50 transition-all">确认归档</button>
+            </div>
+          </div>
+
+          <form onSubmit={handleSaveMember} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <select value={memberForm.studentId} onChange={e => setMemberForm({ ...memberForm, studentId: e.target.value })} className="px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500">
+              <option value="" className="bg-slate-900">选择成员账号</option>
+              {visibleUsers.map(item => <option key={item.id || item._id} value={item.studentId} className="bg-slate-900">{item.name} · {item.studentId} · {item.identityLabel || item.role}</option>)}
+            </select>
+            <select value={memberForm.memberRole} onChange={e => updateMemberRole(e.target.value)} className="px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500">
+              {Object.entries(MEMBER_ROLE_LABELS).map(([value, label]) => <option key={value} value={value} className="bg-slate-900">{label}</option>)}
+            </select>
+            <select value={memberForm.positionTitle} onChange={e => updatePositionTitle(e.target.value)} className="px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500">
+              {titleOptions.map(item => <option key={item.value} value={item.value} className="bg-slate-900">{item.label}</option>)}
+            </select>
+            {memberForm.memberRole === 'department_lead' ? (
+              <select value={memberForm.organization && memberForm.department ? `${memberForm.organization}:${memberForm.department}` : ''} onChange={e => updateSingleDepartment(e.target.value)} className="px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500">
+                <option value="" className="bg-slate-900">选择所属组织与部门</option>
+                {singleDepartmentOptions.map(item => <option key={`${item.organization}:${item.department}`} value={`${item.organization}:${item.department}`} className="bg-slate-900">{item.organizationLabel} · {item.departmentLabel}</option>)}
+              </select>
+            ) : (
+              <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-purple-100/60">
+                {memberForm.memberRole === 'presidium' ? '主席团层级通过下方选择多个分管部门' : '该身份无需绑定组织部门'}
+              </div>
+            )}
+            {memberForm.memberRole === 'presidium' && (
+              <div className="md:col-span-2 rounded-xl border border-white/10 bg-slate-950/30 p-3">
+                <div className="mb-2 text-xs font-bold text-purple-100/70">分管部门，可多选</div>
+                <div className="flex flex-wrap gap-2">
+                  {DEPARTMENT_OPTIONS.map(item => {
+                    const active = memberForm.managedDepartments.some(current => current.organization === item.organization && current.department === item.department);
+                    return (
+                      <button key={`${item.organization}:${item.department}`} type="button" onClick={() => toggleManagedDepartment(item)} className={`px-3 py-1.5 rounded-lg border text-xs transition-all ${active ? 'bg-purple-600 border-purple-400 text-white' : 'bg-white/5 border-white/10 text-purple-100/70 hover:bg-white/10'}`}>
+                        {item.organizationLabel} · {item.departmentLabel}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            <button disabled={busy} className="md:col-span-2 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-bold transition-all">保存成员身份与分管部门</button>
+          </form>
+
+          <div className="overflow-x-auto rounded-xl border border-white/10">
+            <table className="w-full text-left text-sm whitespace-nowrap">
+              <thead className="bg-white/5 text-purple-100/60">
+                <tr>
+                  <th className="px-4 py-3">成员</th>
+                  <th className="px-4 py-3">身份</th>
+                  <th className="px-4 py-3">所属部门</th>
+                  <th className="px-4 py-3">分管部门</th>
+                  <th className="px-4 py-3">绩效快照</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/10">
+                {members.map(item => (
+                  <tr key={item.id || item._id} className="text-purple-50">
+                    <td className="px-4 py-3 font-bold">{item.name || item.accountSnapshot?.name}<div className="text-[10px] font-normal text-purple-200/50">{item.studentId || item.accountSnapshot?.studentId}</div></td>
+                    <td className="px-4 py-3">{item.identityLabel || item.positionTitle}</td>
+                    <td className="px-4 py-3">{item.departmentLabel || '-'}</td>
+                    <td className="px-4 py-3">{(item.managedDepartments || []).length > 0 ? item.managedDepartments.map(d => d.label || `${d.organizationLabel} · ${d.departmentLabel}`).join('、') : '-'}</td>
+                    <td className="px-4 py-3">{item.performanceSnapshot?.total ?? '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {members.length === 0 && <div className="p-8 text-center text-sm text-purple-100/50">当前届次暂无成员</div>}
+          </div>
+        </section>
+      </div>
+
+      {archivePreview && (
+        <section className="rounded-2xl border border-blue-400/20 bg-blue-500/10 p-5 md:p-6">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <p className="text-xs text-blue-100/60">Archive Preview</p>
+              <h3 className="text-xl font-black text-white">{archivePreview.cohort?.name} · 归档预览</h3>
+            </div>
+            <span className="rounded-full border border-blue-300/30 px-3 py-1 text-xs text-blue-100">{archivePreview.members?.length || 0} 名成员</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {(archivePreview.members || []).map(item => (
+              <div key={item.id || item._id} className="rounded-xl border border-white/10 bg-slate-950/40 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="font-bold text-white">{item.name}</div>
+                    <div className="text-xs text-purple-200/50">{item.studentId}</div>
+                  </div>
+                  <span className="rounded-full bg-blue-500/20 px-2 py-1 text-xs text-blue-100">第 {item.performanceSnapshot?.rank || '-'} 名</span>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+                  <div className="rounded-lg bg-white/5 p-3 text-purple-100/70">身份<div className="mt-1 font-bold text-white">{item.identityLabel}</div></div>
+                  <div className="rounded-lg bg-white/5 p-3 text-purple-100/70">绩效<div className="mt-1 font-bold text-white">{item.performanceSnapshot?.total || 0}</div></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  );
 };
 
 // ===================== 附件预览组件 =====================
@@ -471,6 +950,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
   const [responseText, setResponseText] = useState('');
   const [selectedReplyFiles, setSelectedReplyFiles] = useState([]);
   const [showAccountManagement, setShowAccountManagement] = useState(false);
+  const [showOrganizationFramework, setShowOrganizationFramework] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [settingsTab, setSettingsTab] = useState('profile');
   const [pwdData, setPwdData] = useState({ current: '', new: '' });
@@ -957,7 +1437,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
             </div>
 
             <div className="text-right hidden sm:block">
-             <div className="text-sm font-bold text-white">{user?.name}</div>
+             <div className="text-sm font-bold text-white flex items-center justify-end gap-2">{user?.name}<RoleTag user={user} /></div>
               <div className="text-xs text-purple-200/60 font-mono mt-0.5">{user?.studentId}</div>
             </div>
             
@@ -991,15 +1471,15 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
       <main className="max-w-7xl mx-auto px-6 py-8">
         <div className="mb-8 flex flex-nowrap gap-1 md:gap-2 p-1 bg-white/5 rounded-xl w-full md:w-fit overflow-x-auto custom-scrollbar">
           <button
-            onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(false); }}
-            className={`px-3 md:px-6 py-2 rounded-lg flex items-center gap-1 md:gap-2 transition-all text-xs md:text-sm whitespace-nowrap shrink-0 ${!showAccountManagement && !showPerformanceManagement ? 'bg-purple-600 text-white' : 'text-purple-200/60 hover:text-white'}`}
+            onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(false); setShowOrganizationFramework(false); }}
+            className={`px-3 md:px-6 py-2 rounded-lg flex items-center gap-1 md:gap-2 transition-all text-xs md:text-sm whitespace-nowrap shrink-0 ${!showAccountManagement && !showPerformanceManagement && !showOrganizationFramework ? 'bg-purple-600 text-white' : 'text-purple-200/60 hover:text-white'}`}
           >
             <span>📋</span> 业务反馈处理
           </button>
           
           {user?.role === 'superadmin' && (
             <button
-              onClick={() => { setShowAccountManagement(true); setShowPerformanceManagement(false); }}
+              onClick={() => { setShowAccountManagement(true); setShowPerformanceManagement(false); setShowOrganizationFramework(false); }}
               className={`px-3 md:px-6 py-2 rounded-lg flex items-center gap-1 md:gap-2 transition-all text-xs md:text-sm whitespace-nowrap shrink-0 ${showAccountManagement ? 'bg-purple-600 text-white' : 'text-purple-200/60 hover:text-white'}`}
             >
               <span>👥</span> 账号管理面板
@@ -1007,14 +1487,25 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
           )}
 
           <button
-            onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(true); }}
+            onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(true); setShowOrganizationFramework(false); }}
             className={`px-3 md:px-6 py-2 rounded-lg flex items-center gap-1 md:gap-2 transition-all text-xs md:text-sm whitespace-nowrap shrink-0 ${showPerformanceManagement ? 'bg-purple-600 text-white' : 'text-purple-200/60 hover:text-white'}`}
           >
             <span>📊</span> {user?.role === 'superadmin' ? '部门绩效管理' : '我的绩效档案'}
           </button>
+
+          {user?.isUltimateAdmin && (
+            <button
+              onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(false); setShowOrganizationFramework(true); }}
+              className={`px-3 md:px-6 py-2 rounded-lg flex items-center gap-1 md:gap-2 transition-all text-xs md:text-sm whitespace-nowrap shrink-0 ${showOrganizationFramework ? 'bg-purple-600 text-white' : 'text-purple-200/60 hover:text-white'}`}
+            >
+              <span>🏛️</span> 团委学生会架构
+            </button>
+          )}
         </div>
 
-        {showPerformanceManagement ? (
+        {showOrganizationFramework && user?.isUltimateAdmin ? (
+          <OrganizationFrameworkPanel token={token} />
+        ) : showPerformanceManagement ? (
           <div className="animate-fadeIn space-y-4 md:space-y-6">
             <PerformanceRulesAccordion />
             

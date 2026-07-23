@@ -269,6 +269,12 @@
           <div class="sla-meter"><span>24h 首响达标率</span><strong>92.4%</strong><div><i></i></div><small>目标值 90%</small></div>
         </div>
 
+        <div class="admin-tabs" aria-label="管理端功能切换">
+          <button class="is-active" type="button" data-admin-view="cases"><i data-lucide="layers-3"></i>业务反馈处理</button>
+          <button type="button" data-admin-view="performance"><i data-lucide="chart-column"></i>我的绩效档案</button>
+        </div>
+
+        <div class="admin-panel is-active" data-admin-panel="cases">
         <div class="admin-workspace">
           <section class="queue-panel">
             <div class="queue-toolbar">
@@ -296,6 +302,67 @@
             <div class="reply-box"><label for="admin-reply">回复学生</label><textarea id="admin-reply" placeholder="输入处理进展或需要学生补充的信息…">已收到你的反馈，我们已经联系后勤部门前往现场核实。</textarea><div><button class="icon-button" title="添加附件"><i data-lucide="paperclip"></i></button><button class="send-button" type="button" data-action="admin-reply">发送回复<i data-lucide="send"></i></button></div></div>
             <button class="resolve-button" type="button" data-action="resolve-case"><i data-lucide="circle-check-big"></i>标记为已解决</button>
           </aside>
+        </div>
+        </div>
+
+        <div class="admin-panel" data-admin-panel="performance">
+          <div class="performance-self">
+            <section class="performance-summary">
+              <div class="section-heading compact">
+                <div>
+                  <p class="eyebrow">MY PERFORMANCE</p>
+                  <h2>我的绩效档案</h2>
+                  <p>仅显示本人在当前学期的积分、维度分布和绩效流水。</p>
+                </div>
+              </div>
+              <div class="performance-scoreline">
+                <div class="score-total">
+                  <span>本学期总分</span>
+                  <strong>94.5</strong>
+                  <small>较上月 +6.0</small>
+                </div>
+                <div class="score-meta">
+                  <div><span>权益跟进</span><strong>25</strong><small>满分 25</small></div>
+                  <div><span>活动参与</span><strong>18</strong><small>满分 20</small></div>
+                  <div><span>考勤纪律</span><strong>20</strong><small>满分 20</small></div>
+                  <div><span>文案宣传</span><strong>14</strong><small>满分 15</small></div>
+                </div>
+              </div>
+            </section>
+
+            <section class="performance-visual">
+              <div class="performance-radar-card">
+                <div class="ledger-head"><h3>维度雷达</h3><span>2025-2026 第二学期</span></div>
+                <svg viewBox="0 0 220 170" role="img" aria-label="管理端绩效雷达图">
+                  <polygon points="110,10 190,50 175,135 45,135 30,50" class="radar-grid"></polygon>
+                  <polygon points="110,28 168,58 158,122 60,124 46,63" class="radar-fill admin-radar"></polygon>
+                  <g class="radar-labels">
+                    <text x="99" y="9">出勤</text><text x="183" y="48">活动</text><text x="160" y="158">权益</text><text x="26" y="158">文案</text><text x="2" y="48">其他</text>
+                  </g>
+                </svg>
+              </div>
+              <div class="performance-note">
+                <h3>本学期说明</h3>
+                <p>普通管理员只能查看本人绩效，录入、撤回、成员名单和学期切换仍保留在超级管理员端。</p>
+                <ul>
+                  <li><span>权益跟进</span><b>+2.0</b></li>
+                  <li><span>活动参与</span><b>+1.5</b></li>
+                  <li><span>紧急处理</span><b>+3.0</b></li>
+                </ul>
+              </div>
+            </section>
+
+            <section class="performance-ledger">
+              <div class="ledger-head"><h3>绩效流水</h3><span>共 8 条</span></div>
+              <div class="record-table personal-table">
+                <div class="record-tr table-head"><span>维度</span><span>事由</span><span>分值</span><span>日期</span></div>
+                <div class="record-tr"><span>权益跟进</span><span>规范回复 #SVX-0721</span><b>+2.0</b><span>07-21</span></div>
+                <div class="record-tr"><span>活动参与</span><span>学院志愿服务支持</span><b>+1.5</b><span>07-20</span></div>
+                <div class="record-tr"><span>考勤纪律</span><span>本周巡检准时完成</span><b>+2.0</b><span>07-18</span></div>
+                <div class="record-tr"><span>文案宣传</span><span>整理反馈通报简报</span><b>+1.0</b><span>07-16</span></div>
+              </div>
+            </section>
+          </div>
         </div>
       </section>
 
