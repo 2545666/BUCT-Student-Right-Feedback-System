@@ -107,6 +107,7 @@ const OrganizationFrameworkPanel = ({ token }) => {
 
   const titleOptions = TITLE_OPTIONS_BY_MEMBER_ROLE[memberForm.memberRole] || TITLE_OPTIONS_BY_MEMBER_ROLE.student;
   const selectedCohort = cohorts.find(c => (c.id || c._id) === selectedCohortId);
+  const isArchivedCohort = selectedCohort?.status === 'archived';
   const visibleUsers = users.filter(item => item.isActive !== false);
   const singleDepartmentOptions = memberForm.positionTitle === 'youth_league_cadre'
     ? DEPARTMENT_OPTIONS.filter(item => item.organization === 'youth_league')
@@ -222,6 +223,7 @@ const OrganizationFrameworkPanel = ({ token }) => {
   const handleSaveMember = async (e) => {
     e.preventDefault();
     if (!selectedCohortId) return alert('请先创建或选择届次');
+    if (isArchivedCohort) return alert('已归档届次不可继续编辑成员');
     if (!memberForm.studentId) return alert('请选择成员账号');
     if (memberForm.memberRole === 'department_lead' && (!memberForm.organization || !memberForm.department)) {
       return alert('部门负责人层级需要选择所属组织和部门');
@@ -270,6 +272,7 @@ const OrganizationFrameworkPanel = ({ token }) => {
 
   const handleArchive = async () => {
     if (!selectedCohortId) return alert('请先选择届次');
+    if (isArchivedCohort) return alert('该届次已经归档');
     if (!window.confirm('确认归档该届次吗？归档会冻结成员账号信息、身份与绩效快照。')) return;
     setBusy(true);
     try {
@@ -287,6 +290,22 @@ const OrganizationFrameworkPanel = ({ token }) => {
     } finally {
       setBusy(false);
     }
+  };
+
+  const handleEditMember = (member) => {
+    if (isArchivedCohort) return;
+    setMemberForm({
+      studentId: member.studentId || member.accountSnapshot?.studentId || '',
+      memberRole: member.memberRole || 'volunteer',
+      positionTitle: member.positionTitle || 'volunteer',
+      organization: member.organization || '',
+      department: member.department || '',
+      managedDepartments: (member.managedDepartments || []).map(item => ({
+        organization: item.organization,
+        department: item.department
+      }))
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
@@ -401,26 +420,27 @@ const OrganizationFrameworkPanel = ({ token }) => {
               <p className="text-xs text-purple-200/60">Member Assignment</p>
               <h3 className="mt-1 text-xl font-black text-white">成员身份与分管部门</h3>
               <p className="mt-1 text-xs text-purple-100/50">当前届次：{selectedCohort?.name || '未选择'}</p>
+              {isArchivedCohort && <p className="mt-2 inline-flex rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-1 text-xs text-amber-100">历史档案只读，不能继续编辑成员</p>}
             </div>
             <div className="flex flex-wrap gap-2">
               <button onClick={handlePreviewArchive} disabled={busy || !selectedCohortId} className="px-3 py-2 rounded-lg bg-blue-600/30 hover:bg-blue-600 text-blue-100 text-xs font-bold disabled:opacity-50 transition-all">生成归档预览</button>
-              <button onClick={handleArchive} disabled={busy || !selectedCohortId} className="px-3 py-2 rounded-lg bg-red-600/30 hover:bg-red-600 text-red-100 text-xs font-bold disabled:opacity-50 transition-all">确认归档</button>
+              <button onClick={handleArchive} disabled={busy || !selectedCohortId || isArchivedCohort} className="px-3 py-2 rounded-lg bg-red-600/30 hover:bg-red-600 text-red-100 text-xs font-bold disabled:opacity-50 transition-all">确认归档</button>
             </div>
           </div>
 
           <form onSubmit={handleSaveMember} className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <select value={memberForm.studentId} onChange={e => setMemberForm({ ...memberForm, studentId: e.target.value })} className="px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500">
+            <select disabled={isArchivedCohort} value={memberForm.studentId} onChange={e => setMemberForm({ ...memberForm, studentId: e.target.value })} className="px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500 disabled:opacity-50">
               <option value="" className="bg-slate-900">选择成员账号</option>
               {visibleUsers.map(item => <option key={item.id || item._id} value={item.studentId} className="bg-slate-900">{item.name} · {item.studentId} · {item.identityLabel || item.role}</option>)}
             </select>
-            <select value={memberForm.memberRole} onChange={e => updateMemberRole(e.target.value)} className="px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500">
+            <select disabled={isArchivedCohort} value={memberForm.memberRole} onChange={e => updateMemberRole(e.target.value)} className="px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500 disabled:opacity-50">
               {Object.entries(MEMBER_ROLE_LABELS).map(([value, label]) => <option key={value} value={value} className="bg-slate-900">{label}</option>)}
             </select>
-            <select value={memberForm.positionTitle} onChange={e => updatePositionTitle(e.target.value)} className="px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500">
+            <select disabled={isArchivedCohort} value={memberForm.positionTitle} onChange={e => updatePositionTitle(e.target.value)} className="px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500 disabled:opacity-50">
               {titleOptions.map(item => <option key={item.value} value={item.value} className="bg-slate-900">{item.label}</option>)}
             </select>
             {memberForm.memberRole === 'department_lead' ? (
-              <select value={memberForm.organization && memberForm.department ? `${memberForm.organization}:${memberForm.department}` : ''} onChange={e => updateSingleDepartment(e.target.value)} className="px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500">
+              <select disabled={isArchivedCohort} value={memberForm.organization && memberForm.department ? `${memberForm.organization}:${memberForm.department}` : ''} onChange={e => updateSingleDepartment(e.target.value)} className="px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500 disabled:opacity-50">
                 <option value="" className="bg-slate-900">选择所属组织与部门</option>
                 {singleDepartmentOptions.map(item => <option key={`${item.organization}:${item.department}`} value={`${item.organization}:${item.department}`} className="bg-slate-900">{item.organizationLabel} · {item.departmentLabel}</option>)}
               </select>
@@ -436,7 +456,7 @@ const OrganizationFrameworkPanel = ({ token }) => {
                   {DEPARTMENT_OPTIONS.map(item => {
                     const active = memberForm.managedDepartments.some(current => current.organization === item.organization && current.department === item.department);
                     return (
-                      <button key={`${item.organization}:${item.department}`} type="button" onClick={() => toggleManagedDepartment(item)} className={`px-3 py-1.5 rounded-lg border text-xs transition-all ${active ? 'bg-purple-600 border-purple-400 text-white' : 'bg-white/5 border-white/10 text-purple-100/70 hover:bg-white/10'}`}>
+                      <button key={`${item.organization}:${item.department}`} type="button" disabled={isArchivedCohort} onClick={() => toggleManagedDepartment(item)} className={`px-3 py-1.5 rounded-lg border text-xs transition-all disabled:opacity-50 ${active ? 'bg-purple-600 border-purple-400 text-white' : 'bg-white/5 border-white/10 text-purple-100/70 hover:bg-white/10'}`}>
                         {item.organizationLabel} · {item.departmentLabel}
                       </button>
                     );
@@ -444,7 +464,10 @@ const OrganizationFrameworkPanel = ({ token }) => {
                 </div>
               </div>
             )}
-            <button disabled={busy} className="md:col-span-2 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-bold transition-all">保存成员身份与分管部门</button>
+            <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
+              <button disabled={busy || isArchivedCohort} className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-bold transition-all">保存成员身份与分管部门</button>
+              <button type="button" onClick={() => setMemberForm(emptyMemberForm)} className="px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-purple-100 text-sm font-bold transition-all">清空编辑</button>
+            </div>
           </form>
 
           <div className="overflow-x-auto rounded-xl border border-white/10">
@@ -456,6 +479,7 @@ const OrganizationFrameworkPanel = ({ token }) => {
                   <th className="px-4 py-3">所属部门</th>
                   <th className="px-4 py-3">分管部门</th>
                   <th className="px-4 py-3">绩效快照</th>
+                  <th className="px-4 py-3">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10">
@@ -466,6 +490,11 @@ const OrganizationFrameworkPanel = ({ token }) => {
                     <td className="px-4 py-3">{item.departmentLabel || '-'}</td>
                     <td className="px-4 py-3">{(item.managedDepartments || []).length > 0 ? item.managedDepartments.map(d => d.label || `${d.organizationLabel} · ${d.departmentLabel}`).join('、') : '-'}</td>
                     <td className="px-4 py-3">{item.performanceSnapshot?.total ?? '-'}</td>
+                    <td className="px-4 py-3">
+                      <button disabled={isArchivedCohort} onClick={() => handleEditMember(item)} className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-purple-500/30 disabled:opacity-40 text-xs text-purple-100 transition-all">
+                        编辑
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

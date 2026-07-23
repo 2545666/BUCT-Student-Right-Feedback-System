@@ -889,6 +889,7 @@ app.post('/api/ultimate/members', authenticate, ultimateOnly, async (req, res) =
     if (!cohortId || !studentId) return res.status(400).json({ success: false, message: '缺少届次或学号' });
     const cohort = await Cohort.findById(cohortId);
     if (!cohort) return res.status(404).json({ success: false, message: '届次不存在' });
+    if (cohort.status === 'archived') return res.status(400).json({ success: false, message: '已归档届次不可继续编辑成员' });
 
     const identity = buildIdentityUpdate(req.body, req.user._id);
     if (!identity.valid) return res.status(400).json({ success: false, message: identity.message });
@@ -955,6 +956,8 @@ app.patch('/api/ultimate/members/:id', authenticate, ultimateOnly, async (req, r
     const membership = await CohortMembership.findById(req.params.id).populate('user');
     if (!membership) return res.status(404).json({ success: false, message: '成员不存在' });
     if (!membership.user) return res.status(400).json({ success: false, message: '成员未绑定账号' });
+    const cohort = await Cohort.findById(membership.cohort);
+    if (cohort?.status === 'archived') return res.status(400).json({ success: false, message: '已归档届次不可继续编辑成员' });
 
     const user = membership.user;
     ['name', 'email', 'phone', 'studentId'].forEach(field => {
