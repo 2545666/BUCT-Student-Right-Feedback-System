@@ -140,6 +140,14 @@ const FloatingShape = ({ delay, className }) => (
   />
 );
 
+const SIEVOX_PALETTES = [
+  { key: 'blue', label: '学院蓝', color: '#2563eb' },
+  { key: 'purple', label: '艺术紫', color: '#7c3aed' },
+  { key: 'green', label: '成长绿', color: '#15803d' },
+  { key: 'orange', label: '暖阳橙', color: '#c2410c' },
+  { key: 'teal', label: '清澈青', color: '#0f766e' }
+];
+
 export const useTheme = () => {
   // 核心修改：如果 localStorage 中没有值，不仅 state 设为 dark，而且立即写入 localStorage
   const [theme, setTheme] = useState(() => {
@@ -151,6 +159,10 @@ export const useTheme = () => {
     localStorage.setItem('sievox_theme_v2', 'dark');
     return 'dark';
   });
+  const [palette, setPalette] = useState(() => {
+    const savedPalette = localStorage.getItem('sievox_palette_v2');
+    return SIEVOX_PALETTES.some(item => item.key === savedPalette) ? savedPalette : 'blue';
+  });
 
   useEffect(() => {
     const root = document.documentElement;
@@ -159,11 +171,38 @@ export const useTheme = () => {
     } else {
       root.classList.remove('dark');
     }
+    root.dataset.sievoxMode = theme;
     localStorage.setItem('sievox_theme_v2', theme);
   }, [theme]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.sievoxColor = palette;
+    localStorage.setItem('sievox_palette_v2', palette);
+  }, [palette]);
   
   const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
-  return { theme, toggleTheme };
+  return { theme, toggleTheme, palette, setPalette, palettes: SIEVOX_PALETTES };
+};
+
+const ThemePaletteBar = ({ themeTools, compact = false }) => {
+  if (!themeTools) return null;
+  return (
+    <div className={`sievox-palette-switch ${compact ? 'compact' : ''}`} aria-label="SIEVOX 调色板">
+      {!compact && <span>界面色彩</span>}
+      {themeTools.palettes.map(item => (
+        <button
+          key={item.key}
+          type="button"
+          className={`color-dot ${themeTools.palette === item.key ? 'active' : ''}`}
+          data-color={item.key}
+          onClick={() => themeTools.setPalette(item.key)}
+          title={item.label}
+          aria-label={item.label}
+        />
+      ))}
+    </div>
+  );
 };
 
 const Background = () => (
@@ -305,7 +344,7 @@ const CategoryIcon = ({ category }) => {
 };
 
 // Pages
-const LoginPage = ({ onLogin, onRegister }) => {
+const LoginPage = ({ onLogin, onRegister, themeTools }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     studentId: '',
@@ -349,10 +388,10 @@ const LoginPage = ({ onLogin, onRegister }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="sievox-demo-login min-h-screen flex items-center justify-center p-4">
       <Background />
       
-     <Card className="w-full max-w-md p-8 relative z-10" hover={false}>
+     <Card className="sievox-demo-auth-card w-full max-w-md p-8 relative z-10" hover={false}>
         <div className="text-center mb-8 flex flex-col items-center justify-center">
           <div className="flex flex-row items-center justify-center gap-6 mb-4">
             <img 
@@ -373,7 +412,10 @@ const LoginPage = ({ onLogin, onRegister }) => {
          <p className="text-xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 tracking-wider drop-shadow-sm py-2">
             学生权益反馈系统
          </p>
+         <div className="sievox-official-note">Unified Portal · Student Rights · SIE</div>
         </div>
+
+        <ThemePaletteBar themeTools={themeTools} compact />
 
         <div className="flex mb-6 p-1 bg-white/5 rounded-xl">
           <button
@@ -498,7 +540,7 @@ const LoginPage = ({ onLogin, onRegister }) => {
     </div>
   );
 };
- const DashboardPage = ({ user, token, onLogout, onRefreshUser }) => {
+ const DashboardPage = ({ user, token, onLogout, onRefreshUser, themeTools }) => {
   const [activeTab, setActiveTab] = useState('submit');
   const [feedbacks, setFeedbacks] = useState([]);
   const [stats, setStats] = useState({ total: 0, pending: 0, processing: 0, resolved: 0 });
@@ -687,7 +729,7 @@ const LoginPage = ({ onLogin, onRegister }) => {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="sievox-demo-app min-h-screen">
       <Background />
       
       {/* 修改：浅色模式下背景设为稍深的紫色 (bg-purple-200/60)，边框设为紫色的半透明边框 (border-purple-300/50) */}
@@ -715,15 +757,13 @@ const LoginPage = ({ onLogin, onRegister }) => {
           <div className="flex flex-col items-end justify-center shrink-0">
             <div className="flex items-center gap-1.5 sm:gap-3 mb-1">
               <button 
-                onClick={() => {
-                  const isDark = document.documentElement.classList.toggle('dark');
-                  localStorage.setItem('sievox_theme_v2', isDark ? 'dark' : 'light');
-                }} 
+                onClick={themeTools?.toggleTheme} 
                 className="p-1 text-base sm:text-lg md:text-xl hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-all"
                 title="切换深浅色主题"
               >
                 🌗
               </button>
+              <ThemePaletteBar themeTools={themeTools} />
               <div className="relative">
                 <button onClick={() => setShowNotifs(!showNotifs)} className="p-1 text-base sm:text-lg md:text-xl hover:bg-white/10 rounded-full transition-all relative">
                   📬
@@ -1234,15 +1274,16 @@ const FeedbackList = ({ feedbacks, categories, onReply, onRecall, onDelete }) =>
 // Main App
 export default function App() {
   const { user, token, login, register, logout, refreshUser } = useAuth(); // [新增] 解构 refreshUser
+  const themeTools = useTheme();
 
   if (!user) {
-    return <LoginPage onLogin={login} onRegister={register} />;
+    return <LoginPage onLogin={login} onRegister={register} themeTools={themeTools} />;
   }
  if (user.role === 'admin' || user.role === 'superadmin') {
     // [修改] 为管理端也传入 onRefreshUser
-    return <AdminDashboard user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} />;
+    return <AdminDashboard user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} themeTools={themeTools} />;
   }
 
   // [修改] 传递 onRefreshUser 方法
-  return <DashboardPage user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} />; 
+  return <DashboardPage user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} themeTools={themeTools} />; 
 }

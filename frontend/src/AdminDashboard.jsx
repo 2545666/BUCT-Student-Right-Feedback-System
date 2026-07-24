@@ -37,6 +37,25 @@ const RoleTag = ({ user }) => {
   );
 };
 
+const AdminPaletteBar = ({ themeTools }) => {
+  if (!themeTools) return null;
+  return (
+    <div className="sievox-palette-switch" aria-label="SIEVOX 管理端调色板">
+      {themeTools.palettes.map(item => (
+        <button
+          key={item.key}
+          type="button"
+          className={`color-dot ${themeTools.palette === item.key ? 'active' : ''}`}
+          data-color={item.key}
+          onClick={() => themeTools.setPalette(item.key)}
+          title={item.label}
+          aria-label={item.label}
+        />
+      ))}
+    </div>
+  );
+};
+
 const ORGANIZATION_FRAMEWORK = [
   {
     key: 'youth_league',
@@ -965,7 +984,7 @@ const AccountManagement = ({ token, user: currentUser }) => {
 };
 
 // ===================== 主页面: AdminDashboard =====================
-export default function AdminDashboard({ user, token, onLogout, onRefreshUser }) {
+export default function AdminDashboard({ user, token, onLogout, onRefreshUser, themeTools }) {
   const [feedbacks, setFeedbacks] = useState([]);
   const [stats, setStats] = useState(null);
   const [selectedFeedback, setSelectedFeedback] = useState(null);
@@ -1410,7 +1429,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
 
 // ------------------ 视图渲染 ------------------
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#f3e8ff] via-[#faf5ff] to-[#f3e8ff] dark:from-slate-950 dark:via-purple-950/30 dark:to-slate-950 transition-colors duration-500">
+    <div className="sievox-demo-app min-h-screen bg-gradient-to-br from-[#f3e8ff] via-[#faf5ff] to-[#f3e8ff] dark:from-slate-950 dark:via-purple-950/30 dark:to-slate-950 transition-colors duration-500">
       
       {/* 顶部导航 */}
       {/* 修改：浅色模式下背景设为稍深的紫色 (bg-purple-200/60)，边框设为紫色的半透明边框 (border-purple-300/50) */}
@@ -1429,15 +1448,13 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
           
         <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
             <button 
-              onClick={() => {
-                const isDark = document.documentElement.classList.toggle('dark');
-                localStorage.setItem('sievox_theme_v2', isDark ? 'dark' : 'light');
-              }} 
+              onClick={themeTools?.toggleTheme} 
               className="p-1 sm:p-2 text-base sm:text-xl hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-all"
               title="切换深浅色主题"
             >
               🌗
             </button>
+            <AdminPaletteBar themeTools={themeTools} />
             <div className="relative">
               <button onClick={() => setShowNotifs(!showNotifs)} className="p-1 sm:p-2 text-base sm:text-xl hover:bg-white/10 rounded-full transition-all relative">
                 📬
@@ -1506,7 +1523,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
             <span>📋</span> 业务反馈处理
           </button>
           
-          {user?.role === 'superadmin' && (
+          {user?.isUltimateAdmin && (
             <button
               onClick={() => { setShowAccountManagement(true); setShowPerformanceManagement(false); setShowOrganizationFramework(false); }}
               className={`px-3 md:px-6 py-2 rounded-lg flex items-center gap-1 md:gap-2 transition-all text-xs md:text-sm whitespace-nowrap shrink-0 ${showAccountManagement ? 'bg-purple-600 text-white' : 'text-purple-200/60 hover:text-white'}`}
@@ -1549,14 +1566,14 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
                    >
                      {availableSemesters.map(s => <option key={s} value={s} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">{s} {s === currentSemester ? '(当前运行中)' : '(历史归档)'}</option>)}
                    </select>
-                   {user?.role === 'superadmin' && (
+                   {user?.isUltimateAdmin && (
                      <button onClick={handleRenameSemester} title="重命名此学期" className="p-2 shrink-0 bg-white/5 hover:bg-white/10 rounded-lg text-purple-300 hover:text-white transition-colors border border-white/5">
                        ✏️ 
                      </button>
                    )}
                  </div>
                </div>
-               {user?.role === 'superadmin' && (
+               {user?.isUltimateAdmin && (
                  <button onClick={handleArchiveSemester} className="w-full md:w-auto px-4 py-2 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white border border-red-500/30 rounded-lg transition-all text-sm font-medium shrink-0">
                    📦 归档并开启新学期
                  </button>
@@ -2219,7 +2236,9 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser })
 
             <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-white/10 p-2 space-y-1">
               {volunteers.length === 0 ? (
-                <p className="text-sm text-slate-400 dark:text-purple-200/40 text-center py-8">暂无子管理员账号，请先在「账号管理面板」中将学生升级为管理员。</p>
+                <p className="text-sm text-slate-400 dark:text-purple-200/40 text-center py-8">
+                  {user?.isUltimateAdmin ? '暂无子管理员账号，请先在「账号管理面板」中将学生升级为管理员。' : '你的分管部门内暂无可纳入绩效名单的志愿者账号。'}
+                </p>
               ) : (
                 volunteers.map(v => (
                   <label key={v._id} className="flex items-center gap-3 text-sm text-slate-800 dark:text-white hover:bg-slate-200/50 dark:hover:bg-white/5 p-2 rounded-lg cursor-pointer transition-colors">

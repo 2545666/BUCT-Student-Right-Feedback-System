@@ -664,6 +664,50 @@ const ensureFeedbackAccess = (user, feedback) => {
   );
 };
 
+const buildUserDepartmentScopedQuery = (user) => {
+  if (user.isUltimateAdmin) return {};
+  const managed = getUserManagedDepartments(user);
+  if (managed.length === 0) return { _id: null };
+  return {
+    $or: managed.map(item => ({
+      organization: item.organization,
+      department: item.department
+    }))
+  };
+};
+
+const getScopedVolunteerIds = async (user) => {
+  if (user.isUltimateAdmin) return null;
+  const scopeQuery = buildUserDepartmentScopedQuery(user);
+  if (scopeQuery._id === null) return [];
+  const ids = await User.find({ role: 'admin', ...scopeQuery }).distinct('_id');
+  return ids.map(id => id.toString());
+};
+
+const filterMembersByDepartmentScope = async (user, members = []) => {
+  if (user.isUltimateAdmin) return members;
+  const allowedIds = new Set(await getScopedVolunteerIds(user));
+  return members.filter(member => allowedIds.has(String(member._id)));
+};
+
+const ensureVolunteerDepartmentAccess = (user, volunteer) => {
+  if (user.isUltimateAdmin) return true;
+  if (user.role !== 'superadmin' || !volunteer) return false;
+  return getUserManagedDepartments(user).some(item =>
+    item.organization === volunteer.organization &&
+    item.department === volunteer.department
+  );
+};
+
+const ensurePerformanceRecordAccess = (user, record) => {
+  if (user.isUltimateAdmin) return true;
+  if (ensureVolunteerDepartmentAccess(user, record.volunteer)) return true;
+  return getUserManagedDepartments(user).some(item =>
+    item.organization === record.organization &&
+    item.department === record.department
+  );
+};
+
 const buildPerformanceSnapshot = async (userId, semesters = []) => {
   const query = { volunteer: userId };
   if (semesters.length > 0) query.semester = { $in: semesters };
@@ -1699,12 +1743,16 @@ app.delete('/api/admin/users/:id', authenticate, adminOnly, async (req, res) => 
 // 1. 获取所有用户列表（区分角色）
 app.get('/api/admin/users', authenticate, adminOnly, async (req, res) => {
   try {
-    // 全员账号清单包含敏感身份与联系方式，仅终极管理员可用。
-    if (!hasUltimateAccess(req.user)) {
-      return res.status(403).json({ success: false, message: '仅终极管理员可用' });
+    if (!hasSuperadminAccess(req.user)) {
+      return res.status(403).json({ success: false, message: '仅负责人可用' });
     }
-    // 获取所有用户，去除密码字段
-    const users = await User.find().select('-password').sort({ createdAt: -1 });
+
+    // 终极管理员查看全员；普通超级管理员仅查看自己分管部门内的志愿者账号，
+    // 供绩效名单/录入使用，避免账号清单越权扩散。
+    const query = hasUltimateAccess(req.user)
+      ? {}
+      : { role: 'admin', ...buildUserDepartmentScopedQuery(req.user) };
+    const users = await User.find(query).select('-password').sort({ createdAt: -1 });
     res.json({ success: true, users: users.map(serializeUser) });
   } catch (error) {
     res.status(500).json({ success: false, message: '获取用户列表失败' });
@@ -1870,7 +1918,7 @@ app.get('/api/admin/stats', authenticate, adminOnly, async (req, res) => {
 // ================== 部门绩效与系统学期 API ==================
 
 // [新增] 获取当前运行学期及历史学期列表
-app.get('/api/admin/system/config', async (req, res) => {
+app.get('/api/admin/system/config', authenticate, adminOnly, async (req, res) => {
   try {
     let config = await SystemConfig.findOne({ key: 'currentSemester' });
     if (!config) config = await SystemConfig.create({ key: 'currentSemester', value: '2025-2026学年 第二学期' });
@@ -1884,7 +1932,7 @@ app.get('/api/admin/system/config', async (req, res) => {
 
 // [新增] 归档并开启新学期 (仅超管)
 app.post('/api/admin/system/semester', authenticate, adminOnly, async (req, res) => {
-  if (!hasSuperadminAccess(req.user)) return res.status(403).json({ success: false });
+  if (!hasUltimateAccess(req.user)) return res.status(403).json({ success: false, message: '仅终极管理员可开启新学期' });
   try {
     // [新增] 切换前冻结上一学期名单：若旧学期尚无显式名单，则把其"有效名单"快照存档
     const oldConfig = await SystemConfig.findOne({ key: 'currentSemester' });
@@ -1911,7 +1959,7 @@ app.post('/api/admin/system/semester', authenticate, adminOnly, async (req, res)
 
 // [新增] 重命名学期 (仅超管)：同步改绩效流水、成员名单、当前学期与受管学期列表
 app.put('/api/admin/system/semester/rename', authenticate, adminOnly, async (req, res) => {
-  if (!hasSuperadminAccess(req.user)) return res.status(403).json({ success: false, message: '仅负责人可用' });
+  if (!hasUltimateAccess(req.user)) return res.status(403).json({ success: false, message: '仅终极管理员可重命名学期' });
   try {
     const { oldName, newName } = req.body;
     if (!oldName || !newName) return res.status(400).json({ success: false, message: '缺少学期名称' });
@@ -1951,7 +1999,7 @@ app.get('/api/admin/system/roster', authenticate, adminOnly, async (req, res) =>
     const semester = req.query.semester;
     if (!semester) return res.status(400).json({ success: false, message: '缺少学期参数' });
     const { members, source } = await resolveSemesterMembers(semester);
-    res.json({ success: true, members, source });
+    res.json({ success: true, members: await filterMembersByDepartmentScope(req.user, members), source });
   } catch (error) { res.status(500).json({ success: false, message: '获取名单失败' }); }
 });
 
@@ -1961,12 +2009,22 @@ app.post('/api/admin/system/roster', authenticate, adminOnly, async (req, res) =
   try {
     const { semester, volunteerIds } = req.body;
     if (!semester) return res.status(400).json({ success: false, message: '缺少学期参数' });
-    const ids = Array.isArray(volunteerIds) ? volunteerIds : [];
+    const ids = Array.from(new Set((Array.isArray(volunteerIds) ? volunteerIds : []).map(String).filter(Boolean)));
+    const scopedVolunteerIds = await getScopedVolunteerIds(req.user);
+    if (scopedVolunteerIds) {
+      const allowed = new Set(scopedVolunteerIds);
+      const hasOutOfScope = ids.some(id => !allowed.has(id));
+      if (hasOutOfScope) {
+        return res.status(403).json({ success: false, message: '只能维护分管部门内的成员名单' });
+      }
+    }
 
-    // 整份替换：先清空该学期名单，再按选择重建(带姓名/学号快照)
-    await SemesterMember.deleteMany({ semester });
+    // 终极管理员整份替换；普通超级管理员只替换自己分管部门范围内的名单成员。
+    const deleteQuery = { semester };
+    if (scopedVolunteerIds) deleteQuery.volunteer = { $in: scopedVolunteerIds };
+    await SemesterMember.deleteMany(deleteQuery);
     if (ids.length > 0) {
-      const users = await User.find({ _id: { $in: ids } }).select('name studentId');
+      const users = await User.find({ _id: { $in: ids }, role: 'admin' }).select('name studentId');
       const docs = users.map(u => ({
         volunteer: u._id, semester, name: u.name, studentId: u.studentId, addedBy: req.user._id
       }));
@@ -1985,6 +2043,14 @@ app.post('/api/admin/performance', authenticate, adminOnly, async (req, res) => 
     // [修复] 接收前端传来的 targetSemester
     const { volunteerIds, dimension, score, reason, occurrenceDate, activityName, targetSemester } = req.body;
     if (!volunteerIds || volunteerIds.length === 0) return res.status(400).json({ success: false, message: '请选择人员' });
+    const ids = Array.from(new Set(volunteerIds.map(String).filter(Boolean)));
+    const volunteerQuery = { _id: { $in: ids }, role: 'admin' };
+    if (!req.user.isUltimateAdmin) Object.assign(volunteerQuery, buildUserDepartmentScopedQuery(req.user));
+    const targetVolunteers = await User.find(volunteerQuery).select('organization department');
+    if (targetVolunteers.length !== ids.length) {
+      return res.status(403).json({ success: false, message: '只能为分管部门内的成员录入绩效' });
+    }
+    const volunteerMap = new Map(targetVolunteers.map(volunteer => [volunteer._id.toString(), volunteer]));
     
     const config = await SystemConfig.findOne({ key: 'currentSemester' });
     const currentSemester = config ? config.value : '2025-2026学年 第二学期';
@@ -1992,10 +2058,15 @@ app.post('/api/admin/performance', authenticate, adminOnly, async (req, res) => 
     // [修复] 补录时优先使用指定的学期，否则使用当前学期
     const finalSemester = targetSemester || currentSemester;
 
-    const records = volunteerIds.map(vid => ({
+    const records = ids.map(vid => {
+      const volunteer = volunteerMap.get(vid);
+      return ({
       volunteer: vid, recordedBy: req.user._id, dimension, score: Number(score), reason, occurrenceDate, activityName,
+      organization: volunteer?.organization || null,
+      department: volunteer?.department || null,
       semester: finalSemester // [绑定最终学期]
-    }));
+    });
+    });
     await PerformanceRecord.insertMany(records);
     res.json({ success: true, message: '绩效录入成功' });
   } catch (error) { res.status(500).json({ success: false, message: '录入失败' }); }
@@ -2006,8 +2077,10 @@ app.get('/api/admin/performance', authenticate, adminOnly, async (req, res) => {
   if (!hasSuperadminAccess(req.user)) return res.status(403).json({ success: false });
   try {
     const query = req.query.semester ? { semester: req.query.semester } : {};
+    const scopedVolunteerIds = await getScopedVolunteerIds(req.user);
+    if (scopedVolunteerIds) query.volunteer = { $in: scopedVolunteerIds };
     const records = await PerformanceRecord.find(query)
-      .populate('volunteer', 'name studentId')
+      .populate('volunteer', 'name studentId organization department')
       .populate('recordedBy', 'name')
       .sort({ occurrenceDate: -1, createdAt: -1 });
     res.json({ success: true, records });
@@ -2029,8 +2102,12 @@ app.get('/api/admin/performance/my', authenticate, adminOnly, async (req, res) =
 app.delete('/api/admin/performance/:id', authenticate, adminOnly, async (req, res) => {
   if (!hasSuperadminAccess(req.user)) return res.status(403).json({ success: false, message: '仅负责人可用' });
   try {
-    const record = await PerformanceRecord.findByIdAndDelete(req.params.id);
+    const record = await PerformanceRecord.findById(req.params.id).populate('volunteer', 'organization department');
     if (!record) return res.status(404).json({ success: false, message: '记录不存在' });
+    if (!ensurePerformanceRecordAccess(req.user, record)) {
+      return res.status(403).json({ success: false, message: '无权撤回该部门绩效记录' });
+    }
+    await record.deleteOne();
     res.json({ success: true, message: '记录已成功撤回' });
   } catch (error) { res.status(500).json({ success: false, message: '撤回失败' }); }
 });

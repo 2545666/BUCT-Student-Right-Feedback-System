@@ -1113,3 +1113,293 @@ body:has(.sievox-loading) {
     font-size: 30px;
   }
 }
+
+/* ===================== SIEVOX UI Demo 正式部署层 ===================== */
+body:has(.sievox-demo-login),
+body:has(.sievox-demo-app) {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 10% 10%, var(--sievox-primary-soft), transparent 30%),
+    radial-gradient(circle at 88% 16%, rgba(14, 165, 233, 0.13), transparent 28%),
+    linear-gradient(135deg, var(--sievox-bg), #f8fbff 48%, var(--sievox-bg));
+  color: var(--sievox-text);
+  font-size: 17px;
+}
+
+:root[data-sievox-mode="dark"] body:has(.sievox-demo-login),
+:root[data-sievox-mode="dark"] body:has(.sievox-demo-app) {
+  background:
+    radial-gradient(circle at 14% 10%, var(--sievox-primary-soft), transparent 32%),
+    radial-gradient(circle at 86% 18%, rgba(14, 165, 233, 0.12), transparent 28%),
+    linear-gradient(135deg, #07111f, #140f2a 48%, #07111f);
+}
+
+.sievox-demo-login {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.sievox-demo-login::before,
+.sievox-demo-app::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(124, 58, 237, 0.075) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37, 99, 235, 0.075) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(circle at center, black, transparent 72%);
+}
+
+.sievox-demo-auth-card {
+  border: 1px solid color-mix(in srgb, var(--sievox-primary) 22%, transparent) !important;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.16), rgba(255,255,255,0.06)),
+    var(--sievox-surface) !important;
+  box-shadow:
+    0 26px 90px rgba(15, 23, 42, 0.22),
+    0 0 0 1px rgba(255,255,255,0.08) inset !important;
+  animation: sievox-panel-in 620ms cubic-bezier(.2,.8,.2,1) both;
+}
+
+.sievox-demo-auth-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 24% 0%, color-mix(in srgb, var(--sievox-primary) 28%, transparent), transparent 30%),
+    linear-gradient(120deg, transparent, rgba(255,255,255,0.16), transparent);
+  opacity: 0.85;
+}
+
+.sievox-official-note {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 8px;
+  padding: 6px 12px;
+  border: 1px solid color-mix(in srgb, var(--sievox-primary) 24%, transparent);
+  border-radius: 999px;
+  background: var(--sievox-primary-soft);
+  color: var(--sievox-text);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.sievox-palette-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 7px;
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(16px);
+}
+
+.sievox-palette-switch.compact {
+  width: fit-content;
+  margin: -8px auto 20px;
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.1);
+}
+
+.sievox-palette-switch span {
+  color: var(--sievox-muted);
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.sievox-palette-switch .color-dot {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  transition: transform 240ms ease, box-shadow 240ms ease, border-color 240ms ease;
+}
+
+.sievox-palette-switch .color-dot:hover {
+  transform: translateY(-2px) scale(1.08);
+}
+
+.sievox-palette-switch .color-dot.active {
+  border-color: rgba(255,255,255,0.92);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--sievox-primary) 24%, transparent),
+    inset 0 0 0 4px rgba(255,255,255,0.85);
+}
+
+.sievox-demo-app {
+  position: relative;
+  isolation: isolate;
+  font-size: 17px;
+}
+
+.sievox-demo-app > header {
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--sievox-primary) 28%, transparent), rgba(255,255,255,0.52)) !important;
+  border-color: color-mix(in srgb, var(--sievox-primary) 24%, transparent) !important;
+  box-shadow: 0 18px 60px rgba(15, 23, 42, 0.12);
+}
+
+:root[data-sievox-mode="dark"] .sievox-demo-app > header {
+  background:
+    linear-gradient(120deg, rgba(15, 23, 42, 0.86), color-mix(in srgb, var(--sievox-primary) 26%, rgba(15,23,42,0.72))) !important;
+}
+
+.sievox-demo-app main,
+.sievox-demo-app > div:not(header) {
+  position: relative;
+  z-index: 1;
+}
+
+.sievox-demo-app main > div:first-child {
+  border: 1px solid color-mix(in srgb, var(--sievox-primary) 20%, transparent);
+  background: rgba(255,255,255,0.12) !important;
+  backdrop-filter: blur(18px);
+  box-shadow: 0 16px 44px rgba(15, 23, 42, 0.1);
+}
+
+.sievox-demo-app button,
+.sievox-demo-login button,
+.sievox-demo-app input,
+.sievox-demo-app select,
+.sievox-demo-app textarea,
+.sievox-demo-login input {
+  transition:
+    transform 220ms ease,
+    box-shadow 220ms ease,
+    border-color 220ms ease,
+    background-color 220ms ease,
+    color 220ms ease,
+    opacity 220ms ease;
+}
+
+.sievox-demo-app button:hover,
+.sievox-demo-login button:hover {
+  transform: translateY(-1px);
+}
+
+.sievox-demo-app .rounded-2xl,
+.sievox-demo-app .rounded-xl,
+.sievox-demo-login .rounded-2xl,
+.sievox-demo-login .rounded-xl {
+  border-radius: 22px;
+}
+
+.sievox-demo-app .bg-purple-600,
+.sievox-demo-login .bg-purple-600,
+.sievox-demo-app .from-purple-600,
+.sievox-demo-login .from-purple-600 {
+  --tw-bg-opacity: 1;
+  background-color: var(--sievox-primary) !important;
+}
+
+.sievox-demo-login .bg-gradient-to-r,
+.sievox-demo-app .bg-gradient-to-r {
+  background-image: linear-gradient(120deg, var(--sievox-primary), var(--sievox-secondary)) !important;
+}
+
+.sievox-demo-app .text-purple-300,
+.sievox-demo-app .text-purple-200,
+.sievox-demo-login .text-purple-300,
+.sievox-demo-login .text-purple-200 {
+  color: color-mix(in srgb, var(--sievox-primary) 24%, #eef2ff) !important;
+}
+
+.sievox-demo-app .border-white\/10,
+.sievox-demo-login .border-white\/10 {
+  border-color: color-mix(in srgb, var(--sievox-primary) 22%, transparent) !important;
+}
+
+.sievox-demo-app .shadow-lg,
+.sievox-demo-login .shadow-lg {
+  box-shadow: 0 18px 46px color-mix(in srgb, var(--sievox-primary) 16%, transparent) !important;
+}
+
+.sievox-demo-app .animate-fadeIn,
+.sievox-demo-app main > section,
+.sievox-demo-app main > div:not(:first-child) {
+  animation: sievox-panel-in 420ms cubic-bezier(.2,.8,.2,1) both;
+}
+
+@keyframes sievox-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.985);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@media (max-width: 760px) {
+  body:has(.sievox-demo-login),
+  body:has(.sievox-demo-app) {
+    font-size: 18px;
+  }
+
+  .sievox-demo-login {
+    align-items: flex-start;
+    padding: 18px 14px 28px;
+  }
+
+  .sievox-demo-auth-card {
+    max-width: 100%;
+    padding: 22px !important;
+  }
+
+  .sievox-demo-app > header > div {
+    align-items: flex-start;
+  }
+
+  .sievox-demo-app main {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
+
+  .sievox-demo-app main > div:first-child {
+    position: sticky;
+    top: 76px;
+    z-index: 30;
+    border-radius: 18px;
+  }
+
+  .sievox-palette-switch:not(.compact) {
+    display: none;
+  }
+
+  .sievox-demo-app button,
+  .sievox-demo-login button,
+  .sievox-demo-app input,
+  .sievox-demo-app select,
+  .sievox-demo-app textarea,
+  .sievox-demo-login input {
+    min-height: 42px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sievox-demo-auth-card,
+  .sievox-demo-app .animate-fadeIn,
+  .sievox-demo-app main > section,
+  .sievox-demo-app main > div:not(:first-child),
+  .sievox-demo-app button,
+  .sievox-demo-login button,
+  .sievox-demo-app input,
+  .sievox-demo-app select,
+  .sievox-demo-app textarea,
+  .sievox-demo-login input {
+    animation: none !important;
+    transition: none !important;
+  }
+}
