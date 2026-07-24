@@ -74,27 +74,29 @@ html:not(.dark) textarea::placeholder {
 }
 /* ========================================= */
 
-/* 自定义滚动条 */
+/* 自定义滚动条：取消旧版右侧紫蓝渐变 */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
+  background: transparent;
 }
 /* [修改] 浅色模式滚动条轨道 */
 html:not(.dark) ::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.05);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, #9333ea, #3b82f6);
-  border-radius: 4px;
+  background: rgba(105, 118, 135, 0.45);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(to bottom, #a855f7, #60a5fa);
+  background: rgba(18, 59, 102, 0.62);
 }
 
 /* 输入框聚焦效果 */

@@ -202,7 +202,7 @@ npm install
 
 # 创建生产环境配置
 cat > .env << 'EOF'
-PORT=3001
+PORT=3101
 NODE_ENV=production
 
 # MongoDB 连接（使用刚才创建的用户）
@@ -275,7 +275,7 @@ server {
     
     # API 反向代理
     location /api {
-        proxy_pass http://localhost:3001;
+        proxy_pass http://localhost:3101;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';

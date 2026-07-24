@@ -92,7 +92,7 @@ npm run dev
 
 8. **访问系统**
 - 前端: http://localhost:3000
-- 后端 API: http://localhost:3001
+- 后端 API: http://localhost:3101
 
 ## 📁 项目结构
 

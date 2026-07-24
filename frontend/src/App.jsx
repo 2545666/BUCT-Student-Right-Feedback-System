@@ -10,7 +10,7 @@ import {
 import sieLogo from './assets/LOGO_1.png';
 import collegeLogo from './assets/SIE_LOGO.svg';
 
-const API_BASE = import.meta.env.DEV ? `${window.location.protocol}//${window.location.hostname}:3001/api` : '/api';
+const API_BASE = import.meta.env.DEV ? `${window.location.protocol}//${window.location.hostname}:3101/api` : '/api';
 
 export const CATEGORIES_CONFIG = {
   academic: {
@@ -170,29 +170,51 @@ export const useTheme = () => {
   return { mode, setMode, color, setColor, open, setOpen };
 };
 
+const ThemeModeButtons = ({ theme, compact = false }) => (
+  <div className={cls('theme-mode-icons', compact && 'compact')} aria-label="深浅色切换">
+    <button
+      className={theme.mode !== 'dark' ? 'is-active' : ''}
+      type="button"
+      onClick={() => theme.setMode('light')}
+      aria-label="浅色模式"
+      title="浅色模式"
+    >
+      <Sun />
+    </button>
+    <button
+      className={theme.mode === 'dark' ? 'is-active' : ''}
+      type="button"
+      onClick={() => theme.setMode('dark')}
+      aria-label="深色模式"
+      title="深色模式"
+    >
+      <Moon />
+    </button>
+  </div>
+);
+
 const ThemePanel = ({ theme }) => (
   <aside className={cls('theme-panel', theme.open && 'is-open')} aria-hidden={!theme.open}>
     <header>
       <div><span>APPEARANCE</span><h2>外观设置</h2></div>
       <button className="icon-button" type="button" onClick={() => theme.setOpen(false)}><X /></button>
     </header>
-    <div className="theme-section">
-      <p>显示模式</p>
-      <div className="theme-mode-switch">
-        <button className={theme.mode !== 'dark' ? 'is-active' : ''} type="button" onClick={() => theme.setMode('light')}><Sun />浅色</button>
-        <button className={theme.mode === 'dark' ? 'is-active' : ''} type="button" onClick={() => theme.setMode('dark')}><Moon />深色</button>
+    <div className="theme-section theme-composer">
+      <div>
+        <p>模式</p>
+        <ThemeModeButtons theme={theme} />
       </div>
-    </div>
-    <div className="theme-section">
-      <p>主题色</p>
-      <div className="palette-list">
-        {THEME_COLORS.map(item => (
-          <button key={item.key} className={theme.color === item.key ? 'is-active' : ''} type="button" onClick={() => theme.setColor(item.key)}>
-            <i className={`palette-swatch ${item.key}`}></i>
-            <span><strong>{item.label}</strong><small>{item.value}</small></span>
-            <Check />
-          </button>
-        ))}
+      <div>
+        <p>主题色</p>
+        <div className="palette-list">
+          {THEME_COLORS.map(item => (
+            <button key={item.key} className={theme.color === item.key ? 'is-active' : ''} type="button" onClick={() => theme.setColor(item.key)}>
+              <i className={`palette-swatch ${item.key}`}></i>
+              <span><strong>{item.label}</strong><small>{item.value}</small></span>
+              <Check />
+            </button>
+          ))}
+        </div>
       </div>
     </div>
     <p className="theme-note"><Info />外观选择会自动保存在当前浏览器中。</p>
@@ -321,14 +343,21 @@ const Sidebar = ({ user, activePage, setActivePage, openCompose, onLogout, openS
   </aside>
 );
 
-const Topbar = ({ pageTitle, theme, openPreview, notifications, openSettings, user }) => (
+const Topbar = ({ pageTitle, theme, openPreview, notifications, openSettings, user, portalView, onPortalChange }) => (
   <header className="topbar">
     <div className="breadcrumb"><span>国际教育学院</span><ChevronRight /><strong id="page-title">{pageTitle}</strong></div>
     <div className="topbar-actions">
-      <div className="role-switch" aria-label="当前身份"><button className="is-active" type="button">学生端</button></div>
+      {user?.isUltimateAdmin && (
+        <div className="role-switch" aria-label="当前身份">
+          <button className={portalView === 'student' ? 'is-active' : ''} type="button" onClick={() => onPortalChange?.('student')}>学生端</button>
+          <button className={portalView === 'admin' ? 'is-active' : ''} type="button" onClick={() => onPortalChange?.('admin')}>管理端</button>
+          <button className={portalView === 'superadmin' ? 'is-active' : ''} type="button" onClick={() => onPortalChange?.('superadmin')}>超级管理员</button>
+        </div>
+      )}
       <RoleTag user={user} />
+      <ThemeModeButtons theme={theme} compact />
       <button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)}><Palette /></button>
-      <button className="outline-button" type="button" onClick={openPreview}><Smartphone />手机端预览</button>
+      {user?.isUltimateAdmin && <button className="outline-button" type="button" onClick={openPreview}><Smartphone />手机端预览</button>}
       <button className="icon-button" type="button" onClick={openSettings}><Settings /></button>
       <button className="icon-button" type="button"><Bell />{notifications.length > 0 && <span className="notification-dot"></span>}</button>
     </div>
@@ -623,7 +652,7 @@ const SettingsModal = ({ open, user, onClose, token, onLogout, onRefreshUser }) 
   );
 };
 
-const DashboardPage = ({ user, token, onLogout, onRefreshUser, theme }) => {
+const DashboardPage = ({ user, token, onLogout, onRefreshUser, theme, portalView = 'student', onPortalChange }) => {
   const [feedbacks, setFeedbacks] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [activePage, setActivePage] = useState('dashboard');
@@ -743,11 +772,11 @@ const DashboardPage = ({ user, token, onLogout, onRefreshUser, theme }) => {
       <div className="desktop-shell">
         <Sidebar user={user} activePage={activePage} setActivePage={setActivePage} openCompose={openCompose} onLogout={onLogout} openSettings={() => setSettingsOpen(true)} />
         <main className="desktop-main">
-          <Topbar pageTitle={pageTitle} theme={theme} openPreview={() => setPreviewMobile(true)} notifications={notifications} openSettings={() => setSettingsOpen(true)} user={user} />
+          <Topbar pageTitle={pageTitle} theme={theme} openPreview={() => setPreviewMobile(true)} notifications={notifications} openSettings={() => setSettingsOpen(true)} user={user} portalView={portalView} onPortalChange={onPortalChange} />
           <StudentDesktop user={user} stats={stats} feedbacks={feedbacks} activePage={activePage} setActivePage={setActivePage} openCompose={openCompose} onOpenFeedback={setSelectedFeedback} />
         </main>
       </div>
-      <button className="preview-exit icon-button" type="button" onClick={() => setPreviewMobile(false)}><X /></button>
+      {user?.isUltimateAdmin && <button className="preview-exit icon-button" type="button" onClick={() => setPreviewMobile(false)}><X /></button>}
       <MobileShell user={user} feedbacks={feedbacks} stats={stats} page={mobilePage} setPage={setMobilePage} openCompose={openCompose} onOpenFeedback={setSelectedFeedback} theme={theme} />
       <div className={cls('drawer-backdrop', (composeOpen || mobileComposeOpen) && 'is-open')} onClick={() => { setComposeOpen(false); setMobileComposeOpen(false); }}></div>
       <ComposeDrawer open={composeOpen} category={composeCategory} setCategory={setComposeCategory} onClose={() => setComposeOpen(false)} onSubmit={submitFeedback} loading={loading} />
@@ -762,15 +791,29 @@ const DashboardPage = ({ user, token, onLogout, onRefreshUser, theme }) => {
 export default function App() {
   const { user, token, login, register, logout, refreshUser } = useAuth();
   const theme = useTheme();
+  const [portalView, setPortalView] = useState('superadmin');
 
   useEffect(() => {
     document.body.classList.toggle('auth-active', !user);
     return () => document.body.classList.remove('auth-active');
   }, [user]);
 
+  useEffect(() => {
+    if (!user?.isUltimateAdmin) setPortalView('superadmin');
+    else setPortalView(current => ['student', 'admin', 'superadmin'].includes(current) ? current : 'superadmin');
+  }, [user]);
+
   if (!user) return <LoginPage onLogin={login} onRegister={register} theme={theme} />;
+  if (user.isUltimateAdmin && portalView === 'student') {
+    return <DashboardPage user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} theme={theme} portalView={portalView} onPortalChange={setPortalView} />;
+  }
   if (user.role === 'admin' || user.role === 'superadmin') {
-    return <AdminDashboard user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} themeTools={theme} />;
+    return (
+      <>
+        <AdminDashboard user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} themeTools={theme} portalView={user.isUltimateAdmin ? portalView : undefined} onPortalChange={setPortalView} />
+        <ThemePanel theme={theme} />
+      </>
+    );
   }
   return <DashboardPage user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} theme={theme} />;
 }

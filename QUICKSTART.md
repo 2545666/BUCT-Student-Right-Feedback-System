@@ -80,7 +80,7 @@ npm run dev
 ```
 ✅ MongoDB 连接成功
 ✅ 默认管理员账户已创建
-🚀 服务器运行在 http://localhost:3001
+🚀 服务器运行在 http://localhost:3101
 ```
 
 **常见问题：**
@@ -198,7 +198,7 @@ npm install
 
 # 创建生产环境配置（重要：修改下面的密码和密钥！）
 cat > .env << 'EOF'
-PORT=3001
+PORT=3101
 NODE_ENV=production
 MONGODB_URI=mongodb://localhost:27017/buct_feedback
 JWT_SECRET=在这里输入一个64位以上的随机字符串作为密钥
@@ -233,7 +233,7 @@ server {
     }
     
     location /api {
-        proxy_pass http://localhost:3001;
+        proxy_pass http://localhost:3101;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -268,7 +268,7 @@ nano App.jsx
 
 找到这一行（大约第4行）：
 ```javascript
-const API_BASE = 'http://localhost:3001/api';
+const API_BASE = 'http://localhost:3101/api';
 ```
 
 改成：

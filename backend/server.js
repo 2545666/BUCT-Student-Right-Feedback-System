@@ -53,7 +53,7 @@ app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
 // 环境配置
 // ============================================
 const config = {
-  port: process.env.PORT || 3001,
+  port: process.env.PORT || 3101,
   mongoUri: process.env.MONGODB_URI || 'mongodb://localhost:27017/buct_feedback',
   jwtSecret: process.env.JWT_SECRET || 'your-super-secret-jwt-key-buct-2024-secure',
   jwtExpire: process.env.JWT_EXPIRE || '7d',
@@ -2455,7 +2455,7 @@ const startServer = async () => {
         console.log(`🚀 生产环境: HTTPS 服务器安全运行在端口 443`);
       });
     } else {
-      // 开发环境：依然使用普通的 HTTP 和 3001 端口
+      // 开发环境：使用普通的 HTTP 与当前配置端口
       app.listen(config.port, () => {
         console.log(`🚀 开发环境: HTTP 服务器运行在 http://localhost:${config.port}`);
       });

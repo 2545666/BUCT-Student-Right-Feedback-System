@@ -4,7 +4,7 @@ import beian from './assets/beian.png';
 import collegeLogo from './assets/SIE_LOGO.svg';
 
 
-const API_BASE = import.meta.env.DEV ? `${window.location.protocol}//${window.location.hostname}:3001/api` : '/api';
+const API_BASE = import.meta.env.DEV ? `${window.location.protocol}//${window.location.hostname}:3101/api` : '/api';
 
 // ===================== 全局配置字典 =====================
 const categories = {
@@ -39,19 +39,40 @@ const RoleTag = ({ user }) => {
 
 const AdminPaletteBar = ({ themeTools }) => {
   if (!themeTools) return null;
+  const colors = themeTools.palettes || [
+    { key: 'purple', label: '典雅紫' },
+    { key: 'blue', label: '海洋蓝' },
+    { key: 'green', label: '森林绿' },
+    { key: 'orange', label: '暖阳橙' },
+    { key: 'teal', label: '青碧色' }
+  ];
+  const activeColor = themeTools.color || themeTools.palette || 'blue';
+  const setColor = themeTools.setColor || themeTools.setPalette;
   return (
     <div className="sievox-palette-switch" aria-label="SIEVOX 管理端调色板">
-      {themeTools.palettes.map(item => (
+      {colors.map(item => (
         <button
           key={item.key}
           type="button"
-          className={`color-dot ${themeTools.palette === item.key ? 'active' : ''}`}
+          className={`color-dot ${activeColor === item.key ? 'active' : ''}`}
           data-color={item.key}
-          onClick={() => themeTools.setPalette(item.key)}
+          onClick={() => setColor?.(item.key)}
           title={item.label}
           aria-label={item.label}
         />
       ))}
+    </div>
+  );
+};
+
+const AdminThemeModeButtons = ({ themeTools }) => {
+  if (!themeTools) return null;
+  const setMode = themeTools.setMode;
+  const mode = themeTools.mode || 'light';
+  return (
+    <div className="theme-mode-icons compact" aria-label="管理端深浅色切换">
+      <button className={mode !== 'dark' ? 'is-active' : ''} type="button" onClick={() => setMode?.('light')} title="浅色模式" aria-label="浅色模式">☀</button>
+      <button className={mode === 'dark' ? 'is-active' : ''} type="button" onClick={() => setMode?.('dark')} title="深色模式" aria-label="深色模式">☾</button>
     </div>
   );
 };
@@ -328,7 +349,7 @@ const OrganizationFrameworkPanel = ({ token }) => {
   };
 
   return (
-    <div className="animate-fadeIn space-y-6">
+    <div className="organization-framework-panel animate-fadeIn space-y-6">
       <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 md:p-8">
         <div className="absolute right-0 top-0 h-40 w-40 bg-purple-500/20 blur-3xl" />
         <div className="relative flex flex-col md:flex-row md:items-end md:justify-between gap-4">
@@ -813,7 +834,7 @@ const AccountManagement = ({ token, user: currentUser }) => {
   if (currentUser?.role !== 'superadmin') return null;
 
   return (
-    <div className="space-y-6 mt-6 animate-fadeIn">
+    <div className="people-management-panel space-y-6 mt-6 animate-fadeIn">
       <div className="p-6 bg-white/5 border border-purple-500/30 rounded-2xl relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-blue-500" />
         <h3 className="text-lg font-bold text-white mb-4">赋予管理员权限</h3>
@@ -984,7 +1005,7 @@ const AccountManagement = ({ token, user: currentUser }) => {
 };
 
 // ===================== 主页面: AdminDashboard =====================
-export default function AdminDashboard({ user, token, onLogout, onRefreshUser, themeTools }) {
+export default function AdminDashboard({ user, token, onLogout, onRefreshUser, themeTools, portalView, onPortalChange }) {
   const [feedbacks, setFeedbacks] = useState([]);
   const [stats, setStats] = useState(null);
   const [selectedFeedback, setSelectedFeedback] = useState(null);
@@ -1003,6 +1024,16 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
   const [settingsTab, setSettingsTab] = useState('profile');
   const [pwdData, setPwdData] = useState({ current: '', new: '' });
   const [profileData, setProfileData] = useState({ name: '', studentId: '', email: '', phone: '' });
+  const isUltimateAdmin = Boolean(user?.isUltimateAdmin);
+  const activePortal = isUltimateAdmin ? (portalView || 'superadmin') : (user?.role === 'admin' ? 'admin' : 'superadmin');
+  const showUltimatePortal = isUltimateAdmin && activePortal === 'superadmin';
+
+  useEffect(() => {
+    if (!showUltimatePortal && (showAccountManagement || showOrganizationFramework)) {
+      setShowAccountManagement(false);
+      setShowOrganizationFramework(false);
+    }
+  }, [showUltimatePortal, showAccountManagement, showOrganizationFramework]);
 
   // 绩效与学期专属状态
   const [showPerformanceManagement, setShowPerformanceManagement] = useState(false);
@@ -1486,16 +1517,20 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
       {/* 修改：浅色模式下背景设为稍深的紫色 (bg-purple-200/60)，边框设为紫色的半透明边框 (border-purple-300/50) */}
       <header className="topbar">
         <div className="breadcrumb">
-          <span>国际教育学院</span><span>›</span><strong>{user?.isUltimateAdmin ? '学院权益治理总控台' : '权益事务处理台'}</strong>
+          <span>国际教育学院</span><span>›</span><strong>{showUltimatePortal ? '学院权益治理总控台' : '权益事务处理台'}</strong>
         </div>
         <div className="topbar-actions">
-          <div className="role-switch" aria-label="当前身份">
-            <button type="button">学生端</button>
-            <button className={!user?.isUltimateAdmin ? 'is-active' : ''} type="button">管理端</button>
-            <button className={user?.isUltimateAdmin ? 'is-active' : ''} type="button">超级管理员</button>
-          </div>
+          {isUltimateAdmin && (
+            <div className="role-switch" aria-label="当前身份">
+              <button className={activePortal === 'student' ? 'is-active' : ''} type="button" onClick={() => onPortalChange?.('student')}>学生端</button>
+              <button className={activePortal === 'admin' ? 'is-active' : ''} type="button" onClick={() => onPortalChange?.('admin')}>管理端</button>
+              <button className={activePortal === 'superadmin' ? 'is-active' : ''} type="button" onClick={() => onPortalChange?.('superadmin')}>超级管理员</button>
+            </div>
+          )}
+          <AdminThemeModeButtons themeTools={themeTools} />
+          <AdminPaletteBar themeTools={themeTools} />
           <button className="icon-button theme-trigger" type="button" onClick={() => themeTools?.setOpen?.(true)} aria-label="外观设置">🎨</button>
-          <button className="outline-button" type="button">▯ 手机端预览</button>
+          {isUltimateAdmin && <button className="outline-button" type="button">▯ 手机端预览</button>}
           <button className="icon-button" type="button" onClick={() => setShowNotifs(!showNotifs)}>🔔{notifications.length > 0 && <span className="notification-dot"></span>}</button>
           <button className="outline-button" type="button" onClick={onLogout}>退出</button>
         </div>
@@ -1579,8 +1614,8 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
       </header>
 
       {/* 主体内容区 */}
-      <section className={user?.isUltimateAdmin ? 'role-view superadmin-view' : 'role-view'}>
-        {user?.isUltimateAdmin ? (
+      <section className={showUltimatePortal ? 'role-view superadmin-view' : 'role-view'}>
+        {showUltimatePortal ? (
           <>
             <div className="superadmin-hero">
               <div>
@@ -1607,7 +1642,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
               </div>
               <div className="admin-actions">
                 <button className="outline-button">导出报表</button>
-                {user?.isUltimateAdmin && <button className="primary-button">账号管理</button>}
+                {showUltimatePortal && <button className="primary-button">账号管理</button>}
               </div>
             </div>
             <div className="admin-metrics">
@@ -1618,18 +1653,18 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
             </div>
           </>
         )}
-        <div className="mb-8 flex flex-nowrap gap-1 md:gap-2 p-1 bg-white/5 rounded-xl w-full md:w-fit overflow-x-auto custom-scrollbar">
+        <div className="superadmin-tabs admin-module-tabs">
           <button
             onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(false); setShowOrganizationFramework(false); }}
-            className={`px-3 md:px-6 py-2 rounded-lg flex items-center gap-1 md:gap-2 transition-all text-xs md:text-sm whitespace-nowrap shrink-0 ${!showAccountManagement && !showPerformanceManagement && !showOrganizationFramework ? 'bg-purple-600 text-white' : 'text-purple-200/60 hover:text-white'}`}
+            className={!showAccountManagement && !showPerformanceManagement && !showOrganizationFramework ? 'is-active' : ''}
           >
             <span>📋</span> 业务反馈处理
           </button>
           
-          {user?.isUltimateAdmin && (
+          {showUltimatePortal && (
             <button
               onClick={() => { setShowAccountManagement(true); setShowPerformanceManagement(false); setShowOrganizationFramework(false); }}
-              className={`px-3 md:px-6 py-2 rounded-lg flex items-center gap-1 md:gap-2 transition-all text-xs md:text-sm whitespace-nowrap shrink-0 ${showAccountManagement ? 'bg-purple-600 text-white' : 'text-purple-200/60 hover:text-white'}`}
+              className={showAccountManagement ? 'is-active' : ''}
             >
               <span>👥</span> 账号管理面板
             </button>
@@ -1637,22 +1672,22 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
 
           <button
             onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(true); setShowOrganizationFramework(false); }}
-            className={`px-3 md:px-6 py-2 rounded-lg flex items-center gap-1 md:gap-2 transition-all text-xs md:text-sm whitespace-nowrap shrink-0 ${showPerformanceManagement ? 'bg-purple-600 text-white' : 'text-purple-200/60 hover:text-white'}`}
+            className={showPerformanceManagement ? 'is-active' : ''}
           >
             <span>📊</span> {user?.role === 'superadmin' ? '部门绩效管理' : '我的绩效档案'}
           </button>
 
-          {user?.isUltimateAdmin && (
+          {showUltimatePortal && (
             <button
               onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(false); setShowOrganizationFramework(true); }}
-              className={`px-3 md:px-6 py-2 rounded-lg flex items-center gap-1 md:gap-2 transition-all text-xs md:text-sm whitespace-nowrap shrink-0 ${showOrganizationFramework ? 'bg-purple-600 text-white' : 'text-purple-200/60 hover:text-white'}`}
+              className={showOrganizationFramework ? 'is-active' : ''}
             >
               <span>🏛️</span> 团委学生会架构
             </button>
           )}
         </div>
 
-        {showOrganizationFramework && user?.isUltimateAdmin ? (
+        {showOrganizationFramework && showUltimatePortal ? (
           <OrganizationFrameworkPanel token={token} />
         ) : showPerformanceManagement ? (
           <div className="animate-fadeIn space-y-4 md:space-y-6">
@@ -1669,14 +1704,14 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
                    >
                      {availableSemesters.map(s => <option key={s} value={s} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">{s} {s === currentSemester ? '(当前运行中)' : '(历史归档)'}</option>)}
                    </select>
-                   {user?.isUltimateAdmin && (
+                   {showUltimatePortal && (
                      <button onClick={handleRenameSemester} title="重命名此学期" className="p-2 shrink-0 bg-white/5 hover:bg-white/10 rounded-lg text-purple-300 hover:text-white transition-colors border border-white/5">
                        ✏️ 
                      </button>
                    )}
                  </div>
                </div>
-               {user?.isUltimateAdmin && (
+               {showUltimatePortal && (
                  <button onClick={handleArchiveSemester} className="w-full md:w-auto px-4 py-2 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white border border-red-500/30 rounded-lg transition-all text-sm font-medium shrink-0">
                    📦 归档并开启新学期
                  </button>
@@ -1961,7 +1996,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
               </div>
             )}
           </div>
-        ) : showAccountManagement && user?.role === 'superadmin' ? (
+        ) : showAccountManagement && showUltimatePortal ? (
            <AccountManagement token={token} user={user} />
         ) : (
           <>
