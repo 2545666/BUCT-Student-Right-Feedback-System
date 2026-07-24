@@ -1429,12 +1429,77 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
 
 // ------------------ 视图渲染 ------------------
   return (
-    <div className="sievox-demo-app min-h-screen bg-gradient-to-br from-[#f3e8ff] via-[#faf5ff] to-[#f3e8ff] dark:from-slate-950 dark:via-purple-950/30 dark:to-slate-950 transition-colors duration-500">
+    <div className="desktop-shell admin-demo-shell">
+      <aside className="sidebar" aria-label="主导航">
+        <div className="brand-lockup">
+          <img src={sieLogo} alt="SIEVOX" />
+          <div>
+            <strong>SIEVOX</strong>
+            <span>学生权益反馈系统</span>
+          </div>
+        </div>
+
+        <nav className="side-nav">
+          <p className="nav-label">学生服务</p>
+          <button className="nav-item is-active" type="button" onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(false); setShowOrganizationFramework(false); }}>
+            <span>▦</span><span>权益工作台</span>
+          </button>
+          <button className="nav-item" type="button" onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(false); setShowOrganizationFramework(false); }}>
+            <span>□</span><span>发起反馈</span><kbd>N</kbd>
+          </button>
+          <button className="nav-item" type="button" onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(true); setShowOrganizationFramework(false); }}>
+            <span>▱</span><span>{user?.role === 'superadmin' ? '绩效管理' : '我的反馈'}</span><span className="nav-count">3</span>
+          </button>
+          <button className="nav-item" type="button">
+            <span>◇</span><span>服务指南</span>
+          </button>
+        </nav>
+
+        <div className="service-note">
+          <div className="service-note-head">
+            <span className="live-dot"></span>
+            <span>反馈通道正常</span>
+          </div>
+          <strong>3.2 小时</strong>
+          <p>本学期平均首次响应</p>
+        </div>
+
+        <div className="sidebar-user">
+          <span className="avatar">{(user?.name || '管').slice(0, 1)}</span>
+          <div><strong>{user?.name}</strong><span>{user?.studentId}</span></div>
+          <button className="icon-button on-dark" type="button" onClick={() => {
+            setProfileData({
+              name: user?.name || '',
+              studentId: user?.studentId || '',
+              email: user?.email || '',
+              phone: user?.phone || ''
+            });
+            setSettingsTab('profile');
+            setShowSettingsModal(true);
+          }}>⚙</button>
+        </div>
+      </aside>
+
+      <main className="desktop-main">
       
       {/* 顶部导航 */}
       {/* 修改：浅色模式下背景设为稍深的紫色 (bg-purple-200/60)，边框设为紫色的半透明边框 (border-purple-300/50) */}
-      <header className="border-b border-purple-300/50 dark:border-white/10 backdrop-blur-xl bg-purple-200/60 dark:bg-slate-950/50 sticky top-0 z-50 transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-2 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-1 sm:gap-4">
+      <header className="topbar">
+        <div className="breadcrumb">
+          <span>国际教育学院</span><span>›</span><strong>{user?.isUltimateAdmin ? '学院权益治理总控台' : '权益事务处理台'}</strong>
+        </div>
+        <div className="topbar-actions">
+          <div className="role-switch" aria-label="当前身份">
+            <button type="button">学生端</button>
+            <button className={!user?.isUltimateAdmin ? 'is-active' : ''} type="button">管理端</button>
+            <button className={user?.isUltimateAdmin ? 'is-active' : ''} type="button">超级管理员</button>
+          </div>
+          <button className="icon-button theme-trigger" type="button" onClick={() => themeTools?.setOpen?.(true)} aria-label="外观设置">🎨</button>
+          <button className="outline-button" type="button">▯ 手机端预览</button>
+          <button className="icon-button" type="button" onClick={() => setShowNotifs(!showNotifs)}>🔔{notifications.length > 0 && <span className="notification-dot"></span>}</button>
+          <button className="outline-button" type="button" onClick={onLogout}>退出</button>
+        </div>
+        {false && <div className="max-w-7xl mx-auto px-2 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-1 sm:gap-4">
           <div className="flex items-center gap-1.5 sm:gap-3 md:gap-4 flex-1 min-w-0">
             <div className="flex items-center gap-1 sm:gap-2 shrink-0">
               <img src={collegeLogo} alt="学院LOGO" className="w-7 h-7 sm:w-10 sm:h-10 md:w-12 md:h-12 object-contain" />
@@ -1510,11 +1575,49 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
               退出登录
             </button>
           </div>
-        </div>
+        </div>}
       </header>
 
       {/* 主体内容区 */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <section className={user?.isUltimateAdmin ? 'role-view superadmin-view' : 'role-view'}>
+        {user?.isUltimateAdmin ? (
+          <>
+            <div className="superadmin-hero">
+              <div>
+                <p className="eyebrow">SUPER ADMIN CONSOLE</p>
+                <h1>学院权益治理总控台</h1>
+                <p>统一查看账号权限、子管理员处理轨迹、学期绩效与成员名单，给系统运行留下一条清楚的治理账本。</p>
+              </div>
+              <div className="superadmin-badge"><span>负责人权限</span><strong>{currentSemester || '2025-2026 第二学期'}</strong></div>
+            </div>
+            <div className="superadmin-metrics">
+              <div><span>系统账户</span><strong>{stats?.totalUsers || 326}</strong><small>学生 / 管理员 / 超管</small></div>
+              <div><span>活跃子管理员</span><strong>{rosterMembers.length || 12}</strong><small>本周均有处理记录</small></div>
+              <div><span>待复核操作</span><strong>{stats?.pending || 7}</strong><small className="warning-text">含撤回回复</small></div>
+              <div><span>绩效平均分</span><strong>86.5</strong><small>较上月 +4.2</small></div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="admin-heading">
+              <div>
+                <p className="eyebrow">OPERATIONS DESK</p>
+                <h1>权益事务处理台</h1>
+                <p>2025–2026 学年第二学期 · 国际教育学院</p>
+              </div>
+              <div className="admin-actions">
+                <button className="outline-button">导出报表</button>
+                {user?.isUltimateAdmin && <button className="primary-button">账号管理</button>}
+              </div>
+            </div>
+            <div className="admin-metrics">
+              <div><span>待受理</span><strong>{stats?.pending || 0}</strong><small className="warning-text">请及时处理</small></div>
+              <div><span>处理中</span><strong>{stats?.processing || 0}</strong><small>持续跟进</small></div>
+              <div><span>本周解决</span><strong>{stats?.resolved || 0}</strong><small className="success-text">解决率提升中</small></div>
+              <div className="sla-meter"><span>24h 首响达标率</span><strong>92.4%</strong><div><i></i></div><small>目标值 90%</small></div>
+            </div>
+          </>
+        )}
         <div className="mb-8 flex flex-nowrap gap-1 md:gap-2 p-1 bg-white/5 rounded-xl w-full md:w-fit overflow-x-auto custom-scrollbar">
           <button
             onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(false); setShowOrganizationFramework(false); }}
@@ -2111,7 +2214,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
             </div>
           </>
         )}
-      </main>
+      </section>
 
       {/* 底部信息 */}
       <div className="mt-6 text-center text-[10px] md:text-xs text-purple-200/40 px-4 transform scale-90 origin-center space-y-2 pb-6">
@@ -2318,6 +2421,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
         </div>
       )}
       
+      </main>
     </div>
   );
 }

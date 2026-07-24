@@ -1,79 +1,128 @@
-import AdminDashboard from './AdminDashboard'; // [!code ++]
-import React, { useState, useEffect, useCallback } from 'react';
+import AdminDashboard from './AdminDashboard';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ArrowLeft, ArrowRight, ArrowUpRight, Bell, BookOpen, Check, ChevronRight,
+  GraduationCap, House, IdCard, ImagePlus, KeyRound, LayoutDashboard, LockKeyhole,
+  LogOut, MessageCircleMore, MessagesSquare, Palette, Paperclip, Plus, Send,
+  Settings, ShieldCheck, Smartphone, Sparkles, SquarePen, Utensils, UserRound,
+  X, BedDouble, Eye, EyeOff, Moon, Sun, Info, Route, Clock3, PhoneCall
+} from 'lucide-react';
 import sieLogo from './assets/LOGO_1.png';
-import beian from './assets/beian.png';
 import collegeLogo from './assets/SIE_LOGO.svg';
-// API Configuration
-// 开发环境使用完整地址，生产环境使用相对路径（通过 Nginx 代理）
+
 const API_BASE = import.meta.env.DEV ? `${window.location.protocol}//${window.location.hostname}:3001/api` : '/api';
 
-// [新增] 全局附件渲染组件
-// ======= 替换现有的 AttachmentViewer (App.jsx) =======
-// ======= 用这段代码替换原有的 AttachmentViewer =======
+export const CATEGORIES_CONFIG = {
+  academic: {
+    label: '教学教务',
+    short: '教学',
+    icon: GraduationCap,
+    tileClass: 'academic',
+    desc: '课程、考试与学籍',
+    sub: ['课程与教学管理', '学辅答疑与讲座安排', '考试与成绩管理', '发展与规划指导', '学籍与培养方案', '设施维修与维护', '其他教学相关']
+  },
+  accommodation: {
+    label: '宿舍住宿',
+    short: '住宿',
+    icon: BedDouble,
+    tileClass: 'housing',
+    desc: '环境与生活服务',
+    sub: ['住宿环境与管理', '生活配套服务', '其他宿舍相关']
+  },
+  catering: {
+    label: '餐饮服务',
+    short: '餐饮',
+    icon: Utensils,
+    tileClass: 'dining',
+    desc: '食品、价格与运营',
+    sub: ['食品安全与卫生', '菜品与价格管理', '食堂运营与服务', '其他餐饮相关']
+  },
+  safety: {
+    label: '安全保卫',
+    short: '安全',
+    icon: ShieldCheck,
+    tileClass: 'safety',
+    desc: '人身、消防与网络',
+    sub: ['人身与财产安全', '消防安全与隐患', '交通与出行安全', '网络与信息安全', '其他安全相关']
+  },
+  comprehensive: {
+    label: '综合服务',
+    short: '综合',
+    icon: Sparkles,
+    tileClass: 'service',
+    desc: '活动、心理与行政',
+    sub: ['学院活动与文化建设', '心理健康与成长支持', '行政服务与流程优化', '校园公共设施与环境', '其他未分类诉求']
+  }
+};
+
+const STATUS_META = {
+  pending: { label: '待受理', className: 'pending' },
+  processing: { label: '处理中', className: 'processing' },
+  resolved: { label: '已解决', className: 'resolved' },
+  rejected: { label: '已拒绝', className: 'pending' }
+};
+
+const PRIORITY_LABEL = {
+  low: '低',
+  normal: '普通',
+  high: '高',
+  urgent: '紧急'
+};
+
+const THEME_COLORS = [
+  { key: 'purple', label: '典雅紫', value: '#6750A4' },
+  { key: 'blue', label: '海洋蓝', value: '#1A6CE3' },
+  { key: 'green', label: '森林绿', value: '#4A8D3F' },
+  { key: 'orange', label: '暖阳橙', value: '#C85100' },
+  { key: 'teal', label: '青碧色', value: '#007B7B' }
+];
+
+const cls = (...items) => items.filter(Boolean).join(' ');
+
+const getCategory = (value) => CATEGORIES_CONFIG[value] || CATEGORIES_CONFIG.comprehensive;
+const formatDate = (value) => value ? new Date(value).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '刚刚';
+const firstChar = (name = '赵') => name.trim().slice(0, 1) || '赵';
+
 export const AttachmentViewer = ({ attachments }) => {
   if (!attachments || attachments.length === 0) return null;
-
   return (
-    <div className="flex flex-wrap gap-3 mt-3 mb-2">
+    <div className="attachment-strip">
       {attachments.map((file, i) => {
-        // [修复] 兼容处理：如果旧数据只有 /uploads/，强制补全 /api，利用代理自动分发
-        const url = file.path.startsWith('/api') ? file.path : `/api${file.path}`;
-        
-        // 双重校验：通过 mimetype 或后缀名识别图片和视频
-        const isImage = file.mimetype?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp)$/i.test(file.path || file.filename);
-        const isVideo = file.mimetype?.startsWith('video/') || /\.(mp4|webm|ogg)$/i.test(file.path || file.filename);
-
+        const path = file.path || '';
+        const url = path.startsWith('/api') ? path : `/api${path}`;
+        const isImage = file.mimetype?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp)$/i.test(path || file.filename);
         if (isImage) {
-          return (
-            <a key={i} href={url} target="_blank" rel="noreferrer" className="block w-20 h-20 md:w-24 md:h-24 overflow-hidden rounded-xl border border-white/20 hover:border-purple-500 transition-all shadow-md" onClick={e => e.stopPropagation()}>
-              <img src={url} alt={file.filename} className="w-full h-full object-cover hover:scale-110 transition-transform duration-300" />
-            </a>
-          );
+          return <a key={i} href={url} target="_blank" rel="noreferrer"><img src={url} alt={file.filename || '附件'} /></a>;
         }
-        if (isVideo) {
-          return (
-            <video key={i} src={url} controls className="h-20 md:h-24 max-w-[150px] md:max-w-[200px] object-cover rounded-xl border border-white/20 shadow-md" onClick={e => e.stopPropagation()} />
-          );
-        }
-        return (
-          <a key={i} href={url} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-xl text-xs text-purple-200 hover:bg-white/10 hover:text-white transition-all shadow-sm" onClick={e => e.stopPropagation()}>
-            <span>📎</span><span className="truncate max-w-[120px]" title={file.filename}>{file.filename}</span>
-          </a>
-        );
+        return <a key={i} href={url} target="_blank" rel="noreferrer"><Paperclip />{file.filename || '附件'}</a>;
       })}
     </div>
   );
 };
 
-// [新增] 全局分类字典配置 (含一二级联动)
-
-// [新增] 全局分类字典配置 (含一二级联动)
-export const CATEGORIES_CONFIG = {
-  academic: {
-    label: '教学教务', icon: '📚', desc: '课程、考试与规划',
-    sub: ['课程与教学管理', '学辅答疑与讲座安排', '考试与成绩管理', '发展与规划指导', '学籍与培养方案', '设施维修与维护','其他教学相关']
-  },
-  accommodation: {
-    label: '宿舍住宿', icon: '🏠', desc: '环境与配套服务',
-    sub: ['住宿环境与管理', '生活配套服务','其他宿舍相关']
-  },
-  catering: {
-    label: '餐饮服务', icon: '🍽️', desc: '食品、运营与价格',
-    sub: ['食品安全与卫生', '菜品与价格管理', '食堂运营与服务', '其他餐饮相关']
-  },
-  safety: {
-    label: '安全保卫', icon: '🛡️', desc: '人身、消防与网络',
-    sub: ['人身与财产安全', '消防安全与隐患', '交通与出行安全', '网络与信息安全','其他安全相关']
-  },
-  comprehensive: {
-    label: '综合服务与其他', icon: '📋', desc: '活动、心理与行政',
-    sub: ['学院活动与文化建设', '心理健康与成长支持', '行政服务与流程优化', '校园公共设施与环境', '其他未分类诉求']
-  }
-};
-// Custom Hooks
 const useAuth = () => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token'));
+
+  const logout = useCallback(() => {
+    localStorage.removeItem('token');
+    setToken(null);
+    setUser(null);
+  }, []);
+
+  const refreshUser = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (data.success) setUser(data.user);
+      else logout();
+    } catch {
+      logout();
+    }
+  }, [token, logout]);
+
+  useEffect(() => { refreshUser(); }, [refreshUser]);
 
   const login = async (studentId, password) => {
     const res = await fetch(`${API_BASE}/auth/login`, {
@@ -90,1200 +139,638 @@ const useAuth = () => {
     return data;
   };
 
-  const register = async (userData) => {
+  const register = async (payload) => {
     const res = await fetch(`${API_BASE}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(userData)
+      body: JSON.stringify(payload)
     });
     return res.json();
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    setToken(null);
-    setUser(null);
-  };
-
-  // [新增] 提取出独立刷新用户信息的方法
-  const refreshUser = useCallback(async () => {
-    if (token) {
-      try {
-        const res = await fetch(`${API_BASE}/auth/me`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (data.success) setUser(data.user);
-        else logout();
-      } catch (err) {
-        logout();
-      }
-    }
-  }, [token]);
-
-  useEffect(() => {
-    refreshUser();
-  }, [refreshUser]);
-
-  return { user, token, login, register, logout, refreshUser }; // [修改] 导出 refreshUser
+  return { user, token, login, register, logout, refreshUser };
 };
-
-// Components
-const GlowOrb = ({ className }) => (
-  <div className={`absolute rounded-full blur-3xl opacity-30 animate-pulse ${className}`} />
-);
-
-const FloatingShape = ({ delay, className }) => (
-  <div 
-    className={`absolute opacity-10 ${className}`}
-    style={{ animationDelay: `${delay}s` }}
-  />
-);
-
-const SIEVOX_PALETTES = [
-  { key: 'blue', label: '学院蓝', color: '#2563eb' },
-  { key: 'purple', label: '艺术紫', color: '#7c3aed' },
-  { key: 'green', label: '成长绿', color: '#15803d' },
-  { key: 'orange', label: '暖阳橙', color: '#c2410c' },
-  { key: 'teal', label: '清澈青', color: '#0f766e' }
-];
 
 export const useTheme = () => {
-  // 核心修改：如果 localStorage 中没有值，不仅 state 设为 dark，而且立即写入 localStorage
-  const [theme, setTheme] = useState(() => {
-    const savedTheme = localStorage.getItem('sievox_theme_v2');
-    if (savedTheme) {
-      return savedTheme;
-    }
-    // 强制初始化为 dark，并立即缓存，确立第一优先级
-    localStorage.setItem('sievox_theme_v2', 'dark');
-    return 'dark';
-  });
-  const [palette, setPalette] = useState(() => {
-    const savedPalette = localStorage.getItem('sievox_palette_v2');
-    return SIEVOX_PALETTES.some(item => item.key === savedPalette) ? savedPalette : 'blue';
-  });
+  const [mode, setMode] = useState(() => localStorage.getItem('sievox_demo_theme_mode') || localStorage.getItem('sievox_theme_v2') || 'light');
+  const [color, setColor] = useState(() => localStorage.getItem('sievox_demo_theme_color') || localStorage.getItem('sievox_palette_v2') || 'blue');
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-    root.dataset.sievoxMode = theme;
-    localStorage.setItem('sievox_theme_v2', theme);
-  }, [theme]);
+    root.dataset.theme = mode === 'dark' ? 'dark' : 'light';
+    root.dataset.color = THEME_COLORS.some(item => item.key === color) ? color : 'blue';
+    root.classList.toggle('dark', mode === 'dark');
+    localStorage.setItem('sievox_demo_theme_mode', root.dataset.theme);
+    localStorage.setItem('sievox_demo_theme_color', root.dataset.color);
+    localStorage.setItem('sievox_theme_v2', root.dataset.theme);
+    localStorage.setItem('sievox_palette_v2', root.dataset.color);
+  }, [mode, color]);
 
-  useEffect(() => {
-    const root = document.documentElement;
-    root.dataset.sievoxColor = palette;
-    localStorage.setItem('sievox_palette_v2', palette);
-  }, [palette]);
-  
-  const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
-  return { theme, toggleTheme, palette, setPalette, palettes: SIEVOX_PALETTES };
+  return { mode, setMode, color, setColor, open, setOpen };
 };
 
-const ThemePaletteBar = ({ themeTools, compact = false }) => {
-  if (!themeTools) return null;
-  return (
-    <div className={`sievox-palette-switch ${compact ? 'compact' : ''}`} aria-label="SIEVOX 调色板">
-      {!compact && <span>界面色彩</span>}
-      {themeTools.palettes.map(item => (
-        <button
-          key={item.key}
-          type="button"
-          className={`color-dot ${themeTools.palette === item.key ? 'active' : ''}`}
-          data-color={item.key}
-          onClick={() => themeTools.setPalette(item.key)}
-          title={item.label}
-          aria-label={item.label}
-        />
-      ))}
+const ThemePanel = ({ theme }) => (
+  <aside className={cls('theme-panel', theme.open && 'is-open')} aria-hidden={!theme.open}>
+    <header>
+      <div><span>APPEARANCE</span><h2>外观设置</h2></div>
+      <button className="icon-button" type="button" onClick={() => theme.setOpen(false)}><X /></button>
+    </header>
+    <div className="theme-section">
+      <p>显示模式</p>
+      <div className="theme-mode-switch">
+        <button className={theme.mode !== 'dark' ? 'is-active' : ''} type="button" onClick={() => theme.setMode('light')}><Sun />浅色</button>
+        <button className={theme.mode === 'dark' ? 'is-active' : ''} type="button" onClick={() => theme.setMode('dark')}><Moon />深色</button>
+      </div>
     </div>
-  );
-};
-
-const Background = () => (
-  <div className="fixed inset-0 overflow-hidden pointer-events-none">
-    {/* 浅色模式渐变更改为香芋紫过渡系 */}
-    <div className="absolute inset-0 bg-gradient-to-br from-[#f3e8ff] via-[#faf5ff] to-[#f3e8ff] dark:from-slate-950 dark:via-purple-950/50 dark:to-slate-950 transition-colors duration-500" />
-    <GlowOrb className="w-96 h-96 bg-purple-600 -top-48 -left-48" />
-    <GlowOrb className="w-80 h-80 bg-blue-600 top-1/3 -right-40" />
-    <GlowOrb className="w-64 h-64 bg-violet-500 bottom-20 left-1/4" />
-    
-    {/* [修复] 使用 dark: 前缀，确保这个黑色径向渐变蒙版只在深色模式下显示，浅色模式下透明 */}
-    <div className="absolute inset-0 hidden dark:block bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.4)_100%)]" />
-    
-    <div className="absolute inset-0" style={{
-      backgroundImage: `radial-gradient(circle at 2px 2px, rgba(139,92,246,0.15) 1px, transparent 0)`,
-      backgroundSize: '40px 40px'
-    }} />
-    {[...Array(6)].map((_, i) => (
-      <FloatingShape 
-        key={i} 
-        delay={i * 0.5}
-        className={`w-${20 + i * 10} h-${20 + i * 10} rounded-full border border-purple-500/20`}
-        style={{
-          top: `${Math.random() * 100}%`,
-          left: `${Math.random() * 100}%`,
-          animation: `float ${8 + i * 2}s ease-in-out infinite`
-        }}
-      />
-    ))}
-  </div>
-);
-//  Card 组件
-const Card = ({ children, className = '', hover = true, ...props }) => (
-  <div 
-    className={`
-      relative backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl
-      ${hover ? 'hover:bg-white/10 hover:border-purple-500/30 hover:shadow-lg hover:shadow-purple-500/10 transition-all duration-300' : ''}
-      ${className}
-    `}
-    {...props}
-  >
-    {children}
-  </div>
-);
-
-const Button = ({ children, variant = 'primary', className = '', ...props }) => {
-  const variants = {
-    primary: 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white shadow-lg shadow-purple-500/25',
-    secondary: 'bg-white/10 hover:bg-white/20 text-white border border-white/20',
-    ghost: 'bg-transparent hover:bg-white/10 text-purple-300'
-  };
-  
-  return (
-    <button
-      className={`
-        px-6 py-3 rounded-xl font-medium transition-all duration-300
-        transform hover:scale-[1.02] active:scale-[0.98]
-        ${variants[variant]} ${className}
-      `}
-      {...props}
-    >
-      {children}
-    </button>
-  );
-};
-
-const Input = ({ label, icon, ...props }) => (
-  <div className="space-y-2">
-    {label && <label className="text-sm text-purple-200/80 font-medium">{label}</label>}
-    <div className="relative">
-      {icon && (
-        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-400">
-          {icon}
-        </span>
-      )}
-      <input
-        className={`
-          w-full px-4 py-3 ${icon ? 'pl-12' : ''} rounded-xl
-          bg-white/5 border border-white/10 text-white placeholder-white/30
-          focus:outline-none focus:border-purple-500/50 focus:bg-white/10
-          transition-all duration-300
-        `}
-        {...props}
-      />
+    <div className="theme-section">
+      <p>主题色</p>
+      <div className="palette-list">
+        {THEME_COLORS.map(item => (
+          <button key={item.key} className={theme.color === item.key ? 'is-active' : ''} type="button" onClick={() => theme.setColor(item.key)}>
+            <i className={`palette-swatch ${item.key}`}></i>
+            <span><strong>{item.label}</strong><small>{item.value}</small></span>
+            <Check />
+          </button>
+        ))}
+      </div>
     </div>
-  </div>
+    <p className="theme-note"><Info />外观选择会自动保存在当前浏览器中。</p>
+  </aside>
 );
 
-const Select = ({ label, options, ...props }) => (
-  <div className="space-y-2">
-    {label && <label className="text-sm text-purple-200/80 font-medium">{label}</label>}
-    <select
-      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white
-        focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all duration-300"
-      {...props}
-    >
-      {options.map(opt => (
-        <option key={opt.value} value={opt.value} className="bg-slate-900">{opt.label}</option>
-      ))}
-    </select>
-  </div>
-);
-
-const StatusBadge = ({ status }) => {
-  const config = {
-    pending: { bg: 'bg-yellow-500/20', text: 'text-yellow-400', label: '待处理' },
-    processing: { bg: 'bg-blue-500/20', text: 'text-blue-400', label: '处理中' },
-    resolved: { bg: 'bg-green-500/20', text: 'text-green-400', label: '已解决' },
-    rejected: { bg: 'bg-red-500/20', text: 'text-red-400', label: '已拒绝' }
-  };
-  const { bg, text, label } = config[status] || config.pending;
-  
-  return (
-    <span className={`px-3 py-1 rounded-full text-xs font-medium ${bg} ${text}`}>
-      {label}
-    </span>
-  );
-};
-
-const RoleTag = ({ user }) => {
-  const label = user?.identityLabel || (user?.role === 'superadmin' ? '超级管理员' : user?.role === 'admin' ? '志愿者' : '学生');
-  return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full border border-purple-400/40 bg-purple-500/15 text-[10px] md:text-xs text-purple-100 whitespace-nowrap">
-      {label}
-    </span>
-  );
-};
-
-const CategoryIcon = ({ category }) => {
-  const icons = {
-    academic: '📚',
-    accommodation: '🏠',
-    catering: '🍽️',
-    financial: '💰',
-    safety: '🛡️',
-    other: '📋'
-  };
-  return <span className="text-2xl">{icons[category] || '📋'}</span>;
-};
-
-// Pages
-const LoginPage = ({ onLogin, onRegister, themeTools }) => {
+const LoginPage = ({ onLogin, onRegister, theme }) => {
   const [isLogin, setIsLogin] = useState(true);
-  const [formData, setFormData] = useState({
-    studentId: '',
-    password: '',
-    confirmPassword: '',
-    name: '',
-    email: '',
-    phone: ''
-  });
+  const [loginRole, setLoginRole] = useState('student');
+  const [showPassword, setShowPassword] = useState(false);
+  const [form, setForm] = useState({ studentId: '', password: '', confirmPassword: '', name: '', email: '', phone: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const submit = async (event) => {
+    event.preventDefault();
     setError('');
-    
-    if (!isLogin && formData.password !== formData.confirmPassword) {
-      return setError('两次输入的密码不一致，请重新输入');
-    }
-
+    if (!isLogin && form.password !== form.confirmPassword) return setError('两次输入的密码不一致');
     setLoading(true);
-    
     try {
-      if (isLogin) {
-        const result = await onLogin(formData.studentId, formData.password);
-        if (!result.success) setError(result.message || '登录失败');
-      } else {
-        const result = await onRegister(formData);
-        if (result.success) {
-          setIsLogin(true);
-          setError('');
-          alert('注册成功，请登录');
-        } else {
-          setError(result.message || '注册失败');
-        }
+      const data = isLogin ? await onLogin(form.studentId, form.password) : await onRegister(form);
+      if (!data.success) setError(data.message || (isLogin ? '登录失败' : '注册失败'));
+      else if (!isLogin) {
+        setIsLogin(true);
+        setError('');
+        alert('注册成功，请登录');
       }
-    } catch (err) {
+    } catch {
       setError('网络错误，请重试');
     }
     setLoading(false);
   };
 
   return (
-    <div className="sievox-demo-login min-h-screen flex items-center justify-center p-4">
-      <Background />
-      
-     <Card className="sievox-demo-auth-card w-full max-w-md p-8 relative z-10" hover={false}>
-        <div className="text-center mb-8 flex flex-col items-center justify-center">
-          <div className="flex flex-row items-center justify-center gap-6 mb-4">
-            <img 
-              src={collegeLogo} 
-              alt="学院LOGO" 
-              className="w-24 h-24 md:w-32 md:h-32 object-contain hover:scale-105 transition-transform duration-300" 
-            />
-            <div className="h-16 w-[1px] bg-white/20 hidden md:block"></div>
-            <img 
-              src={sieLogo} 
-              alt="系统LOGO" 
-              className="w-24 h-24 md:w-32 md:h-32 object-contain hover:scale-105 transition-transform duration-300" 
-            />
-          </div>
-          <h1 className="text-xl font-medium text-purple-200/80 mb-2">
-              北京化工大学国际教育学院
-         </h1>
-         <p className="text-xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 tracking-wider drop-shadow-sm py-2">
-            学生权益反馈系统
-         </p>
-         <div className="sievox-official-note">Unified Portal · Student Rights · SIE</div>
+    <section className="login-view" aria-label="SIEVOX 登录">
+      <div className="login-art" aria-hidden="true">
+        <div className="login-art-header">
+          <div className="institution-mark"><img src={sieLogo} alt="" /><div><strong>SIEVOX</strong><span>STUDENT RIGHTS & INTERESTS</span></div></div>
+          <span className="edition-mark">SIE · 2026</span>
         </div>
-
-        <ThemePaletteBar themeTools={themeTools} compact />
-
-        <div className="flex mb-6 p-1 bg-white/5 rounded-xl">
-          <button
-            onClick={() => setIsLogin(true)}
-            className={`flex-1 py-2 rounded-lg transition-all ${
-              isLogin ? 'bg-purple-600 text-white' : 'text-purple-200/60 hover:text-white'
-            }`}
-          >
-            登录
-          </button>
-          <button
-            onClick={() => setIsLogin(false)}
-            className={`flex-1 py-2 rounded-lg transition-all ${
-              !isLogin ? 'bg-purple-600 text-white' : 'text-purple-200/60 hover:text-white'
-            }`}
-          >
-            注册
-          </button>
+        <div className="art-orbit orbit-one"></div>
+        <div className="art-orbit orbit-two"></div>
+        <div className="art-seal"><MessageCircleMore /><span>倾听</span></div>
+        <div className="art-cross cross-one"></div>
+        <div className="art-cross cross-two"></div>
+        <div className="login-art-copy">
+          <p className="art-kicker">BE HEARD · BE SEEN</p>
+          <h1>每一种声音，<br />都值得被认真回应。</h1>
+          <div className="art-caption"><span>01</span><p>连接学生与学院，让问题有回应、处理有进度、权益有保障。</p></div>
         </div>
-
-        {error && (
-          <div className="mb-4 p-3 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400 text-sm">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            label="学号"
-            placeholder="请输入学号"
-            value={formData.studentId}
-            onChange={e => setFormData({...formData, studentId: e.target.value})}
-            icon="👤"
-            required
-          />
-          
-          {!isLogin && (
-            <>
-              <Input
-                label="姓名"
-                placeholder="请输入真实姓名"
-                value={formData.name}
-                onChange={e => setFormData({...formData, name: e.target.value})}
-                required
-              />
-              <Input
-                label="邮箱"
-                type="email"
-                placeholder="请输入邮箱地址"
-                value={formData.email}
-                onChange={e => setFormData({...formData, email: e.target.value})}
-                required
-              />
-              <Input
-                label="手机号"
-                placeholder="请输入手机号码"
-                value={formData.phone}
-                onChange={e => setFormData({...formData, phone: e.target.value})}
-              />
-            </>
-          )}
-          
-          <Input
-            label="密码"
-            type="password"
-            placeholder="请输入密码"
-            value={formData.password}
-            onChange={e => setFormData({...formData, password: e.target.value})}
-            icon="🔒"
-            required
-          />
-          
-          {!isLogin && (
-            <Input
-              label="确认密码"
-              type="password"
-              placeholder="请再次输入密码"
-              value={formData.confirmPassword}
-              onChange={e => setFormData({...formData, confirmPassword: e.target.value})}
-              icon="🔒"
-              required
-            />
-          )}
-
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={() => alert('请企业微信联系【赵启涵】重置密码\n学号：2024090107\n 默认密码：123456')}
-            className="text-xs text-purple-300/60 hover:text-purple-200 transition-colors"
-          >
-            忘记密码？
-          </button>
-        </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? '处理中...' : (isLogin ? '登录系统' : '注册账户')}
-          </Button>
-        </form>
-        <div className="mt-6 text-center text-[10px] md:text-xs text-purple-200/40 px-4 transform scale-90 origin-center space-y-2">
-          <p>Copyright© 2026 赵启涵. </p>
-          <div className="flex flex-col md:flex-row items-center justify-center gap-2 md:gap-4 mt-1">
-            <a 
-              href="https://beian.miit.gov.cn/" 
-              target="_blank" 
-              rel="noreferrer" 
-              className="hover:text-purple-200 transition-colors"
-            >
-              京ICP备2026010091号-1
-            </a>
-            <a 
-              href="https://beian.mps.gov.cn/#/query/webSearch?code=11011402055565" 
-              target="_blank" 
-              rel="noreferrer" 
-              className="flex items-center gap-1 hover:text-purple-200 transition-colors"
-            >
-              
-              <img src={beian} alt="公安" className="w-3 h-3 md:w-4 md:h-4" /> 
-              京公网安备11011402055565号
-            </a>
-          </div>
-        </div>
-      </Card>
-    </div>
-  );
-};
- const DashboardPage = ({ user, token, onLogout, onRefreshUser, themeTools }) => {
-  const [activeTab, setActiveTab] = useState('submit');
-  const [feedbacks, setFeedbacks] = useState([]);
-  const [stats, setStats] = useState({ total: 0, pending: 0, processing: 0, resolved: 0 });
-  const [loading, setLoading] = useState(false);
-  
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [settingsTab, setSettingsTab] = useState('profile');
-
-  const [notifications, setNotifications] = useState([]);
-  const [showNotifs, setShowNotifs] = useState(false);
-  const [pwdData, setPwdData] = useState({ current: '', new: '' });
-  const [profileData, setProfileData] = useState({ name: '', studentId: '', email: '', phone: '' });
-
-  const handleChangePassword = async (e) => {
-    e.preventDefault();
-    if (pwdData.new.length < 6) return alert('新密码至少需要6位');
-    try {
-      const res = await fetch(`${API_BASE}/auth/password`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ currentPassword: pwdData.current, newPassword: pwdData.new })
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert('密码修改成功！请重新登录。');
-        setShowSettingsModal(false);
-        setPwdData({ current: '', new: '' });
-        onLogout(); 
-      } else {
-        alert(data.message || '修改失败');
-      }
-    } catch (err) { alert('网络错误'); }
-  };
-
-  const handleUpdateProfile = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await fetch(`${API_BASE}/auth/profile`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(profileData)
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert('个人信息修改成功！');
-        if (onRefreshUser) onRefreshUser(); 
-      } else {
-        alert(data.message || '修改失败');
-      }
-    } catch (err) { alert('网络错误'); }
-  };
-
-  const categories = Object.entries(CATEGORIES_CONFIG).map(([value, info]) => ({
-    value,
-    ...info
-  }));
-
-  const fetchNotifications = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_BASE}/notifications`, { headers: { 'Authorization': `Bearer ${token}` } });
-      const data = await res.json();
-      if (data.success) setNotifications(data.notifications);
-    } catch (err) {}
-  }, [token]);
-
-  const markNotificationsRead = async () => {
-    try {
-      await fetch(`${API_BASE}/notifications/read`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } });
-      setNotifications([]);
-      setShowNotifs(false);
-    } catch (err) {}
-  };
-
-  const handleStudentReply = async (feedbackId, content) => {
-    if (!content.trim()) return alert('留言内容不能为空');
-    try {
-      const res = await fetch(`${API_BASE}/feedback/${feedbackId}/reply`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ content })
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert('留言发送成功');
-        fetchFeedbacks();
-      }
-    } catch (err) { alert('网络错误'); }
-  };
-
-  const handleRecallMsg = async (feedbackId, replyId) => {
-    if (!window.confirm('确定要撤回这条留言吗？')) return;
-    try {
-      const res = await fetch(`${API_BASE}/feedback/${feedbackId}/reply/${replyId}/recall`, {
-        method: 'PATCH',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (data.success) {
-        fetchFeedbacks(); 
-      } else {
-        alert(data.message || '撤回失败');
-      }
-    } catch (err) { alert('网络错误'); }
-  };
-
-  const handleDeleteFeedback = async (feedbackId) => {
-    if (!window.confirm('警告：确定要彻底撤销(删除)这条反馈吗？此操作不可逆！')) return;
-    try {
-      const res = await fetch(`${API_BASE}/feedback/${feedbackId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert('反馈已撤销');
-        fetchFeedbacks();
-      } else {
-        alert(data.message || '撤销失败');
-      }
-    } catch (err) { alert('网络错误'); }
-  };
-
-  const fetchFeedbacks = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_BASE}/feedback/my`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (data.success) {
-        setFeedbacks(data.feedbacks);
-        const s = { total: data.feedbacks.length, pending: 0, processing: 0, resolved: 0 };
-        data.feedbacks.forEach(f => s[f.status]++);
-        setStats(s);
-      }
-    } catch (err) {
-      console.error('获取反馈失败:', err);
-    }
-  }, [token]);
-
-  useEffect(() => {
-    fetchFeedbacks();
-    fetchNotifications(); 
-    const interval = setInterval(() => {
-      fetchFeedbacks();
-      fetchNotifications(); 
-    }, 10000); 
-    return () => clearInterval(interval);
-  }, [fetchFeedbacks, fetchNotifications]);
-
-  const handleSubmit = async (formData, files) => { 
-    setLoading(true);
-    try {
-      let uploadedFiles = [];
-      if (files && files.length > 0) {
-        const fileData = new FormData();
-        files.forEach(f => fileData.append('files', f));
-        const uploadRes = await fetch(`${API_BASE}/upload`, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` },
-          body: fileData
-        });
-        const uploadData = await uploadRes.json();
-        if (uploadData.success) uploadedFiles = uploadData.files;
-      }
-
-      const res = await fetch(`${API_BASE}/feedback`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ ...formData, attachments: uploadedFiles }) 
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert('反馈提交成功！');
-        fetchFeedbacks();
-        setActiveTab('history');
-      } else {
-        alert(data.message || '提交失败');
-      }
-    } catch (err) {
-      alert('网络错误，请重试');
-    }
-    setLoading(false);
-  };
-
-  return (
-    <div className="sievox-demo-app min-h-screen">
-      <Background />
-      
-      {/* 修改：浅色模式下背景设为稍深的紫色 (bg-purple-200/60)，边框设为紫色的半透明边框 (border-purple-300/50) */}
-      <header className="relative z-50 border-b border-purple-300/50 dark:border-white/10 backdrop-blur-xl bg-purple-200/60 dark:bg-slate-950/50 transition-colors duration-300">
-       <div className="max-w-7xl mx-auto px-2 sm:px-4 py-3 sm:py-4 flex items-center justify-between gap-1 sm:gap-4">    
-          <div className="flex items-center gap-1.5 sm:gap-3 md:gap-4 flex-1 min-w-0">
-            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-              <img 
-                src={collegeLogo} 
-                alt="学院LOGO" 
-                className="w-7 h-7 sm:w-10 sm:h-10 md:w-12 md:h-12 object-contain" 
-              />
-              <img 
-                src={sieLogo} 
-                alt="系统LOGO" 
-                className="w-7 h-7 sm:w-10 sm:h-10 md:w-12 md:h-12 object-contain" 
-              />
-            </div>
-            <div className="min-w-0">
-              <h1 className="text-[14px] sm:text-base md:text-2xl font-bold text-white truncate">
-                  学生权益反馈系统
-                </h1>
-            </div>
-          </div>
-          <div className="flex flex-col items-end justify-center shrink-0">
-            <div className="flex items-center gap-1.5 sm:gap-3 mb-1">
-              <button 
-                onClick={themeTools?.toggleTheme} 
-                className="p-1 text-base sm:text-lg md:text-xl hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-all"
-                title="切换深浅色主题"
-              >
-                🌗
-              </button>
-              <ThemePaletteBar themeTools={themeTools} />
-              <div className="relative">
-                <button onClick={() => setShowNotifs(!showNotifs)} className="p-1 text-base sm:text-lg md:text-xl hover:bg-white/10 rounded-full transition-all relative">
-                  📬
-                  {notifications.length > 0 && <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-slate-950"></span>}
-                </button>
-               {showNotifs && (
-                <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl shadow-2xl z-[100] max-h-80 flex flex-col overflow-hidden text-left transition-colors">
-                  <div className="p-3 border-b border-slate-200 dark:border-white/10 flex justify-between items-center bg-slate-50 dark:bg-white/5">
-                    <span className="text-sm font-medium text-slate-800 dark:text-white">消息通知</span>
-                    {notifications.length > 0 && <button onClick={markNotificationsRead} className="text-xs text-purple-500 dark:text-purple-300 hover:text-purple-700 dark:hover:text-white transition-colors">全部标为已读</button>}
-                  </div>
-                    <div className="overflow-y-auto flex-1 p-2 custom-scrollbar">
-                      {notifications.length === 0 ? (
-                        <p className="text-xs text-slate-500 dark:text-purple-200/50 text-center py-6">暂无新消息</p>
-                      ) : (
-                        notifications.map(n => (
-                          <div key={n._id} className="p-2.5 mb-1 bg-slate-50 dark:bg-white/5 rounded-lg border border-slate-200 dark:border-white/5 text-slate-800 dark:text-purple-100 flex flex-col gap-1 transition-colors">
-                            <p className="text-xs break-words">{n.content}</p>
-                            <span className="text-[10px] text-slate-500 dark:text-purple-200/40 text-right">{new Date(n.createdAt).toLocaleString('zh-CN')}</span>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <button 
-                onClick={() => {
-                  setProfileData({
-                    name: user?.name || '',
-                    studentId: user?.studentId || '',
-                    email: user?.email || '',
-                    phone: user?.phone || ''
-                  });
-                  setSettingsTab('profile'); 
-                  setShowSettingsModal(true);
-                }}
-                className="px-2 py-1 rounded-md bg-white/5 border border-white/10 text-[10px] md:text-xs text-purple-200 hover:bg-white/10 hover:text-white transition-all whitespace-nowrap"
-              >
-                修改信息
-              </button>
-              <button
-                onClick={onLogout}
-                className="px-2 py-1 rounded-md bg-red-500/10 border border-red-500/20 text-[10px] md:text-xs text-red-400 hover:bg-red-500/20 transition-all whitespace-nowrap"
-              >
-                退出
-              </button>
-            </div>
-            
-            <div className="flex items-center justify-end gap-2">
-              <p className="text-xs md:text-sm font-bold text-white leading-tight">
-                {user?.name || '用户'}
-              </p>
-              <RoleTag user={user} />
-            </div>
-            
-            <p className="text-[10px] md:text-xs text-purple-200/50 font-mono leading-tight">
-              {user?.studentId}
-            </p>
-          </div>
-        </div>
-      </header>
-
-      <main className="relative z-10 max-w-7xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {[
-            { label: '总反馈', value: stats.total, color: 'purple', icon: '📊' },
-            { label: '待处理', value: stats.pending, color: 'yellow', icon: '⏳' },
-            { label: '处理中', value: stats.processing, color: 'blue', icon: '⚙️' },
-            { label: '已解决', value: stats.resolved, color: 'green', icon: '✅' }
-          ].map((stat, i) => (
-            <Card key={i} className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-purple-200/60">{stat.label}</p>
-                  <p className="text-3xl font-bold text-white mt-1">{stat.value}</p>
-                </div>
-                <span className="text-3xl opacity-50">{stat.icon}</span>
-              </div>
-            </Card>
-          ))}
-        </div>
-
-        <div className="flex gap-2 mb-6 p-1 bg-white/5 rounded-xl w-fit">
-          {[
-            { id: 'submit', label: '提交反馈', icon: '✏️' },
-            { id: 'history', label: '我的反馈', icon: '📜' }
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-6 py-2 rounded-lg flex items-center gap-2 transition-all ${
-                activeTab === tab.id 
-                  ? 'bg-purple-600 text-white' 
-                  : 'text-purple-200/60 hover:text-white'
-              }`}
-            >
-              <span>{tab.icon}</span>
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {activeTab === 'submit' ? (
-          <SubmitForm categories={categories} onSubmit={handleSubmit} loading={loading} />
-        ) : (
-        <FeedbackList 
-          feedbacks={feedbacks} 
-          categories={categories} 
-          onReply={handleStudentReply} 
-          onRecall={handleRecallMsg}
-          onDelete={handleDeleteFeedback}
-        />
-        )}
-      </main>
-
-      {showSettingsModal && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="w-full max-w-md p-6 relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl transition-colors">
-            <button 
-              onClick={() => setShowSettingsModal(false)}
-              className="absolute top-4 right-4 text-purple-400 dark:text-purple-200/50 hover:text-slate-800 dark:hover:text-white text-lg transition-colors"
-            >
-              ✕
-            </button>
-
-            <div className="flex mb-6 p-1 bg-slate-100 dark:bg-white/5 rounded-xl w-full border border-slate-200 dark:border-transparent transition-colors">
-              <button
-                onClick={() => setSettingsTab('profile')}
-                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-                  settingsTab === 'profile' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-500 dark:text-purple-200/60 hover:text-slate-800 dark:hover:text-white'
-                }`}
-              >
-                个人资料
-              </button>
-              <button
-                onClick={() => setSettingsTab('password')}
-                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-                  settingsTab === 'password' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-500 dark:text-purple-200/60 hover:text-slate-800 dark:hover:text-white'
-                }`}
-              >
-                修改密码
-              </button>
-            </div>
-
-            {settingsTab === 'profile' ? (
-              <form onSubmit={handleUpdateProfile} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm text-slate-600 dark:text-purple-200/80 transition-colors">学号</label>
-                    <input type="text" required value={profileData.studentId} onChange={e => setProfileData({...profileData, studentId: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white focus:outline-none focus:border-purple-500 transition-colors" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm text-slate-600 dark:text-purple-200/80 transition-colors">姓名</label>
-                    <input type="text" required value={profileData.name} onChange={e => setProfileData({...profileData, name: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white focus:outline-none focus:border-purple-500 transition-colors" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm text-slate-600 dark:text-purple-200/80 transition-colors">邮箱</label>
-                  <input type="email" required value={profileData.email} onChange={e => setProfileData({...profileData, email: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white focus:outline-none focus:border-purple-500 transition-colors" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm text-slate-600 dark:text-purple-200/80 transition-colors">手机号</label>
-                  <input type="text" value={profileData.phone} onChange={e => setProfileData({...profileData, phone: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white focus:outline-none focus:border-purple-500 transition-colors" />
-                </div>
-                <div className="pt-2">
-                  <button type="submit" className="w-full py-3 rounded-xl bg-purple-600 text-white hover:bg-purple-500 transition-all font-medium shadow-lg shadow-purple-500/20">
-                    保存资料修改
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <form onSubmit={handleChangePassword} className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm text-slate-600 dark:text-purple-200/80 transition-colors">当前密码</label>
-                  <input type="password" required value={pwdData.current} onChange={e => setPwdData({...pwdData, current: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white focus:outline-none focus:border-purple-500 transition-colors" placeholder="输入当前使用的密码" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm text-slate-600 dark:text-purple-200/80 transition-colors">新密码</label>
-                  <input type="password" required value={pwdData.new} onChange={e => setPwdData({...pwdData, new: e.target.value})} className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white focus:outline-none focus:border-purple-500 transition-colors" placeholder="设置新密码（至少6位）" />
-                </div>
-                <div className="pt-2">
-                  <button type="submit" className="w-full py-3 rounded-xl bg-purple-600 text-white hover:bg-purple-500 transition-all font-medium shadow-lg shadow-purple-500/20">
-                    确认修改密码
-                  </button>
-                </div>
-              </form>
-            )}
-         </div>
-        </div>
-      )}
-      <footer className="relative z-10 py-6 text-center text-[10px] md:text-xs text-purple-200/40 space-y-2">
-        <p>©2026 赵启涵. All Rights Reserved.</p>
-        <div className="flex flex-col md:flex-row items-center justify-center gap-2 md:gap-4 mt-1">
-          <a 
-            href="https://beian.miit.gov.cn/" 
-            target="_blank" 
-            rel="noreferrer" 
-            className="hover:text-purple-200 transition-colors"
-          >
-            京ICP备2026010091号-1
-          </a>
-        <a 
-            href="https://beian.mps.gov.cn/#/query/webSearch?code=11011402055565" 
-            target="_blank" 
-            rel="noreferrer" 
-            className="flex items-center gap-1 hover:text-purple-200 transition-colors"
-          >
-            <img src={beian} alt="公安" className="w-3 h-3" /> 
-            京公网安备11011402055565号
-          </a>
-        </div>
-      </footer>
-    </div>
-  );
-};
-const SubmitForm = ({ categories, onSubmit, loading }) => {
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [selectedSubCategory, setSelectedSubCategory] = useState('');
-  const [selectedFiles, setSelectedFiles] = useState([]); // [新增]
-  const [formData, setFormData] = useState({
-    title: '',
-    content: '',
-    isAnonymous: false,
-    priority: 'normal'
-  });
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!selectedCategory || !selectedSubCategory) {
-      alert('请完整选择问题类别（包含一级与二级细分）');
-      return;
-    }
-    // [修改] 传递 selectedFiles
-    onSubmit({ ...formData, category: selectedCategory, subCategory: selectedSubCategory }, selectedFiles);
-    setFormData({ title: '', content: '', isAnonymous: false, priority: 'normal' });
-    setSelectedCategory('');
-    setSelectedSubCategory('');
-    setSelectedFiles([]); // [新增] 清空附件
-  };
-
-  return (
-    <div className="grid md:grid-cols-3 gap-6">
-      {/* Category Selection */}
-      <div className="md:col-span-1">
-        <h3 className="text-lg font-medium text-white mb-4">选择问题类别</h3>
-        <div className="space-y-3">
-          {categories.map(cat => (
-            <Card
-              key={cat.value}
-              className={`p-4 cursor-pointer ${
-                selectedCategory === cat.value 
-                  ? '!border-purple-500 !bg-purple-500/20' 
-                  : ''
-              }`}
-              onClick={() => {
-                setSelectedCategory(cat.value);
-                setSelectedSubCategory('');
-              }}
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">{cat.icon}</span>
-                <div>
-                  <p className="text-white font-medium">{cat.label}</p>
-                  <p className="text-xs text-purple-200/60">{cat.desc}</p>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-        
-        {/* 二级分类动态展示区 */}
-        {selectedCategory && (
-          <div className="mt-6 p-4 rounded-xl bg-white/5 border border-purple-500/30">
-            <h4 className="text-sm font-medium text-purple-200 mb-3">详细诉求分类 (必选)</h4>
-            <div className="flex flex-wrap gap-2">
-              {CATEGORIES_CONFIG[selectedCategory].sub.map(sub => (
-                <button
-                  key={sub}
-                  type="button"
-                  onClick={() => setSelectedSubCategory(sub)}
-                  className={`px-3 py-1.5 text-xs rounded-lg border transition-all ${
-                    selectedSubCategory === sub 
-                      ? 'bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-500/20' 
-                      : 'border-white/10 text-purple-200/60 hover:bg-white/10'
-                  }`}
-                >
-                  {sub}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        <div className="login-art-footer"><span>北京化工大学</span><span>国际教育学院</span><b></b><span>BUCT</span></div>
       </div>
 
-      {/* Form */}
-      <Card className="md:col-span-2 p-6" hover={false}>
-        <h3 className="text-lg font-medium text-white mb-6">填写反馈内容</h3>
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <Input
-            label="问题标题"
-            placeholder="简要描述您遇到的问题"
-            value={formData.title}
-            onChange={e => setFormData({...formData, title: e.target.value})}
-            required
-          />
-          
-          <div className="space-y-2">
-            <label className="text-sm text-purple-200/80 font-medium">详细描述</label>
-            <textarea
-              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white 
-                placeholder-white/30 focus:outline-none focus:border-purple-500/50 focus:bg-white/10
-                transition-all duration-300 min-h-[150px] resize-none"
-              placeholder="请详细描述问题情况，包括时间、地点、涉及人员等信息..."
-              value={formData.content}
-              onChange={e => setFormData({...formData, content: e.target.value})}
-              required
-            />
+      <div className="login-panel">
+        <div className="login-panel-top">
+          <div className="college-signature"><span className="signature-rule"></span><div><strong>北京化工大学</strong><span>国际教育学院</span></div></div>
+          <button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)}><Palette /></button>
+        </div>
+        <form className="login-form" onSubmit={submit}>
+          <div className="login-heading">
+            <span className="login-index">01 / ACCESS</span>
+            <h2>{isLogin ? '欢迎回来' : '创建学生账号'}</h2>
+            <p>{isLogin ? '登录 SIEVOX，继续查看你的反馈进展。' : '首次使用请完成校内身份信息登记。'}</p>
           </div>
-
-          {/* [新增] 附件上传区 */}
-          <div className="space-y-2">
-            <label className="text-sm text-purple-200/80 font-medium">补充附件 (图片/视频/文档等，可选)</label>
-            <input
-              type="file"
-              multiple
-              onChange={e => setSelectedFiles(Array.from(e.target.files))}
-              className="block w-full text-sm text-purple-200/60 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-purple-600/20 file:text-purple-300 hover:file:bg-purple-600/30 transition-all cursor-pointer"
-            />
+          <div className="login-role-switch" aria-label="登录身份">
+            {[
+              ['student', GraduationCap, '学生登录'],
+              ['admin', ShieldCheck, '管理登录'],
+              ['superadmin', ShieldCheck, '超级管理员']
+            ].map(([key, Icon, label]) => (
+              <button key={key} className={loginRole === key ? 'is-active' : ''} type="button" onClick={() => setLoginRole(key)}>
+                <Icon />{label}
+              </button>
+            ))}
           </div>
-
-          <div className="space-y-2">
-            <Select
-              label="优先级"
-              value={formData.priority}
-              onChange={e => setFormData({...formData, priority: e.target.value})}
-              options={[
-                { value: 'urgent', label: '紧急' },
-                { value: 'high', label: '高' },
-                { value: 'normal', label: '普通' },
-                { value: 'low', label: '低' }
-              ]}
-            />
-            {/* 场景定义信息框 */}
-            <div className="mt-2 p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-500/20 text-xs text-slate-700 dark:text-blue-200/80 space-y-1.5 leading-relaxed">
-              <p><span className="font-bold text-red-600 dark:text-red-400">紧急：</span>涉及人身安全、重大财产损失、严重设施损坏等需立即干预处置的问题。</p>
-              <p><span className="font-bold text-orange-600 dark:text-orange-400">高：</span>影响正常学习秩序、涉及核心权益受损、需快速响应的问题。</p>
-              <p><span className="font-bold text-blue-600 dark:text-blue-400">普通：</span>日常权益、校园生活、服务体验等常规问题。</p>
-              <p><span className="font-bold text-slate-600 dark:text-gray-400">低：</span>长期优化建议、功能改进等建设性意见。</p>
-            </div>
-          </div>
-
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={formData.isAnonymous}
-              onChange={e => setFormData({...formData, isAnonymous: e.target.checked})}
-              className="w-5 h-5 rounded bg-white/10 border-white/20 text-purple-600 
-                focus:ring-purple-500 focus:ring-offset-0"
-            />
-            <span className="text-purple-200/80">匿名提交（您的个人信息将被保护）</span>
+          {error && <div className="form-message">{error}</div>}
+          <label className="login-field">
+            <span>{loginRole === 'student' ? '学号' : '账号'}</span>
+            <div><IdCard /><input name="studentId" value={form.studentId} onChange={e => setForm({ ...form, studentId: e.target.value })} placeholder="请输入学号" autoComplete="username" required /></div>
           </label>
-
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? '提交中...' : '提交反馈'}
-          </Button>
+          {!isLogin && (
+            <>
+              <label className="login-field"><span>姓名</span><div><UserRound /><input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="请输入真实姓名" required /></div></label>
+              <label className="login-field"><span>邮箱</span><div><MessagesSquare /><input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="请输入邮箱" required /></div></label>
+            </>
+          )}
+          <label className="login-field">
+            <span>密码</span>
+            <div><LockKeyhole /><input type={showPassword ? 'text' : 'password'} value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} placeholder="请输入密码" autoComplete="current-password" required /><button type="button" onClick={() => setShowPassword(v => !v)}>{showPassword ? <EyeOff /> : <Eye />}</button></div>
+          </label>
+          {!isLogin && <label className="login-field"><span>确认密码</span><div><KeyRound /><input type="password" value={form.confirmPassword} onChange={e => setForm({ ...form, confirmPassword: e.target.value })} placeholder="请再次输入密码" required /></div></label>}
+          <div className="login-options">
+            <label><input type="checkbox" defaultChecked /><i></i><span>保持登录</span></label>
+            <button type="button" onClick={() => alert('请企业微信联系【赵启涵】重置密码\n学号：2024090107\n默认密码：123456')}>忘记密码？</button>
+          </div>
+          <button className="login-submit" type="submit" disabled={loading}><span>{loading ? '正在验证身份…' : (isLogin ? '进入权益反馈系统' : '创建学生账号')}</span><ArrowUpRight /></button>
+          <div className="login-register"><span>{isLogin ? '首次使用 SIEVOX？' : '已有账号？'}</span><button type="button" onClick={() => setIsLogin(v => !v)}>{isLogin ? '创建学生账号' : '返回登录'}</button></div>
         </form>
-      </Card>
-    </div>
+        <div className="login-help"><ShieldCheck /><p><strong>统一身份安全认证</strong><span>个人信息仅用于校内身份核验与反馈进度通知。</span></p></div>
+        <footer className="login-legal"><span>© 2026 BUCT SIE</span><span>隐私保护</span><span>使用帮助</span></footer>
+      </div>
+      <ThemePanel theme={theme} />
+    </section>
   );
 };
-const FeedbackList = ({ feedbacks, categories, onReply, onRecall, onDelete }) => {
-  const [expandedId, setExpandedId] = useState(null);
-  const [replyText, setReplyText] = useState(''); 
-  const getCategoryInfo = (cat) => categories.find(c => c.value === cat) || { label: cat, icon: '📋' };
 
-  if (feedbacks.length === 0) {
+const RoleTag = ({ user }) => <b className="role-pill admin">{user?.identityLabel || (user?.role === 'student' ? '学生' : '管理员')}</b>;
+
+const Sidebar = ({ user, activePage, setActivePage, openCompose, onLogout, openSettings }) => (
+  <aside className="sidebar" aria-label="主导航">
+    <div className="brand-lockup"><img src={sieLogo} alt="SIEVOX" /><div><strong>SIEVOX</strong><span>学生权益反馈系统</span></div></div>
+    <nav className="side-nav">
+      <p className="nav-label">学生服务</p>
+      <button className={cls('nav-item', activePage === 'dashboard' && 'is-active')} type="button" onClick={() => setActivePage('dashboard')}><LayoutDashboard /><span>权益工作台</span></button>
+      <button className="nav-item" type="button" onClick={() => openCompose()}><SquarePen /><span>发起反馈</span><kbd>N</kbd></button>
+      <button className={cls('nav-item', activePage === 'feedbacks' && 'is-active')} type="button" onClick={() => setActivePage('feedbacks')}><MessagesSquare /><span>我的反馈</span><span className="nav-count">●</span></button>
+      <button className={cls('nav-item', activePage === 'guide' && 'is-active')} type="button" onClick={() => setActivePage('guide')}><BookOpen /><span>服务指南</span></button>
+    </nav>
+    <div className="service-note"><div className="service-note-head"><span className="live-dot"></span><span>反馈通道正常</span></div><strong>3.2 小时</strong><p>本学期平均首次响应</p></div>
+    <div className="sidebar-user">
+      <span className="avatar">{firstChar(user?.name)}</span>
+      <div><strong>{user?.name}</strong><span>{user?.studentId}</span></div>
+      <button className="icon-button on-dark" type="button" onClick={openSettings}><Settings /></button>
+      <button className="icon-button on-dark" type="button" onClick={onLogout}><LogOut /></button>
+    </div>
+  </aside>
+);
+
+const Topbar = ({ pageTitle, theme, openPreview, notifications, openSettings, user }) => (
+  <header className="topbar">
+    <div className="breadcrumb"><span>国际教育学院</span><ChevronRight /><strong id="page-title">{pageTitle}</strong></div>
+    <div className="topbar-actions">
+      <div className="role-switch" aria-label="当前身份"><button className="is-active" type="button">学生端</button></div>
+      <RoleTag user={user} />
+      <button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)}><Palette /></button>
+      <button className="outline-button" type="button" onClick={openPreview}><Smartphone />手机端预览</button>
+      <button className="icon-button" type="button" onClick={openSettings}><Settings /></button>
+      <button className="icon-button" type="button"><Bell />{notifications.length > 0 && <span className="notification-dot"></span>}</button>
+    </div>
+  </header>
+);
+
+const StatusPill = ({ status }) => {
+  const meta = STATUS_META[status] || STATUS_META.pending;
+  return <span className={`status ${meta.className}`}><i></i>{meta.label}</span>;
+};
+
+const CategoryIcon = ({ category }) => {
+  const cat = getCategory(category);
+  const Icon = cat.icon;
+  return <span className={`case-icon ${cat.tileClass}`}><Icon /></span>;
+};
+
+const StatsStrip = ({ stats }) => (
+  <div className="stats-strip" aria-label="反馈统计">
+    <div><span>本学期反馈</span><strong>{String(stats.total || 0).padStart(2, '0')}</strong><small>持续记录</small></div>
+    <div><span>处理中</span><strong className="text-blue">{String(stats.processing || 0).padStart(2, '0')}</strong><small>等待部门更新</small></div>
+    <div><span>已解决</span><strong className="text-green">{String(stats.resolved || 0).padStart(2, '0')}</strong><small>解决率提升中</small></div>
+    <div><span>待受理</span><strong>{String(stats.pending || 0).padStart(2, '0')}</strong><small>进入受理队列</small></div>
+  </div>
+);
+
+const CategoryGrid = ({ openCompose }) => (
+  <div className="category-grid">
+    {Object.entries(CATEGORIES_CONFIG).map(([key, cat]) => {
+      const Icon = cat.icon;
+      return (
+        <button key={key} className={`category-tile ${cat.tileClass}`} type="button" onClick={() => openCompose(key)}>
+          <span><Icon /></span><strong>{cat.label}</strong><small>{cat.desc}</small><ArrowUpRight />
+        </button>
+      );
+    })}
+  </div>
+);
+
+const FeedbackRow = ({ feedback, onOpen }) => {
+  const cat = getCategory(feedback.category);
+  return (
+    <button className="feedback-row" type="button" onClick={() => onOpen(feedback)}>
+      <CategoryIcon category={feedback.category} />
+      <span className="feedback-copy"><strong>{feedback.title}</strong><small>{cat.label} · {feedback.subCategory || '综合事项'}</small></span>
+      <StatusPill status={feedback.status} />
+      <span className="feedback-time"><strong>{formatDate(feedback.updatedAt || feedback.createdAt)}</strong><small>{feedback.responses?.length ? '已有部门回复' : '已进入队列'}</small></span>
+      <ChevronRight />
+    </button>
+  );
+};
+
+const ActiveCase = ({ feedback, onOpen }) => {
+  if (!feedback) return (
+    <section className="active-case">
+      <div className="section-heading compact"><div><p className="eyebrow">ACTIVE CASE</p><h2>暂无处理中事项</h2></div></div>
+      <p className="case-summary">当前没有正在处理中的反馈。你可以发起新的问题反馈。</p>
+    </section>
+  );
+  return (
+    <section className="active-case">
+      <div className="section-heading compact"><div><p className="eyebrow">ACTIVE CASE</p><h2>{STATUS_META[feedback.status]?.label || '处理中'}</h2></div><StatusPill status={feedback.status} /></div>
+      <p className="case-number">#{feedback._id?.slice(-6)?.toUpperCase()}</p>
+      <h3>{feedback.title}</h3>
+      <p className="case-summary">{feedback.responses?.[feedback.responses.length - 1]?.content || '事项已进入处理流程，新的处理进展会通过站内通知同步。'}</p>
+      <ol className="case-timeline">
+        <li className="is-done"><span><Check /></span><div><strong>提交成功</strong><small>{formatDate(feedback.createdAt)}</small></div></li>
+        <li className={feedback.status === 'resolved' ? 'is-done' : 'is-current'}><span>{feedback.status === 'resolved' ? <Check /> : null}</span><div><strong>{feedback.status === 'resolved' ? '处理完成' : '部门核实中'}</strong><small>{formatDate(feedback.updatedAt)}</small></div></li>
+        <li><span></span><div><strong>归档留痕</strong><small>反馈记录永久保留</small></div></li>
+      </ol>
+      <button className="wide-outline-button" type="button" onClick={() => onOpen(feedback)}>查看完整对话<ArrowRight /></button>
+    </section>
+  );
+};
+
+const ComposeDrawer = ({ open, mobile, category, setCategory, onClose, onSubmit, loading }) => {
+  const [subCategory, setSubCategory] = useState('');
+  const [form, setForm] = useState({ title: '', content: '', priority: 'normal', isAnonymous: false });
+  const [files, setFiles] = useState([]);
+  const activeCategory = category || '';
+  const catMeta = activeCategory ? getCategory(activeCategory) : null;
+
+  useEffect(() => { if (category) setSubCategory(''); }, [category]);
+
+  const submit = () => {
+    if (!activeCategory || !subCategory || !form.title || !form.content) return alert('请完整填写问题领域、细分类别、标题和描述');
+    onSubmit({ ...form, category: activeCategory, subCategory }, files).then(ok => {
+      if (ok) {
+        setForm({ title: '', content: '', priority: 'normal', isAnonymous: false });
+        setFiles([]);
+        setSubCategory('');
+      }
+    });
+  };
+
+  if (mobile) {
     return (
-      <Card className="p-12 text-center" hover={false}>
-        <span className="text-6xl mb-4 block">📭</span>
-        <p className="text-white text-lg">暂无反馈记录</p>
-        <p className="text-purple-200/60 mt-2">提交您的第一条反馈吧！</p>
-      </Card>
+      <section className={cls('mobile-sheet', open && 'is-open')} aria-hidden={!open}>
+        <div className="sheet-handle"></div>
+        <header><div><span>STEP 1 OF 3</span><h2>告诉我们发生了什么</h2></div><button className="icon-button" type="button" onClick={onClose}><X /></button></header>
+        <div className="sheet-body">
+          <label>问题领域</label>
+          <button className="mobile-select" type="button"><span>{catMeta?.label || '请选择问题领域'}</span><ChevronRight /></button>
+          <label>细分类别</label>
+          <select value={subCategory} onChange={e => setSubCategory(e.target.value)}><option value="">请选择细分类别</option>{catMeta?.sub.map(item => <option key={item}>{item}</option>)}</select>
+          <label>问题标题</label><input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="用一句话概括问题" />
+          <label>详细描述</label><textarea value={form.content} onChange={e => setForm({ ...form, content: e.target.value })} placeholder="时间、地点、具体情况…" />
+          <div className="sheet-actions">
+            <label className="sheet-attach"><Paperclip /><input hidden type="file" multiple onChange={e => setFiles(Array.from(e.target.files || []))} /></label>
+            <label className="mobile-anonymous"><input type="checkbox" checked={form.isAnonymous} onChange={e => setForm({ ...form, isAnonymous: e.target.checked })} /><i></i><span>匿名</span></label>
+            <button className="sheet-next" type="button" onClick={submit} disabled={loading}>{loading ? '提交中' : '提交反馈'}<ArrowRight /></button>
+          </div>
+        </div>
+      </section>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {feedbacks.map(feedback => {
-        const catInfo = getCategoryInfo(feedback.category);
-        const isExpanded = expandedId === feedback._id;
+    <aside className={cls('compose-drawer', open && 'is-open')} aria-hidden={!open} aria-label="发起反馈">
+      <header><div><span>NEW FEEDBACK</span><h2>发起反馈</h2></div><button className="icon-button" type="button" onClick={onClose}><X /></button></header>
+      <div className="compose-body">
+        <div className="step-indicator"><span className="is-active">1</span><i></i><span>2</span><i></i><span>3</span><small>描述问题</small><small>补充信息</small><small>确认提交</small></div>
+        <label className="field-label">问题领域</label>
+        <div className="compose-categories">
+          {Object.entries(CATEGORIES_CONFIG).map(([key, cat]) => <button key={key} className={activeCategory === key ? 'is-active' : ''} type="button" onClick={() => setCategory(key)}>{cat.label}</button>)}
+        </div>
+        <label className="input-field"><span>细分类别</span><select value={subCategory} onChange={e => setSubCategory(e.target.value)}><option value="">请选择详细诉求分类</option>{catMeta?.sub.map(item => <option key={item}>{item}</option>)}</select></label>
+        <label className="input-field"><span>问题标题</span><input maxLength="50" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="用一句话概括你遇到的问题" /><small>{form.title.length} / 50</small></label>
+        <label className="input-field textarea-field"><span>详细描述</span><textarea maxLength="500" value={form.content} onChange={e => setForm({ ...form, content: e.target.value })} placeholder="请描述时间、地点、具体情况，以及你希望得到的帮助…" /><small>{form.content.length} / 500</small></label>
+        <label className="upload-area"><ImagePlus /><div><strong>{files.length ? `已选择 ${files.length} 个文件` : '添加图片或视频'}</strong><p>最多 10 个文件，单个不超过 20MB</p></div><span className="outline-button">选择文件</span><input hidden type="file" multiple onChange={e => setFiles(Array.from(e.target.files || []))} /></label>
+        <div className="compose-options">
+          <div><span>优先级</span><div className="priority-switch">{['normal', 'high', 'urgent'].map(key => <button key={key} className={form.priority === key ? 'is-active' : ''} type="button" onClick={() => setForm({ ...form, priority: key })}>{PRIORITY_LABEL[key]}</button>)}</div></div>
+          <label><span><strong>匿名提交</strong><small>处理部门不可见你的身份</small></span><input className="switch-input" type="checkbox" checked={form.isAnonymous} onChange={e => setForm({ ...form, isAnonymous: e.target.checked })} /><i></i></label>
+        </div>
+      </div>
+      <footer><button className="text-button" type="button" onClick={onClose}>暂存草稿</button><button className="primary-button" type="button" onClick={submit} disabled={loading}>确认并提交<Send /></button></footer>
+    </aside>
+  );
+};
 
-        return (
-          <Card
-            key={feedback._id}
-            className="overflow-hidden"
-            onClick={() => {
-              setExpandedId(isExpanded ? null : feedback._id);
-              setReplyText(''); 
-            }}
-          >
-           <div className="p-4 cursor-pointer">
-              <div className="flex items-start justify-between gap-2 md:gap-4">
-                <div className="flex items-start gap-3 md:gap-4 flex-1 min-w-0">
-                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
-                    <span className="text-lg md:text-xl">{catInfo.icon}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-white font-medium truncate max-w-full mb-1">{feedback.title}</h4>
-                    <div className="flex flex-wrap items-center gap-2 md:gap-3">
-                      <span className="shrink-0 text-[10px] md:text-xs text-purple-200/60">
-                        {catInfo.label} {feedback.subCategory ? ` > ${feedback.subCategory}` : ''}
-                      </span>
-                      <span className="shrink-0 text-[10px] md:text-xs text-purple-200/40">
-                        {new Date(feedback.createdAt).toLocaleDateString('zh-CN')}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="shrink-0 mt-0.5 flex flex-col items-end gap-2">
-                  <StatusBadge status={feedback.status} />
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); onDelete(feedback._id); }}
-                    className="text-[10px] md:text-xs text-red-400 hover:text-red-300 border border-red-500/30 px-2 py-1 rounded transition-colors"
-                  >
-                    撤销反馈
-                  </button>
-                </div>
-              </div>
-
-              {isExpanded && (
-                <div className="mt-4 pt-4 border-t border-white/10" onClick={(e) => e.stopPropagation()}>
-                  <p className="text-purple-200/80 text-sm whitespace-pre-wrap">{feedback.content}</p>
-                  
-                  <AttachmentViewer attachments={feedback.attachments} />
-
-                 {feedback.responses && feedback.responses.length > 0 && (
-                    <div className="mt-4 space-y-3">
-                      <h5 className="text-sm font-medium text-white mb-2">对话流转记录</h5>
-                      {feedback.responses.map((resp, i) => {
-                        const isStudent = resp.senderType === 'student';
-                      if (resp.isRecalled) {
-                          return (
-                            <div key={i} className={`p-3 rounded-xl border opacity-50 ${isStudent ? 'bg-white/5 border-white/10 ml-8' : 'bg-purple-500/10 border-purple-500/20 mr-8'}`}>
-                               <p className="text-xs text-purple-200/50 italic text-center py-2">此消息已撤回</p>
-                            </div>
-                          );
-                        }    
-                        return (
-                          <div key={i} className={`p-3 rounded-xl border ${isStudent ? 'bg-white/5 border-white/10 ml-8' : 'bg-purple-500/10 border-purple-500/20 mr-8'}`}>
-                            <div className="flex items-center justify-between mb-1.5">
-                              <span className={`text-xs font-bold ${isStudent ? 'text-white/70' : 'text-purple-300'}`}>
-                                {isStudent ? '我的留言' : (resp.adminName || resp.senderName || '系统管理员')}
-                              </span>
-                              <div className="flex items-center gap-2">
-                                {isStudent && !resp.isRecalled && (
-                                  <button 
-                                    onClick={(e) => { e.stopPropagation(); onRecall(feedback._id, resp._id); }} 
-                                    className="text-[10px] text-red-400/80 hover:text-red-400 transition-colors"
-                                  >
-                                   撤回
-                                 </button>
-                                 )}
-                                <span className="text-[10px] text-purple-200/40">{new Date(resp.createdAt).toLocaleString('zh-CN')}</span>
-                              </div>
-                            </div>
-                            <p className="text-sm text-purple-100 whitespace-pre-wrap">{resp.content}</p>
-                            <AttachmentViewer attachments={resp.attachments} />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  <div className="mt-4 pt-3 border-t border-white/10">
-                    <textarea
-                      value={expandedId === feedback._id ? replyText : ''}
-                      onChange={e => setReplyText(e.target.value)}
-                      placeholder="对处理结果有疑问？或需要补充信息，请在此留言..."
-                      className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:border-purple-500 outline-none transition-all resize-none"
-                      rows="2"
-                    />
-                    <div className="mt-2 flex justify-end">
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation(); 
-                          onReply(feedback._id, replyText);
-                        }}
-                        className="px-4 py-1.5 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded-lg transition-all shadow-md shadow-purple-500/20"
-                      >
-                        发送补充留言
-                      </button>
-                    </div>
-                  </div>
-
-                </div>
-              )}
-            </div>
-          </Card>
-        );
-      })}
+const FeedbackDialog = ({ feedback, onClose, onReply, onRecall, onDelete }) => {
+  const [reply, setReply] = useState('');
+  if (!feedback) return null;
+  const status = STATUS_META[feedback.status] || STATUS_META.pending;
+  const submitReply = async () => {
+    if (!reply.trim()) return;
+    await onReply(feedback._id, reply);
+    setReply('');
+  };
+  return (
+    <div className="dialog-backdrop">
+      <dialog className="feedback-dialog" open>
+        <button className="dialog-close icon-button" type="button" onClick={onClose}><X /></button>
+        <div className="dialog-status"><span className={`status ${status.className}`}><i></i>{status.label}</span><small>#{feedback._id?.slice(-6)?.toUpperCase()}</small></div>
+        <h2>{feedback.title}</h2>
+        <p>{feedback.content}</p>
+        <AttachmentViewer attachments={feedback.attachments} />
+        <ol className="dialog-timeline">
+          <li className="done"><Check /><div><strong>提交成功</strong><small>{formatDate(feedback.createdAt)}</small></div></li>
+          {(feedback.responses || []).map(resp => (
+            <li className="current" key={resp._id || resp.createdAt}><MessagesSquare /><div><strong>{resp.adminName || '处理老师'}回复</strong><small>{formatDate(resp.createdAt)}</small><p>{resp.isRecalled ? '该回复已被撤回' : resp.content}</p><AttachmentViewer attachments={resp.attachments} />{!resp.isRecalled && <button className="text-button" type="button" onClick={() => onRecall(feedback._id, resp._id)}>撤回留言</button>}</div></li>
+          ))}
+        </ol>
+        <div className="dialog-reply"><input value={reply} onChange={e => setReply(e.target.value)} placeholder="补充信息或回复处理老师…" /><button type="button" onClick={submitReply}><Send /><span>发送</span></button></div>
+        {feedback.status === 'pending' && <button className="text-button danger-text" type="button" onClick={() => onDelete(feedback._id)}>撤销这条反馈</button>}
+      </dialog>
     </div>
   );
 };
 
-// Main App
-// Main App
+const StudentDesktop = ({ user, stats, feedbacks, activePage, setActivePage, openCompose, onOpenFeedback }) => {
+  const latest = feedbacks[0];
+  const activeCase = feedbacks.find(item => item.status === 'processing') || latest;
+  return (
+    <section id="student-desktop" className="role-view">
+      <div className={cls('page-panel', activePage === 'dashboard' && 'is-active')}>
+        <div className="page-heading">
+          <div><p className="eyebrow">MONDAY · 21 JULY</p><h1>晚上好，{user?.name}</h1><p>你有 {stats.processing || 0} 条反馈正在处理，最近一次更新于 {latest ? formatDate(latest.updatedAt || latest.createdAt) : '暂无'}。</p></div>
+          <button className="primary-button" type="button" onClick={() => openCompose()}><Plus />发起新反馈</button>
+        </div>
+        <StatsStrip stats={stats} />
+        <div className="workspace-grid">
+          <div className="workspace-primary">
+            <section className="content-section"><div className="section-heading"><div><h2>从哪里开始？</h2><p>选择问题领域，我们会自动匹配负责部门。</p></div></div><CategoryGrid openCompose={openCompose} /></section>
+            <section className="content-section feedback-section"><div className="section-heading"><div><h2>最近反馈</h2><p>所有进度与回复会在这里持续留痕。</p></div><button className="text-button" type="button" onClick={() => setActivePage('feedbacks')}>查看全部<ArrowRight /></button></div><div className="feedback-list">{feedbacks.slice(0, 3).map(item => <FeedbackRow key={item._id} feedback={item} onOpen={onOpenFeedback} />)}</div></section>
+          </div>
+          <aside className="insight-rail"><ActiveCase feedback={activeCase} onOpen={onOpenFeedback} /><section className="response-note"><MessageCircleMore /><div><strong>你的声音，会抵达。</strong><p>匿名反馈不会向处理部门展示个人身份，所有操作均保留审计记录。</p></div></section></aside>
+        </div>
+      </div>
+
+      <div className={cls('page-panel simple-page', activePage === 'feedbacks' && 'is-active')}>
+        <div className="page-heading"><div><p className="eyebrow">MY FEEDBACK</p><h1>我的反馈</h1><p>按状态查看提交记录、部门回复与处理结果。</p></div><button className="primary-button" type="button" onClick={() => openCompose()}><Plus />发起新反馈</button></div>
+        <div className="filter-row"><button className="filter-chip is-active">全部 {feedbacks.length}</button><button className="filter-chip">待受理 {stats.pending}</button><button className="filter-chip">处理中 {stats.processing}</button><button className="filter-chip">已解决 {stats.resolved}</button><span></span><label className="search-field"><MessagesSquare /><input placeholder="搜索标题或编号" /></label></div>
+        <div className="feedback-list full-list">{feedbacks.map(item => <FeedbackRow key={item._id} feedback={item} onOpen={onOpenFeedback} />)}</div>
+      </div>
+
+      <div className={cls('page-panel simple-page', activePage === 'guide' && 'is-active')}>
+        <div className="page-heading"><div><p className="eyebrow">SERVICE GUIDE</p><h1>服务指南</h1><p>了解各类事项的受理范围、预计时效和紧急联系渠道。</p></div></div>
+        <div className="guide-grid">
+          <section><Route /><h2>反馈如何流转</h2><p>提交后由学生权益中心初审，并按问题领域分派至责任部门，全程可查看节点与回复。</p></section>
+          <section><Clock3 /><h2>响应时效</h2><p>普通事项原则上 1 个工作日内首次响应；高优先级问题会进入加急队列。</p></section>
+          <section><PhoneCall /><h2>紧急事项</h2><p>涉及人身安全、火情或突发疾病时，请直接联系校园应急电话，不要仅依赖在线反馈。</p></section>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const MobileShell = ({ user, feedbacks, stats, page, setPage, openCompose, onOpenFeedback, theme }) => {
+  const latest = feedbacks.find(item => item.status === 'processing') || feedbacks[0];
+  return (
+    <div className="mobile-stage">
+      <div className="mobile-shell">
+        <header className="mobile-header">
+          <div className="mobile-brand"><img src={sieLogo} alt="SIEVOX" /><div><strong>SIEVOX</strong><span>学生权益反馈</span></div></div>
+          <div className="mobile-header-actions"><button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)}><Palette /></button><button className="icon-button"><Bell /><span className="notification-dot"></span></button></div>
+        </header>
+        <main className="mobile-main">
+          <section className={cls('mobile-page', page === 'home' && 'is-active')}>
+            <div className="mobile-greeting"><p>晚上好，{user?.name}</p><h1>今天想反馈什么？</h1></div>
+            {latest && <button className="mobile-active-case" type="button" onClick={() => onOpenFeedback(latest)}><span className="case-state"><i></i>{STATUS_META[latest.status]?.label}</span><span className="case-code">#{latest._id?.slice(-6)?.toUpperCase()}</span><strong>{latest.title}</strong><p>{latest.responses?.length ? '已有部门回复' : '已进入处理队列'} · {formatDate(latest.updatedAt || latest.createdAt)}</p><span className="mobile-progress"><i></i></span><span className="progress-labels"><small>已提交</small><small>核实中</small><small>待完成</small></span></button>}
+            <section className="mobile-section"><div className="mobile-section-head"><h2>快速反馈</h2><span>选择问题领域</span></div><div className="mobile-categories">{Object.entries(CATEGORIES_CONFIG).map(([key, cat]) => { const Icon = cat.icon; return <button key={key} type="button" onClick={() => openCompose(key, true)}><span className={cat.tileClass}><Icon /></span><small>{cat.short}</small></button>; })}</div></section>
+            <section className="mobile-section recent-mobile"><div className="mobile-section-head"><h2>最近反馈</h2><button type="button" onClick={() => setPage('feedbacks')}>全部 {feedbacks.length} 条<ChevronRight /></button></div>{feedbacks.slice(0, 2).map(item => <button key={item._id} className="mobile-feedback" type="button" onClick={() => onOpenFeedback(item)}><CategoryIcon category={item.category} /><span><strong>{item.title}</strong><small>{formatDate(item.createdAt)} · {getCategory(item.category).label}</small></span><StatusPill status={item.status} /></button>)}</section>
+          </section>
+          <section className={cls('mobile-page', page === 'feedbacks' && 'is-active')}>
+            <div className="mobile-page-title"><button className="icon-button" type="button" onClick={() => setPage('home')}><ArrowLeft /></button><div><span>我的记录</span><h1>我的反馈</h1></div></div>
+            <div className="mobile-filter-scroll"><button className="is-active">全部 {feedbacks.length}</button><button>处理中 {stats.processing}</button><button>待受理 {stats.pending}</button><button>已解决 {stats.resolved}</button></div>
+            <div className="mobile-history">{feedbacks.map(item => <button key={item._id} type="button" onClick={() => onOpenFeedback(item)}><span><StatusPill status={item.status} /><small>#{item._id?.slice(-6)?.toUpperCase()}</small></span><strong>{item.title}</strong><p>{item.responses?.[0]?.content || item.content}</p><time>更新于 {formatDate(item.updatedAt || item.createdAt)}</time></button>)}</div>
+          </section>
+          <section className={cls('mobile-page', page === 'guide' && 'is-active')}>
+            <div className="mobile-page-title"><div><span>帮助中心</span><h1>服务指南</h1></div></div>
+            <div className="mobile-guide"><button><Route /><span><strong>反馈如何流转</strong><small>查看受理和分派规则</small></span><ChevronRight /></button><button><Clock3 /><span><strong>处理需要多久</strong><small>各类型事项响应时效</small></span><ChevronRight /></button><button><ShieldCheck /><span><strong>紧急情况处理</strong><small>校园应急联系电话</small></span><ChevronRight /></button></div>
+          </section>
+        </main>
+        <nav className="mobile-tabbar" aria-label="手机端导航">
+          <button className={page === 'home' ? 'is-active' : ''} type="button" onClick={() => setPage('home')}><House /><span>首页</span></button>
+          <button className={page === 'feedbacks' ? 'is-active' : ''} type="button" onClick={() => setPage('feedbacks')}><MessagesSquare /><span>反馈</span></button>
+          <button className="mobile-compose" type="button" onClick={() => openCompose('', true)}><Plus /></button>
+          <button className={page === 'guide' ? 'is-active' : ''} type="button" onClick={() => setPage('guide')}><BookOpen /><span>指南</span></button>
+          <button type="button"><UserRound /><span>我的</span></button>
+        </nav>
+      </div>
+    </div>
+  );
+};
+
+const SettingsModal = ({ open, user, onClose, token, onLogout, onRefreshUser }) => {
+  const [tab, setTab] = useState('profile');
+  const [profile, setProfile] = useState({ name: '', studentId: '', email: '', phone: '' });
+  const [pwd, setPwd] = useState({ current: '', new: '' });
+  useEffect(() => {
+    if (open) setProfile({ name: user?.name || '', studentId: user?.studentId || '', email: user?.email || '', phone: user?.phone || '' });
+  }, [open, user]);
+  if (!open) return null;
+
+  const saveProfile = async (e) => {
+    e.preventDefault();
+    const res = await fetch(`${API_BASE}/auth/profile`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(profile) });
+    const data = await res.json();
+    alert(data.success ? '个人信息修改成功' : data.message || '修改失败');
+    if (data.success) onRefreshUser?.();
+  };
+  const changePwd = async (e) => {
+    e.preventDefault();
+    const res = await fetch(`${API_BASE}/auth/password`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ currentPassword: pwd.current, newPassword: pwd.new }) });
+    const data = await res.json();
+    alert(data.success ? '密码修改成功，请重新登录' : data.message || '修改失败');
+    if (data.success) onLogout();
+  };
+
+  return (
+    <div className="dialog-backdrop">
+      <dialog className="feedback-dialog settings-dialog" open>
+        <button className="dialog-close icon-button" type="button" onClick={onClose}><X /></button>
+        <div className="admin-tabs"><button className={tab === 'profile' ? 'is-active' : ''} onClick={() => setTab('profile')}>个人资料</button><button className={tab === 'password' ? 'is-active' : ''} onClick={() => setTab('password')}>修改密码</button></div>
+        {tab === 'profile' ? (
+          <form className="score-form" onSubmit={saveProfile}>
+            <div className="form-grid"><label><span>学号</span><input value={profile.studentId} onChange={e => setProfile({ ...profile, studentId: e.target.value })} /></label><label><span>姓名</span><input value={profile.name} onChange={e => setProfile({ ...profile, name: e.target.value })} /></label></div>
+            <label className="reason-field"><span>邮箱</span><input value={profile.email} onChange={e => setProfile({ ...profile, email: e.target.value })} /></label>
+            <label className="reason-field"><span>手机号</span><input value={profile.phone} onChange={e => setProfile({ ...profile, phone: e.target.value })} /></label>
+            <button className="primary-button">保存资料修改</button>
+          </form>
+        ) : (
+          <form className="score-form" onSubmit={changePwd}>
+            <label className="reason-field"><span>当前密码</span><input type="password" value={pwd.current} onChange={e => setPwd({ ...pwd, current: e.target.value })} /></label>
+            <label className="reason-field"><span>新密码</span><input type="password" value={pwd.new} onChange={e => setPwd({ ...pwd, new: e.target.value })} /></label>
+            <button className="primary-button">确认修改密码</button>
+          </form>
+        )}
+      </dialog>
+    </div>
+  );
+};
+
+const DashboardPage = ({ user, token, onLogout, onRefreshUser, theme }) => {
+  const [feedbacks, setFeedbacks] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [activePage, setActivePage] = useState('dashboard');
+  const [mobilePage, setMobilePage] = useState('home');
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [mobileComposeOpen, setMobileComposeOpen] = useState(false);
+  const [composeCategory, setComposeCategory] = useState('');
+  const [selectedFeedback, setSelectedFeedback] = useState(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [previewMobile, setPreviewMobile] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const stats = useMemo(() => {
+    const s = { total: feedbacks.length, pending: 0, processing: 0, resolved: 0, rejected: 0 };
+    feedbacks.forEach(item => { s[item.status] = (s[item.status] || 0) + 1; });
+    return s;
+  }, [feedbacks]);
+
+  const fetchFeedbacks = useCallback(async () => {
+    const res = await fetch(`${API_BASE}/feedback/my`, { headers: { Authorization: `Bearer ${token}` } });
+    const data = await res.json();
+    if (data.success) setFeedbacks(data.feedbacks || []);
+  }, [token]);
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/notifications`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (data.success) setNotifications(data.notifications || []);
+    } catch {}
+  }, [token]);
+
+  useEffect(() => {
+    document.body.classList.toggle('preview-mobile', previewMobile);
+    return () => document.body.classList.remove('preview-mobile');
+  }, [previewMobile]);
+
+  useEffect(() => {
+    fetchFeedbacks();
+    fetchNotifications();
+    const id = setInterval(() => { fetchFeedbacks(); fetchNotifications(); }, 12000);
+    return () => clearInterval(id);
+  }, [fetchFeedbacks, fetchNotifications]);
+
+  const openCompose = (category = '', mobile = false) => {
+    setComposeCategory(category);
+    if (mobile) setMobileComposeOpen(true);
+    else setComposeOpen(true);
+  };
+
+  const submitFeedback = async (formData, files) => {
+    setLoading(true);
+    try {
+      let uploadedFiles = [];
+      if (files?.length) {
+        const body = new FormData();
+        files.forEach(file => body.append('files', file));
+        const up = await fetch(`${API_BASE}/upload`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body });
+        const upData = await up.json();
+        if (upData.success) uploadedFiles = upData.files;
+      }
+      const res = await fetch(`${API_BASE}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ...formData, attachments: uploadedFiles })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setComposeOpen(false);
+        setMobileComposeOpen(false);
+        setActivePage('feedbacks');
+        setMobilePage('feedbacks');
+        await fetchFeedbacks();
+      } else alert(data.message || '提交失败');
+      return data.success;
+    } catch {
+      alert('网络错误，请重试');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const reply = async (feedbackId, content) => {
+    const res = await fetch(`${API_BASE}/feedback/${feedbackId}/reply`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ content }) });
+    const data = await res.json();
+    if (data.success) {
+      await fetchFeedbacks();
+      setSelectedFeedback(null);
+    } else alert(data.message || '发送失败');
+  };
+
+  const recall = async (feedbackId, replyId) => {
+    if (!window.confirm('确定撤回这条留言吗？')) return;
+    const res = await fetch(`${API_BASE}/feedback/${feedbackId}/reply/${replyId}/recall`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } });
+    const data = await res.json();
+    if (data.success) {
+      await fetchFeedbacks();
+      setSelectedFeedback(null);
+    } else alert(data.message || '撤回失败');
+  };
+
+  const deleteFeedback = async (feedbackId) => {
+    if (!window.confirm('确定彻底撤销这条反馈吗？')) return;
+    const res = await fetch(`${API_BASE}/feedback/${feedbackId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    const data = await res.json();
+    if (data.success) {
+      await fetchFeedbacks();
+      setSelectedFeedback(null);
+    } else alert(data.message || '撤销失败');
+  };
+
+  const pageTitle = activePage === 'feedbacks' ? '我的反馈' : activePage === 'guide' ? '服务指南' : '权益工作台';
+
+  return (
+    <>
+      <div className="desktop-shell">
+        <Sidebar user={user} activePage={activePage} setActivePage={setActivePage} openCompose={openCompose} onLogout={onLogout} openSettings={() => setSettingsOpen(true)} />
+        <main className="desktop-main">
+          <Topbar pageTitle={pageTitle} theme={theme} openPreview={() => setPreviewMobile(true)} notifications={notifications} openSettings={() => setSettingsOpen(true)} user={user} />
+          <StudentDesktop user={user} stats={stats} feedbacks={feedbacks} activePage={activePage} setActivePage={setActivePage} openCompose={openCompose} onOpenFeedback={setSelectedFeedback} />
+        </main>
+      </div>
+      <button className="preview-exit icon-button" type="button" onClick={() => setPreviewMobile(false)}><X /></button>
+      <MobileShell user={user} feedbacks={feedbacks} stats={stats} page={mobilePage} setPage={setMobilePage} openCompose={openCompose} onOpenFeedback={setSelectedFeedback} theme={theme} />
+      <div className={cls('drawer-backdrop', (composeOpen || mobileComposeOpen) && 'is-open')} onClick={() => { setComposeOpen(false); setMobileComposeOpen(false); }}></div>
+      <ComposeDrawer open={composeOpen} category={composeCategory} setCategory={setComposeCategory} onClose={() => setComposeOpen(false)} onSubmit={submitFeedback} loading={loading} />
+      <ComposeDrawer mobile open={mobileComposeOpen} category={composeCategory} setCategory={setComposeCategory} onClose={() => setMobileComposeOpen(false)} onSubmit={submitFeedback} loading={loading} />
+      <FeedbackDialog feedback={selectedFeedback} onClose={() => setSelectedFeedback(null)} onReply={reply} onRecall={recall} onDelete={deleteFeedback} />
+      <SettingsModal open={settingsOpen} user={user} token={token} onClose={() => setSettingsOpen(false)} onLogout={onLogout} onRefreshUser={onRefreshUser} />
+      <ThemePanel theme={theme} />
+    </>
+  );
+};
+
 export default function App() {
-  const { user, token, login, register, logout, refreshUser } = useAuth(); // [新增] 解构 refreshUser
-  const themeTools = useTheme();
+  const { user, token, login, register, logout, refreshUser } = useAuth();
+  const theme = useTheme();
 
-  if (!user) {
-    return <LoginPage onLogin={login} onRegister={register} themeTools={themeTools} />;
-  }
- if (user.role === 'admin' || user.role === 'superadmin') {
-    // [修改] 为管理端也传入 onRefreshUser
-    return <AdminDashboard user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} themeTools={themeTools} />;
-  }
+  useEffect(() => {
+    document.body.classList.toggle('auth-active', !user);
+    return () => document.body.classList.remove('auth-active');
+  }, [user]);
 
-  // [修改] 传递 onRefreshUser 方法
-  return <DashboardPage user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} themeTools={themeTools} />; 
+  if (!user) return <LoginPage onLogin={login} onRegister={register} theme={theme} />;
+  if (user.role === 'admin' || user.role === 'superadmin') {
+    return <AdminDashboard user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} themeTools={theme} />;
+  }
+  return <DashboardPage user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} theme={theme} />;
 }

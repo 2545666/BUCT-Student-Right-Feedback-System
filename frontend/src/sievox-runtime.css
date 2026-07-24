@@ -1,0 +1,189 @@
+/* React runtime additions layered after ui-demo/styles.css. */
+.form-message {
+  margin: -8px 0 14px;
+  padding: 10px 12px;
+  color: #b84435;
+  background: var(--coral-soft);
+  border: 1px solid #f0c5bc;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.attachment-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.attachment-strip a {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 10px;
+  color: var(--navy-800);
+  text-decoration: none;
+  background: var(--canvas);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.attachment-strip img {
+  width: 84px;
+  height: 84px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+}
+
+.dialog-backdrop {
+  position: fixed;
+  z-index: 120;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(7, 26, 47, .55);
+  backdrop-filter: blur(10px);
+}
+
+.danger-text {
+  color: #b84435 !important;
+}
+
+.settings-dialog {
+  width: min(560px, calc(100vw - 32px));
+}
+
+.settings-dialog .score-form {
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+}
+
+.settings-dialog .score-form input {
+  min-height: 42px;
+  padding: 0 12px;
+}
+
+.admin-demo-shell .role-view > .mb-8 {
+  display: inline-flex;
+  gap: 4px;
+  margin: 0 0 22px !important;
+  padding: 4px !important;
+  background: var(--paper) !important;
+  border: 1px solid var(--line);
+  border-radius: 7px !important;
+  box-shadow: none;
+}
+
+.admin-demo-shell .role-view > .mb-8 button {
+  min-height: 38px;
+  padding: 0 16px;
+  color: var(--muted) !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 5px !important;
+  font-size: 13px !important;
+  font-weight: 800;
+}
+
+.admin-demo-shell .role-view > .mb-8 button[class*="bg-purple-600"],
+.admin-demo-shell .role-view > .mb-8 button:focus {
+  color: white !important;
+  background: var(--theme-primary) !important;
+  box-shadow: 0 6px 16px rgba(var(--theme-rgb), .18);
+}
+
+.admin-demo-shell .role-view > .space-y-4,
+.admin-demo-shell .role-view > .animate-fadeIn,
+.admin-demo-shell .role-view > div:not(.admin-heading):not(.admin-metrics):not(.superadmin-hero):not(.superadmin-metrics):not(.mb-8) {
+  color: var(--ink);
+}
+
+.admin-demo-shell .bg-white\/5,
+.admin-demo-shell .dark\:bg-slate-900\/80,
+.admin-demo-shell .dark\:from-slate-900,
+.admin-demo-shell .dark\:to-purple-950\/50 {
+  background: var(--paper) !important;
+}
+
+.admin-demo-shell .border-white\/10,
+.admin-demo-shell .dark\:border-white\/10 {
+  border-color: var(--line) !important;
+}
+
+.admin-demo-shell .text-white,
+.admin-demo-shell .dark\:text-white {
+  color: var(--navy-950) !important;
+}
+
+.admin-demo-shell .text-purple-200\/60,
+.admin-demo-shell .text-purple-200,
+.admin-demo-shell .dark\:text-purple-200\/60,
+.admin-demo-shell .dark\:text-purple-100 {
+  color: var(--muted) !important;
+}
+
+.admin-demo-shell .bg-purple-600,
+.admin-demo-shell .bg-blue-600 {
+  background: var(--theme-primary) !important;
+}
+
+.admin-demo-shell .rounded-2xl,
+.admin-demo-shell .rounded-xl {
+  border-radius: 7px !important;
+}
+
+.admin-demo-shell table,
+.admin-demo-shell .queue-panel,
+.admin-demo-shell .role-ledger,
+.admin-demo-shell .score-form,
+.admin-demo-shell .record-ledger {
+  background: var(--paper);
+  border-color: var(--line);
+}
+
+.admin-demo-shell footer,
+.admin-demo-shell .mt-6.text-center {
+  color: var(--muted) !important;
+}
+
+.mobile-sheet select {
+  width: 100%;
+  min-height: 43px;
+  margin-bottom: 15px;
+  padding: 0 11px;
+  color: var(--ink);
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font-size: 10px;
+}
+
+.input-field select {
+  min-height: 44px;
+  padding: 0 12px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+
+@media (max-width: 760px) {
+  .dialog-backdrop {
+    align-items: end;
+    padding: 0;
+  }
+
+  .feedback-dialog {
+    width: 100%;
+    max-height: 86vh;
+    margin: 0;
+    border-radius: 12px 12px 0 0;
+  }
+}
