@@ -11,6 +11,29 @@ input,
 textarea,
 select {
   font-family: "方正大标宋简体", "FZDaBiaoSong-B06S", "FangZheng DaBiaoSong JianTi", "STSong", "SimSun", serif !important;
+  font-weight: 700 !important;
+}
+
+body * {
+  font-weight: 700 !important;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+strong,
+b,
+th,
+.font-black,
+.font-bold,
+.brand-lockup strong,
+.superadmin-metrics strong,
+.admin-metrics strong,
+.stats-strip strong {
+  font-weight: 900 !important;
 }
 
 * {
@@ -292,7 +315,7 @@ select {
 
 .admin-demo-shell .text-white,
 .admin-demo-shell .dark\:text-white {
-  color: var(--navy-950) !important;
+  color: var(--ink) !important;
 }
 
 .admin-demo-shell .text-purple-200\/60,
@@ -340,6 +363,22 @@ select {
 .admin-demo-shell .bg-purple-600,
 .admin-demo-shell .bg-blue-600 {
   background: var(--theme-primary) !important;
+}
+
+.admin-demo-shell .primary-button,
+.admin-demo-shell .send-button,
+.admin-demo-shell .login-submit,
+.admin-demo-shell .role-switch button.is-active,
+.admin-demo-shell .superadmin-tabs button.is-active,
+.admin-demo-shell button[class*="bg-purple-600"],
+.admin-demo-shell button[class*="bg-blue-600"],
+.admin-demo-shell button[class*="bg-green-600"],
+.admin-demo-shell button[class*="bg-red-600"],
+.admin-demo-shell .bg-purple-600,
+.admin-demo-shell .bg-blue-600,
+.admin-demo-shell .bg-green-600,
+.admin-demo-shell .bg-red-600 {
+  color: #fff !important;
 }
 
 .admin-demo-shell .rounded-2xl,
@@ -407,6 +446,160 @@ select {
   margin-top: 0 !important;
   display: grid;
   gap: 16px;
+}
+
+.admin-demo-shell .business-feedback-redesign,
+.admin-demo-shell .performance-redesign-panel,
+.admin-demo-shell .people-management-panel,
+.admin-demo-shell .organization-framework-panel {
+  color: var(--ink);
+  animation: page-soft-in .45s var(--ease-out) both;
+}
+
+.admin-demo-shell .business-feedback-redesign .admin-tabs {
+  margin-bottom: 18px;
+}
+
+.admin-demo-shell .business-feedback-redesign .queue-panel,
+.admin-demo-shell .business-feedback-redesign .case-inspector,
+.admin-demo-shell .people-management-panel .role-ledger,
+.admin-demo-shell .people-management-panel .audit-inspector,
+.admin-demo-shell .performance-redesign-panel > section,
+.admin-demo-shell .performance-redesign-panel > div,
+.admin-demo-shell .organization-framework-panel > section,
+.admin-demo-shell .organization-framework-panel > div {
+  background:
+    linear-gradient(135deg, rgba(var(--theme-rgb), .035), transparent 54%),
+    var(--paper) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 7px !important;
+  box-shadow: 0 8px 24px rgba(15, 36, 58, .055);
+}
+
+.admin-demo-shell .business-feedback-redesign .admin-workspace {
+  align-items: start;
+}
+
+.admin-demo-shell .business-feedback-redesign .search-field,
+.admin-demo-shell .people-management-panel .search-field {
+  min-height: 38px;
+  display: grid;
+  grid-template-columns: 18px minmax(120px, 1fr);
+  align-items: center;
+  gap: 7px;
+  padding: 0 11px;
+  color: var(--muted);
+  background: var(--canvas);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.admin-demo-shell .business-feedback-redesign .search-field input,
+.admin-demo-shell .people-management-panel .search-field input {
+  min-height: 34px;
+  padding: 0;
+  background: transparent !important;
+  border: 0 !important;
+}
+
+.admin-demo-shell .case-tr {
+  width: 100%;
+}
+
+.admin-demo-shell .case-tr.is-revoked {
+  opacity: .58;
+  filter: saturate(.72);
+}
+
+.admin-demo-shell .empty-case-row,
+.admin-demo-shell .empty-inspector {
+  min-height: 120px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.admin-demo-shell .case-action-grid {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.admin-demo-shell .admin-flow-timeline {
+  max-height: 220px;
+  overflow: auto;
+}
+
+.admin-demo-shell .people-management-panel .people-command {
+  margin-bottom: 0;
+}
+
+.admin-demo-shell .people-management-panel .people-actions {
+  align-items: center;
+}
+
+.admin-demo-shell .person-row {
+  min-height: 60px;
+}
+
+.admin-demo-shell .person-row button {
+  flex: 0 0 auto;
+}
+
+.admin-demo-shell .performance-redesign-panel .performance-command {
+  margin-bottom: 0;
+}
+
+.admin-demo-shell .performance-redesign-panel .performance-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.admin-demo-shell .performance-redesign-panel table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.admin-demo-shell .performance-redesign-panel .grid,
+.admin-demo-shell .performance-redesign-panel .rounded-2xl,
+.admin-demo-shell .performance-redesign-panel .rounded-xl {
+  border-color: var(--line) !important;
+}
+
+.admin-demo-shell .organization-framework-panel .text-white,
+.admin-demo-shell .organization-framework-panel .text-purple-50,
+.admin-demo-shell .organization-framework-panel .text-purple-100,
+.admin-demo-shell .organization-framework-panel .text-blue-100 {
+  color: var(--ink) !important;
+}
+
+.admin-demo-shell .organization-framework-panel .text-purple-200\/50,
+.admin-demo-shell .organization-framework-panel .text-purple-100\/50,
+.admin-demo-shell .organization-framework-panel .text-purple-100\/60,
+.admin-demo-shell .organization-framework-panel .text-purple-100\/70 {
+  color: var(--muted) !important;
+}
+
+.admin-demo-shell .organization-framework-panel button:not(.primary-button):not([class*="bg-purple-600"]):not([class*="bg-red-"]) {
+  color: var(--ink) !important;
+}
+
+.admin-demo-shell .organization-framework-panel [class*="bg-purple-600"],
+.admin-demo-shell .organization-framework-panel [class*="bg-red-600"],
+.admin-demo-shell .organization-framework-panel [class*="bg-blue-600"] {
+  color: #fff !important;
+}
+
+.admin-demo-shell .superadmin-view .superadmin-hero,
+.admin-demo-shell .superadmin-view .superadmin-hero * {
+  color: #fff !important;
+}
+
+.admin-demo-shell .superadmin-view .superadmin-hero .eyebrow,
+.admin-demo-shell .superadmin-view .superadmin-badge svg {
+  color: var(--theme-container) !important;
 }
 
 .admin-demo-shell .people-management-panel > .grid {

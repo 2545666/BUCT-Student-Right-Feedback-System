@@ -835,6 +835,60 @@ const AccountManagement = ({ token, user: currentUser }) => {
 
   return (
     <div className="people-management-panel space-y-6 mt-6 animate-fadeIn">
+      <section className="people-command">
+        <div>
+          <h2>人员与权限</h2>
+          <p>统一管理学生、志愿者、部门负责人/团委学生兼职团干部，以及主席团/团委学生兼职副书记的账号入口。</p>
+        </div>
+        <form onSubmit={handlePromote} className="people-actions">
+          <label className="search-field"><span>⌕</span><input type="text" value={targetStudentId} onChange={(e) => setTargetStudentId(e.target.value)} placeholder="输入学号升级为志愿者" required /></label>
+          <button type="submit" className="primary-button">确认设为志愿者</button>
+        </form>
+      </section>
+
+      <div className="people-layout">
+        <section className="role-ledger">
+          <div className="ledger-head"><h3>管理员队列</h3><span>{admins.length} 人</span></div>
+          {admins.map(admin => (
+            <div key={admin._id} className={`person-row ${admin._id === currentUser?.id ? 'is-selected' : ''}`}>
+              <span className="avatar admin-avatar">{(admin.name || '管').slice(0, 1)}</span>
+              <div><strong>{admin.name}</strong><small>{admin.studentId} · {admin.identityLabel || (admin.role === 'superadmin' ? '超级管理员' : '志愿者')}</small></div>
+              <b className={`role-pill ${admin.role === 'superadmin' ? 'super' : 'admin'}`}>{admin.role === 'superadmin' ? '超管' : '志愿者'}</b>
+              <button className="icon-button" type="button" title="查看日志" onClick={() => viewAdminLogs(admin._id, admin.name)}>志</button>
+              <button className="icon-button" type="button" title="重置密码" onClick={() => handleResetPassword(admin.studentId)}>钥</button>
+              {admin.role !== 'superadmin' && <button className="icon-button danger" type="button" title="降级为学生" onClick={() => handleDemote(admin.studentId)}>降</button>}
+            </div>
+          ))}
+          {admins.length === 0 && <div className="empty-case-row">暂无管理员账号</div>}
+        </section>
+
+        <section className="role-ledger">
+          <div className="ledger-head"><h3>学生账户</h3><span>{students.length} 人</span></div>
+          {students.map(student => (
+            <div key={student._id} className="person-row">
+              <span className="avatar student-avatar">{(student.name || '学').slice(0, 1)}</span>
+              <div><strong>{student.name}</strong><small>{student.studentId} · {student.identityLabel || '学生'}</small></div>
+              <b className="role-pill student">学生</b>
+              <button className="icon-button" type="button" title="查看反馈" onClick={() => viewStudentFeedbacks(student._id, student.name)}>查</button>
+              <button className="icon-button" type="button" title="提升为志愿者" onClick={() => handleDirectPromote(student.studentId, student.name)}>升</button>
+              <button className="icon-button danger" type="button" title="注销账户" onClick={() => handleDeleteUser(student._id)}>删</button>
+            </div>
+          ))}
+          {students.length === 0 && <div className="empty-case-row">暂无学生账号</div>}
+        </section>
+
+        <aside className="audit-inspector">
+          <div className="inspector-head"><div><span className="status processing"><i></i>操作审计</span><p>人员管理轨迹</p></div><button className="icon-button" type="button" onClick={fetchUsers}>↻</button></div>
+          <h2>{currentUser?.name || '终极管理员'} · 权限总览</h2>
+          <ol className="audit-list">
+            <li><span>账号</span><div><strong>{admins.length} 名管理账号</strong><p>包含志愿者、超级管理员与终极管理员视角可管理人员。</p></div></li>
+            <li><span>学生</span><div><strong>{students.length} 名学生账号</strong><p>可查看学生反馈、重置密码、升级为志愿者或注销账户。</p></div></li>
+            <li><span>归档</span><div><strong>组织届次归档联动</strong><p>角色最终以团委学生会架构里的身份分配与届次归档为准。</p></div></li>
+          </ol>
+        </aside>
+      </div>
+
+      <div className="legacy-account-management" hidden>
       <div className="p-6 bg-white/5 border border-purple-500/30 rounded-2xl relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-blue-500" />
         <h3 className="text-lg font-bold text-white mb-4">赋予管理员权限</h3>
@@ -916,6 +970,7 @@ const AccountManagement = ({ token, user: currentUser }) => {
             </table>
           </div>
         </div>
+      </div>
       </div>
 
       {detailsModal.isOpen && (
@@ -1000,6 +1055,166 @@ const AccountManagement = ({ token, user: currentUser }) => {
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+const BusinessFeedbackWorkspace = ({
+  feedbacks,
+  selectedFeedback,
+  setSelectedFeedback,
+  responseText,
+  setResponseText,
+  setSelectedReplyFiles,
+  updateStatus,
+  handleRecallMsg,
+  user,
+  loading,
+  searchQuery,
+  setSearchQuery,
+  filters,
+  setFilters
+}) => {
+  const activeFeedback = selectedFeedback || feedbacks.find(item => !item.isRevoked) || feedbacks[0] || null;
+  const counts = {
+    total: feedbacks.length,
+    pending: feedbacks.filter(item => item.status === 'pending').length,
+    processing: feedbacks.filter(item => item.status === 'processing').length,
+    high: feedbacks.filter(item => item.priority === 'high' || item.priority === 'urgent').length
+  };
+
+  const selectStatus = (status) => setFilters({ ...filters, status });
+
+  return (
+    <div className="business-feedback-redesign">
+      <div className="admin-tabs" aria-label="管理端功能切换">
+        <button className="is-active" type="button">▦ 业务反馈处理</button>
+        <button type="button" onClick={() => setFilters({ status: '', category: '', priority: '' })}>清空筛选</button>
+      </div>
+
+      <div className="admin-workspace">
+        <section className="queue-panel">
+          <div className="queue-toolbar">
+            <div>
+              <h2>待办队列</h2>
+              <span>共 {counts.total} 条事项 · 按状态与优先级实时筛选</span>
+            </div>
+            <label className="search-field">
+              <span>⌕</span>
+              <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="搜索学生、标题或编号" />
+            </label>
+            <button className="icon-button" type="button" onClick={() => setFilters({ status: '', category: '', priority: '' })}>↺</button>
+          </div>
+
+          <div className="queue-tabs">
+            <button className={!filters.status && !filters.priority ? 'is-active' : ''} type="button" onClick={() => setFilters({ ...filters, status: '', priority: '' })}>全部 <span>{counts.total}</span></button>
+            <button className={filters.status === 'pending' ? 'is-active' : ''} type="button" onClick={() => selectStatus('pending')}>待受理 <span>{counts.pending}</span></button>
+            <button className={filters.status === 'processing' ? 'is-active' : ''} type="button" onClick={() => selectStatus('processing')}>处理中 <span>{counts.processing}</span></button>
+            <button className={filters.priority === 'high' ? 'is-active' : ''} type="button" onClick={() => setFilters({ ...filters, priority: 'high' })}>高优先级 <span>{counts.high}</span></button>
+          </div>
+
+          <div className="case-table" role="table">
+            <div className="case-tr table-head" role="row"><span>事项</span><span>提交人</span><span>状态</span><span>优先级</span><span>更新时间</span></div>
+            {loading ? (
+              <div className="empty-case-row">加载中...</div>
+            ) : feedbacks.length === 0 ? (
+              <div className="empty-case-row">暂无反馈事项</div>
+            ) : feedbacks.map(feedback => {
+              const cat = categories[feedback.category] || { label: feedback.category, icon: '📋' };
+              const status = statusConfig[feedback.status] || statusConfig.pending;
+              const priority = priorityConfig[feedback.priority] || priorityConfig.normal;
+              const selected = activeFeedback?._id === feedback._id;
+              const priorityClass = feedback.priority === 'high' || feedback.priority === 'urgent' ? 'high' : 'normal';
+              return (
+                <button
+                  key={feedback._id}
+                  className={`case-tr ${selected ? 'is-selected' : ''} ${feedback.isRevoked ? 'is-revoked' : ''}`}
+                  type="button"
+                  onClick={() => setSelectedFeedback(feedback)}
+                >
+                  <span>
+                    <i className={`priority-mark ${priorityClass}`}></i>
+                    <strong>{feedback.title}</strong>
+                    <small>#{feedback._id?.slice(-6)?.toUpperCase()} · {cat.label}</small>
+                  </span>
+                  <span><strong>{feedback.isAnonymous ? '匿名学生' : (feedback.user?.name || '学生')}</strong><small>{feedback.isAnonymous ? '身份受保护' : (feedback.user?.studentId || '校内账号')}</small></span>
+                  <span><b className={`status ${status.color === 'yellow' ? 'pending' : feedback.status}`}><i></i>{feedback.isRevoked ? '已撤回' : status.label}</b></span>
+                  <span><b className={`priority ${priorityClass}`}>{priority.label}</b></span>
+                  <span><strong>{new Date(feedback.updatedAt || feedback.createdAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</strong><small>{new Date(feedback.createdAt).toLocaleDateString('zh-CN')}</small></span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <aside className="case-inspector">
+          {activeFeedback ? (
+            <>
+              {(() => {
+                const cat = categories[activeFeedback.category] || { label: activeFeedback.category, icon: '📋' };
+                const status = statusConfig[activeFeedback.status] || statusConfig.pending;
+                const priority = priorityConfig[activeFeedback.priority] || priorityConfig.normal;
+                const isRevoked = activeFeedback.isRevoked;
+                return (
+                  <>
+                    <div className="inspector-head">
+                      <div><span className={`status ${status.color === 'yellow' ? 'pending' : activeFeedback.status}`}><i></i>{isRevoked ? '学生已撤回' : status.label}</span><p>#{activeFeedback._id?.slice(-6)?.toUpperCase()}</p></div>
+                      <button className="icon-button" type="button" onClick={() => setSelectedFeedback(null)}>×</button>
+                    </div>
+                    <h2>{activeFeedback.title}</h2>
+                    <div className="case-tags"><span>{cat.label}</span>{activeFeedback.subCategory && <span>{activeFeedback.subCategory}</span>}<span className={activeFeedback.priority === 'high' || activeFeedback.priority === 'urgent' ? 'high' : ''}>{priority.label}优先级</span></div>
+                    <p className="case-body">{activeFeedback.content}</p>
+                    <AttachmentViewer attachments={activeFeedback.attachments} />
+                    <dl className="case-meta">
+                      <div><dt>提交时间</dt><dd>{new Date(activeFeedback.createdAt).toLocaleString('zh-CN')}</dd></div>
+                      <div><dt>提交人</dt><dd>{activeFeedback.isAnonymous ? '匿名学生' : (activeFeedback.user?.name || '学生')}</dd></div>
+                      <div><dt>当前状态</dt><dd>{isRevoked ? '已撤回' : status.label}</dd></div>
+                    </dl>
+
+                    {activeFeedback.responses?.length > 0 && (
+                      <ol className="dialog-timeline admin-flow-timeline">
+                        {activeFeedback.responses.map((resp, i) => {
+                          const isAdmin = resp.senderType !== 'student';
+                          const canRecall = !resp.isRecalled && isAdmin && (resp.adminId === user?.id || user?.role === 'superadmin');
+                          return (
+                            <li key={resp._id || i} className={resp.isRecalled ? '' : 'current'}>
+                              <span></span>
+                              <div>
+                                <strong>{resp.senderType === 'student' ? (resp.senderName || '学生留言') : (resp.adminName || resp.senderName || '系统管理员')}</strong>
+                                <small>{new Date(resp.createdAt).toLocaleString('zh-CN')}</small>
+                                <p>{resp.isRecalled && user?.role !== 'superadmin' ? '此消息已撤回' : (resp.content || '状态更新')}</p>
+                                {canRecall && <button className="text-button danger-text" type="button" onClick={() => handleRecallMsg(activeFeedback._id, resp._id)}>撤回</button>}
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ol>
+                    )}
+
+                    <div className="reply-box">
+                      <label>回复学生</label>
+                      <textarea value={responseText} onChange={e => setResponseText(e.target.value)} placeholder="输入处理进展或需要学生补充的信息…" />
+                      <div>
+                        <input type="file" multiple onChange={e => setSelectedReplyFiles(Array.from(e.target.files))} />
+                        <button className="send-button" type="button" disabled={isRevoked} onClick={() => updateStatus(activeFeedback._id, activeFeedback.status)}>发送回复</button>
+                      </div>
+                    </div>
+                    {!isRevoked && (
+                      <div className="case-action-grid">
+                        {activeFeedback.status !== 'processing' && <button className="send-button" type="button" onClick={() => updateStatus(activeFeedback._id, 'processing')}>开始处理</button>}
+                        {activeFeedback.status !== 'resolved' && <button className="resolve-button" type="button" onClick={() => updateStatus(activeFeedback._id, 'resolved')}>标记为已解决</button>}
+                        {activeFeedback.status !== 'rejected' && <button className="outline-button danger-text" type="button" onClick={() => updateStatus(activeFeedback._id, 'rejected')}>拒绝</button>}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </>
+          ) : (
+            <div className="empty-inspector">请选择左侧事项查看详情</div>
+          )}
+        </aside>
+      </div>
     </div>
   );
 };
@@ -1690,7 +1905,19 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
         {showOrganizationFramework && showUltimatePortal ? (
           <OrganizationFrameworkPanel token={token} />
         ) : showPerformanceManagement ? (
-          <div className="animate-fadeIn space-y-4 md:space-y-6">
+          <div className={`performance-redesign-panel ${user?.role === 'superadmin' ? 'super-performance-redesign' : 'self-performance-redesign'} animate-fadeIn space-y-4 md:space-y-6`}>
+            <section className="performance-command">
+              <div>
+                <h2>{user?.role === 'superadmin' ? '部门绩效管理' : '我的绩效档案'}</h2>
+                <p>{user?.role === 'superadmin' ? '学期管理、成员名单、批量赋分、绩效流水撤回与期末动态加权统一在这里完成。' : '仅查看本人当前学期的积分、维度分布和绩效流水。'}</p>
+              </div>
+              {user?.role === 'superadmin' && (
+                <div className="performance-actions">
+                  <button className="outline-button" type="button" onClick={openRosterModal}>管理本学期成员</button>
+                  <button className="primary-button" type="button" onClick={() => setShowWeightCalc(true)}>期末动态加权结算</button>
+                </div>
+              )}
+            </section>
             <PerformanceRulesAccordion />
             
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between bg-white/80 dark:bg-slate-900/80 p-4 rounded-2xl border border-slate-200 dark:border-white/10 mb-4 md:mb-6 shadow-lg gap-4 transition-colors">
@@ -2000,6 +2227,23 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
            <AccountManagement token={token} user={user} />
         ) : (
           <>
+            <BusinessFeedbackWorkspace
+              feedbacks={feedbacks}
+              selectedFeedback={selectedFeedback}
+              setSelectedFeedback={setSelectedFeedback}
+              responseText={responseText}
+              setResponseText={setResponseText}
+              setSelectedReplyFiles={setSelectedReplyFiles}
+              updateStatus={updateStatus}
+              handleRecallMsg={handleRecallMsg}
+              user={user}
+              loading={loading}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              filters={filters}
+              setFilters={setFilters}
+            />
+            <div className="legacy-feedback-content" hidden>
             {/* 统计模块 */}
             {stats && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -2246,6 +2490,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
                   );
                 })
               )}
+            </div>
             </div>
           </>
         )}
