@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,700;8..60,800;8..60,900&family=Noto+Serif+SC:wght@700;900&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -16,7 +16,8 @@ html {
 }
 
 body {
-  font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Source Serif 4", "Noto Serif SC", "Iowan Old Style", "Georgia", "Songti SC", "STSong", "SimSun", serif;
+  font-weight: 700;
   @apply bg-[#f3e8ff] text-slate-800 dark:bg-[#0f0a1a] dark:text-[#ffffff] transition-colors duration-300;
   min-height: 100vh;
   overflow-x: hidden;

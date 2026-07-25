@@ -223,7 +223,6 @@ const ThemePanel = ({ theme }) => (
 
 const LoginPage = ({ onLogin, onRegister, theme }) => {
   const [isLogin, setIsLogin] = useState(true);
-  const [loginRole, setLoginRole] = useState('student');
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({ studentId: '', password: '', confirmPassword: '', name: '', email: '', phone: '' });
   const [error, setError] = useState('');
@@ -275,24 +274,20 @@ const LoginPage = ({ onLogin, onRegister, theme }) => {
         </div>
         <form className="login-form" onSubmit={submit}>
           <div className="login-heading">
-            <span className="login-index">01 / ACCESS</span>
-            <h2>{isLogin ? '欢迎回来' : '创建学生账号'}</h2>
-            <p>{isLogin ? '登录 SIEVOX，继续查看你的反馈进展。' : '首次使用请完成校内身份信息登记。'}</p>
+            <span className="login-index">01 / UNIFIED ACCESS</span>
+            <h2>{isLogin ? '统一身份登录' : '创建学生账号'}</h2>
+            <p>{isLogin ? '输入账号与密码，系统会自动识别你的身份并进入对应工作台。' : '首次使用请完成校内身份信息登记。'}</p>
           </div>
-          <div className="login-role-switch" aria-label="登录身份">
-            {[
-              ['student', GraduationCap, '学生登录'],
-              ['admin', ShieldCheck, '管理登录'],
-              ['superadmin', ShieldCheck, '超级管理员']
-            ].map(([key, Icon, label]) => (
-              <button key={key} className={loginRole === key ? 'is-active' : ''} type="button" onClick={() => setLoginRole(key)}>
-                <Icon />{label}
-              </button>
-            ))}
+          <div className="unified-login-card" aria-label="统一登录说明">
+            <ShieldCheck />
+            <div>
+              <strong>统一入口 · 自动分流</strong>
+              <span>学生、志愿者、部门负责人、主席团成员与终极管理员均从此处登录。</span>
+            </div>
           </div>
           {error && <div className="form-message">{error}</div>}
           <label className="login-field">
-            <span>{loginRole === 'student' ? '学号' : '账号'}</span>
+            <span>学号 / 账号</span>
             <div><IdCard /><input name="studentId" value={form.studentId} onChange={e => setForm({ ...form, studentId: e.target.value })} placeholder="请输入学号" autoComplete="username" required /></div>
           </label>
           {!isLogin && (
