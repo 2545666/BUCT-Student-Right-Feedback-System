@@ -316,7 +316,7 @@ const LoginPage = ({ onLogin, onRegister, theme }) => {
   );
 };
 
-const RoleTag = ({ user }) => <b className="role-pill admin">{user?.identityLabel || (user?.role === 'student' ? '学生' : '管理员')}</b>;
+const RoleTag = ({ user }) => <b className="role-pill admin">{user?.isUltimateAdmin ? '终极管理员' : (user?.identityLabel || (user?.role === 'student' ? '学生' : '管理员'))}</b>;
 
 const Sidebar = ({ user, activePage, setActivePage, openCompose, onLogout, openSettings }) => (
   <aside className="sidebar" aria-label="主导航">
@@ -349,7 +349,10 @@ const Topbar = ({ pageTitle, theme, openPreview, notifications, openSettings, us
           <button className={portalView === 'superadmin' ? 'is-active' : ''} type="button" onClick={() => onPortalChange?.('superadmin')}>超级管理员</button>
         </div>
       )}
-      <RoleTag user={user} />
+      <div className="topbar-user-chip" aria-label="当前登录身份">
+        <span>{user?.name}</span>
+        <RoleTag user={user} />
+      </div>
       <ThemeModeButtons theme={theme} compact />
       <button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)}><Palette /></button>
       {user?.isUltimateAdmin && <button className="outline-button" type="button" onClick={openPreview}><Smartphone />手机端预览</button>}

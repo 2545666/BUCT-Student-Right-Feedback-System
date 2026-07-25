@@ -29,7 +29,7 @@ const priorityConfig = {
 };
 
 const RoleTag = ({ user }) => {
-  const label = user?.identityLabel || (user?.role === 'superadmin' ? '超级管理员' : user?.role === 'admin' ? '志愿者' : '学生');
+  const label = user?.isUltimateAdmin ? '终极管理员' : (user?.identityLabel || (user?.role === 'superadmin' ? '超级管理员' : user?.role === 'admin' ? '志愿者' : '学生'));
   return (
     <span className="inline-flex items-center px-2 py-0.5 rounded-full border border-purple-400/40 bg-purple-500/15 text-[10px] md:text-xs text-purple-100 whitespace-nowrap">
       {label}
@@ -1712,7 +1712,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
 
         <div className="sidebar-user">
           <span className="avatar">{(user?.name || '管').slice(0, 1)}</span>
-          <div><strong>{user?.name}</strong><span>{user?.studentId}</span></div>
+          <div><strong>{user?.name}</strong><span>{user?.studentId}</span><RoleTag user={user} /></div>
           <button className="icon-button on-dark" type="button" onClick={() => {
             setProfileData({
               name: user?.name || '',
@@ -1742,6 +1742,10 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
               <button className={activePortal === 'superadmin' ? 'is-active' : ''} type="button" onClick={() => onPortalChange?.('superadmin')}>超级管理员</button>
             </div>
           )}
+          <div className="topbar-user-chip" aria-label="当前登录身份">
+            <span>{user?.name}</span>
+            <RoleTag user={user} />
+          </div>
           <AdminThemeModeButtons themeTools={themeTools} />
           <button className="icon-button theme-trigger" type="button" onClick={() => themeTools?.setOpen?.(true)} aria-label="外观设置">🎨</button>
           {isUltimateAdmin && <button className="outline-button" type="button">▯ 手机端预览</button>}

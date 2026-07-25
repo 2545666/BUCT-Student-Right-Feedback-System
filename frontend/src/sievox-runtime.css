@@ -973,6 +973,48 @@ html[data-theme="dark"] .admin-demo-shell .organization-framework-panel .org-lea
   justify-content: flex-end;
 }
 
+.topbar-user-chip {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: min(260px, 100%);
+  padding: 4px 8px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.topbar-user-chip > span:first-child {
+  min-width: 0;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.topbar-user-chip .role-pill,
+.topbar-user-chip .inline-flex {
+  flex: 0 0 auto;
+}
+
+.admin-demo-shell .sidebar-user .inline-flex {
+  align-self: flex-start;
+  width: max-content;
+  max-width: 100%;
+  margin-top: 5px;
+  white-space: nowrap;
+}
+
+html[data-theme="dark"] .topbar-user-chip {
+  color: #fff !important;
+  background: color-mix(in srgb, rgb(var(--theme-rgb)) 20%, #0b1018) !important;
+  border-color: var(--line) !important;
+}
+
 .admin-demo-shell .people-layout {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(280px, .9fr) !important;
 }
