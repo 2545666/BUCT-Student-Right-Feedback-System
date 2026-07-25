@@ -4,6 +4,7 @@ import App from './App.jsx'
 import './index.css'
 import '../../ui-demo/styles.css'
 import './sievox-runtime.css'
+import './siehub.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

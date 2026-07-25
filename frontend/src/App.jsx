@@ -1,16 +1,17 @@
-import AdminDashboard from './AdminDashboard';
+import AdminDashboard, { OrganizationFrameworkPanel } from './AdminDashboard';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft, ArrowRight, ArrowUpRight, Bell, BookOpen, Check, ChevronRight,
   GraduationCap, House, IdCard, ImagePlus, KeyRound, LayoutDashboard, LockKeyhole,
   LogOut, MessageCircleMore, MessagesSquare, Palette, Paperclip, Plus, Send,
   Settings, ShieldCheck, Smartphone, Sparkles, SquarePen, Utensils, UserRound,
-  X, BedDouble, Eye, EyeOff, Moon, Sun, Info, Route, Clock3, PhoneCall
+  X, BedDouble, Eye, EyeOff, Moon, Sun, Info, Route, Clock3, PhoneCall,
+  Building2, ChevronLeft, ExternalLink, Flag, HeartHandshake, Megaphone,
+  Network, Paintbrush, Radio, Scale, Trophy, UsersRound, Wrench
 } from 'lucide-react';
 import sieLogo from './assets/LOGO_1.png';
 import collegeLogo from './assets/SIE_LOGO.svg';
-
-const API_BASE = import.meta.env.DEV ? `${window.location.protocol}//${window.location.hostname}:3101/api` : '/api';
+import { API_BASE } from './api';
 
 export const CATEGORIES_CONFIG = {
   academic: {
@@ -78,6 +79,13 @@ const THEME_COLORS = [
 ];
 
 const cls = (...items) => items.filter(Boolean).join(' ');
+const AUTH_TOKEN_KEY = 'siehub_auth_token_v2';
+const LEGACY_AUTH_TOKEN_KEY = 'token';
+
+const readStoredToken = () => {
+  localStorage.removeItem(LEGACY_AUTH_TOKEN_KEY);
+  return sessionStorage.getItem(AUTH_TOKEN_KEY) || localStorage.getItem(AUTH_TOKEN_KEY);
+};
 
 const getCategory = (value) => CATEGORIES_CONFIG[value] || CATEGORIES_CONFIG.comprehensive;
 const formatDate = (value) => value ? new Date(value).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '刚刚';
@@ -102,10 +110,12 @@ export const AttachmentViewer = ({ attachments }) => {
 
 const useAuth = () => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [token, setToken] = useState(readStoredToken);
 
   const logout = useCallback(() => {
-    localStorage.removeItem('token');
+    sessionStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem(LEGACY_AUTH_TOKEN_KEY);
     setToken(null);
     setUser(null);
   }, []);
@@ -124,7 +134,7 @@ const useAuth = () => {
 
   useEffect(() => { refreshUser(); }, [refreshUser]);
 
-  const login = async (studentId, password) => {
+  const login = async (studentId, password, remember = false) => {
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -132,7 +142,14 @@ const useAuth = () => {
     });
     const data = await res.json();
     if (data.success) {
-      localStorage.setItem('token', data.token);
+      localStorage.removeItem(LEGACY_AUTH_TOKEN_KEY);
+      if (remember) {
+        localStorage.setItem(AUTH_TOKEN_KEY, data.token);
+        sessionStorage.removeItem(AUTH_TOKEN_KEY);
+      } else {
+        sessionStorage.setItem(AUTH_TOKEN_KEY, data.token);
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+      }
       setToken(data.token);
       setUser(data.user);
     }
@@ -224,9 +241,13 @@ const ThemePanel = ({ theme }) => (
 const LoginPage = ({ onLogin, onRegister, theme }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [remember, setRemember] = useState(false);
   const [form, setForm] = useState({ studentId: '', password: '', confirmPassword: '', name: '', email: '', phone: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const loginModules = SIEHUB_MODULES.filter(module => module.organization !== 'hub');
+  const youthLeagueCount = loginModules.filter(module => module.organization === 'youth_league').length;
+  const studentUnionCount = loginModules.filter(module => module.organization === 'student_union').length;
 
   const submit = async (event) => {
     event.preventDefault();
@@ -234,7 +255,7 @@ const LoginPage = ({ onLogin, onRegister, theme }) => {
     if (!isLogin && form.password !== form.confirmPassword) return setError('两次输入的密码不一致');
     setLoading(true);
     try {
-      const data = isLogin ? await onLogin(form.studentId, form.password) : await onRegister(form);
+      const data = isLogin ? await onLogin(form.studentId, form.password, remember) : await onRegister(form);
       if (!data.success) setError(data.message || (isLogin ? '登录失败' : '注册失败'));
       else if (!isLogin) {
         setIsLogin(true);
@@ -242,48 +263,73 @@ const LoginPage = ({ onLogin, onRegister, theme }) => {
         alert('注册成功，请登录');
       }
     } catch {
-      setError('网络错误，请重试');
+      setError('无法连接 SIEHUB 后端，请确认本地服务已启动。');
     }
     setLoading(false);
   };
 
   return (
-    <section className="login-view" aria-label="SIEVOX 登录">
-      <div className="login-art" aria-hidden="true">
+    <section className="login-view siehub-login-view" aria-label="SIEHUB 统一登录">
+      <div className="login-art siehub-login-art" aria-hidden="true">
         <div className="login-art-header">
-          <div className="institution-mark"><img src={sieLogo} alt="" /><div><strong>SIEVOX</strong><span>STUDENT RIGHTS & INTERESTS</span></div></div>
-          <span className="edition-mark">SIE · 2026</span>
+          <div className="institution-mark siehub-institution-mark">
+            <span className="siehub-login-logo"><Radio /></span>
+            <div><strong>SIEHUB</strong><span>SIE LIFE PLATFORM</span></div>
+          </div>
+          <span className="edition-mark">LT1 · PLATFORM UPGRADE</span>
         </div>
-        <div className="art-orbit orbit-one"></div>
-        <div className="art-orbit orbit-two"></div>
-        <div className="art-seal"><MessageCircleMore /><span>倾听</span></div>
-        <div className="art-cross cross-one"></div>
-        <div className="art-cross cross-two"></div>
+        <div className="siehub-login-blueprint">
+          <div className="blueprint-axis"></div>
+          <div className="blueprint-axis vertical"></div>
+          {loginModules.map((module, index) => {
+            const Icon = module.icon;
+            return (
+              <span
+                key={module.key}
+                className={cls('hub-node', module.key === 'student_rights' && 'is-live')}
+                style={{ '--node-index': `${index}`, '--node-col': `${index % 3}`, '--node-row': `${Math.floor(index / 3)}` }}
+              >
+                <Icon />
+                <b>{module.product || module.title}</b>
+              </span>
+            );
+          })}
+        </div>
+        <div className="art-seal siehub-access-seal"><Network /><span>HUB</span></div>
         <div className="login-art-copy">
-          <p className="art-kicker">BE HEARD · BE SEEN</p>
-          <h1>每一种声音，<br />都值得被认真回应。</h1>
-          <div className="art-caption"><span>01</span><p>连接学生与学院，让问题有回应、处理有进度、权益有保障。</p></div>
+          <p className="art-kicker">ONE ID · ALL STUDENT WORK</p>
+          <h1>一处登录，抵达所有学生工作模块。</h1>
+          <div className="art-caption"><span>01</span><p>SIEHUB 作为一级生活平台，统一承载团委、学生会各部门子平台；SIEVOX 继续作为学生权益部成熟模块运行。</p></div>
         </div>
-        <div className="login-art-footer"><span>北京化工大学</span><span>国际教育学院</span><b></b><span>BUCT</span></div>
+        <div className="login-art-footer"><span>团委 {youthLeagueCount} 个模块</span><span>学生会 {studentUnionCount} 个模块</span><b></b><span>SIEVOX 已接入</span></div>
       </div>
 
-      <div className="login-panel">
+      <div className="login-panel siehub-login-panel">
         <div className="login-panel-top">
-          <div className="college-signature"><span className="signature-rule"></span><div><strong>北京化工大学</strong><span>国际教育学院</span></div></div>
+          <div className="college-signature siehub-college-signature">
+            <img src={collegeLogo} alt="" />
+            <span className="signature-rule"></span>
+            <div><strong>北京化工大学</strong><span>国际教育学院</span></div>
+          </div>
           <button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)}><Palette /></button>
         </div>
         <form className="login-form" onSubmit={submit}>
           <div className="login-heading">
-            <span className="login-index">01 / UNIFIED ACCESS</span>
-            <h2>{isLogin ? '统一身份登录' : '创建学生账号'}</h2>
-            <p>{isLogin ? '输入账号与密码，系统会自动识别你的身份并进入对应工作台。' : '首次使用请完成校内身份信息登记。'}</p>
+            <span className="login-index">01 / SIEHUB ACCESS</span>
+            <h2>{isLogin ? '进入 SIEHUB' : '申请学生账号'}</h2>
+            <p>{isLogin ? '输入账号与密码，系统会自动识别身份，进入对应的部门平台或 SIEVOX。' : '首次使用请完成校内身份信息登记，账号创建后从 SIEHUB 统一登录。'}</p>
           </div>
-          <div className="unified-login-card" aria-label="统一登录说明">
+          <div className="unified-login-card siehub-routing-card" aria-label="SIEHUB 统一登录说明">
             <ShieldCheck />
             <div>
-              <strong>统一入口 · 自动分流</strong>
-              <span>学生、志愿者、部门负责人、主席团成员与终极管理员均从此处登录。</span>
+              <strong>统一认证 · 自动分流</strong>
+              <span>学生、志愿者、部门负责人/团委学生兼职团干部、主席团成员/团委学生兼职副书记与终极管理员均从此处登录。</span>
             </div>
+          </div>
+          <div className="siehub-login-routes" aria-label="登录后分流范围">
+            <span><GraduationCap />学生端</span>
+            <span><UsersRound />部门平台</span>
+            <span><Scale />SIEVOX</span>
           </div>
           {error && <div className="form-message">{error}</div>}
           <label className="login-field">
@@ -302,14 +348,14 @@ const LoginPage = ({ onLogin, onRegister, theme }) => {
           </label>
           {!isLogin && <label className="login-field"><span>确认密码</span><div><KeyRound /><input type="password" value={form.confirmPassword} onChange={e => setForm({ ...form, confirmPassword: e.target.value })} placeholder="请再次输入密码" required /></div></label>}
           <div className="login-options">
-            <label><input type="checkbox" defaultChecked /><i></i><span>保持登录</span></label>
+            <label><input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} /><i></i><span>保持登录</span></label>
             <button type="button" onClick={() => alert('请企业微信联系【赵启涵】重置密码\n学号：2024090107\n默认密码：123456')}>忘记密码？</button>
           </div>
-          <button className="login-submit" type="submit" disabled={loading}><span>{loading ? '正在验证身份…' : (isLogin ? '进入权益反馈系统' : '创建学生账号')}</span><ArrowUpRight /></button>
-          <div className="login-register"><span>{isLogin ? '首次使用 SIEVOX？' : '已有账号？'}</span><button type="button" onClick={() => setIsLogin(v => !v)}>{isLogin ? '创建学生账号' : '返回登录'}</button></div>
+          <button className="login-submit" type="submit" disabled={loading}><span>{loading ? '正在验证身份…' : (isLogin ? '进入 SIEHUB' : '创建 SIEHUB 学生账号')}</span><ArrowUpRight /></button>
+          <div className="login-register"><span>{isLogin ? '首次使用 SIEHUB？' : '已有账号？'}</span><button type="button" onClick={() => setIsLogin(v => !v)}>{isLogin ? '创建学生账号' : '返回登录'}</button></div>
         </form>
-        <div className="login-help"><ShieldCheck /><p><strong>统一身份安全认证</strong><span>个人信息仅用于校内身份核验与反馈进度通知。</span></p></div>
-        <footer className="login-legal"><span>© 2026 BUCT SIE</span><span>隐私保护</span><span>使用帮助</span></footer>
+        <div className="login-help"><ShieldCheck /><p><strong>SIEHUB 统一身份安全认证</strong><span>个人信息仅用于校内身份核验、部门工作协同与服务进度通知。</span></p></div>
+        <footer className="login-legal"><span>© 2026 BUCT SIE · SIEHUB</span><span>隐私保护</span><span>使用帮助</span></footer>
       </div>
       <ThemePanel theme={theme} />
     </section>
@@ -317,6 +363,703 @@ const LoginPage = ({ onLogin, onRegister, theme }) => {
 };
 
 const RoleTag = ({ user }) => <b className="role-pill admin">{user?.isUltimateAdmin ? '终极管理员' : (user?.identityLabel || (user?.role === 'student' ? '学生' : '管理员'))}</b>;
+
+const SIEHUB_MODULES = [
+  { key: 'hub_governance', organization: 'hub', title: '组织治理中枢', summary: '团委学生会架构、成员身份、分管部门与届次归档', icon: ShieldCheck, tone: 'gold', product: 'SIEHUB', ultimateOnly: true },
+  { key: 'organization', organization: 'youth_league', title: '组织部', summary: '组织建设、团务活动与成员发展', icon: Network, tone: 'indigo' },
+  { key: 'publicity', organization: 'youth_league', title: '宣传部', summary: '品牌传播、视觉内容与新闻采编', icon: Megaphone, tone: 'orange' },
+  { key: 'practice', organization: 'youth_league', title: '实践部', summary: '社会实践、项目协作与成长记录', icon: Flag, tone: 'green' },
+  { key: 'volunteer_service', organization: 'youth_league', title: '志愿者工作部', summary: '志愿服务、时长管理与项目调度', icon: HeartHandshake, tone: 'red' },
+  { key: 'general_office', organization: 'student_union', title: '综合办公室', summary: '组织运转、会议事项与综合协调', icon: Building2, tone: 'slate' },
+  { key: 'student_rights', organization: 'student_union', title: '学生权益部', summary: 'SIEVOX 学生权益反馈系统', icon: Scale, tone: 'blue', product: 'SIEVOX' },
+  { key: 'culture_sports_arts', organization: 'student_union', title: '文体艺术部', summary: '文体活动、艺术项目与赛事组织', icon: Trophy, tone: 'purple' },
+  { key: 'academic_technology', organization: 'student_union', title: '学术科技部', summary: '学术活动、科技竞赛与创新服务', icon: Wrench, tone: 'teal' },
+  { key: 'new_media', organization: 'student_union', title: '新媒体工作部', summary: '内容矩阵、平台运营与视觉创作', icon: Paintbrush, tone: 'pink' }
+];
+
+const DEFAULT_VOLUNTEER_PERFORMANCE_POLICY = {
+  sourceProduct: 'SIEVOX',
+  title: 'SIEVOX 志愿者绩效考核制度',
+  description: '所有部门初始统一复刻学生权益部 SIEVOX 的六维志愿者绩效考核制度。',
+  totalBaseScore: 100,
+  bonusMode: 'extra',
+  dimensions: [
+    { key: 'attendance', label: '考勤积分', capLabel: '20分', maxScore: 20, rule: '准时出勤/合规请假 +2 分；迟到早退 +1 分；无故缺席 0 分。', color: 'purple' },
+    { key: 'activity', label: '活动贡献', capLabel: '35分', maxScore: 35, rule: '核心统筹策划 +4~5 分；主要骨干 +2~3 分；普通参与 +1 分。', color: 'blue' },
+    { key: 'feedback', label: '权益跟进', capLabel: '25分', maxScore: 25, rule: '按时巡检系统与规范回复留言 +2 分/周；全月账号无违规 +1.25 分/月。', color: 'green' },
+    { key: 'copywriting', label: '文案与策划', capLabel: '15分', maxScore: 15, rule: '主笔大型活动策划案 +4~5 分；主笔推送文案 +2~3 分；参与辅助 +1 分。', color: 'yellow' },
+    { key: 'others', label: '其他常规', capLabel: '5分', maxScore: 5, rule: '完成物资管理、资料整理或跨部门对接 +1 分/次。', color: 'slate' },
+    { key: 'bonus', label: '特别加分', capLabel: '附加', maxScore: null, rule: '获校级表彰、突出建设性贡献直接 +2~5 分，计入总分。', color: 'red' }
+  ],
+  notes: ['全员初始为 0 分', '五项常规维度封顶后计入总分，特别加分为附加项']
+};
+
+const canManageVolunteerPolicy = (user, module) => {
+  if (user?.isUltimateAdmin) return true;
+  const matchedAccess = getModuleAccess(user, module);
+  if (matchedAccess) return matchedAccess.capabilities?.includes('manage_volunteer_performance_policy');
+  return user?.role === 'superadmin' && ['department_head', 'youth_league_cadre', 'presidium_member', 'youth_league_deputy_secretary'].includes(user?.positionTitle);
+};
+
+const getModuleAccess = (user, module) => {
+  const accessItems = Array.isArray(user?.moduleCapabilities) ? user.moduleCapabilities : [];
+  return accessItems.find(item =>
+    item.department === module?.key ||
+    item.key === module?.key ||
+    item.moduleId === module?.id ||
+    (module?.key === 'student_rights' && item.moduleId === 'sievox')
+  );
+};
+
+const canSwitchDepartmentPortal = (user, module) => {
+  if (user?.isUltimateAdmin) return true;
+  const access = getModuleAccess(user, module);
+  return access?.accessLevel === 'manage' && access.capabilities?.includes('switch_portal');
+};
+
+const createPolicyDraft = (policy = DEFAULT_VOLUNTEER_PERFORMANCE_POLICY) => ({
+  title: policy.title || DEFAULT_VOLUNTEER_PERFORMANCE_POLICY.title,
+  description: policy.description || DEFAULT_VOLUNTEER_PERFORMANCE_POLICY.description,
+  dimensions: (policy.dimensions?.length ? policy.dimensions : DEFAULT_VOLUNTEER_PERFORMANCE_POLICY.dimensions).map(item => ({
+    key: item.key,
+    label: item.label,
+    maxScore: item.maxScore,
+    capLabel: item.capLabel || (item.maxScore ? `${item.maxScore}分` : '附加'),
+    color: item.color || item.tone || 'slate',
+    rule: item.rule
+  })),
+  notes: policy.notes?.length ? [...policy.notes] : [...DEFAULT_VOLUNTEER_PERFORMANCE_POLICY.notes]
+});
+
+const DepartmentPerformancePolicyCard = ({ module, policy, canEdit, loading, saving, message, onSave, onReset }) => {
+  const activePolicy = policy || DEFAULT_VOLUNTEER_PERFORMANCE_POLICY;
+  const dimensions = activePolicy.dimensions?.length ? activePolicy.dimensions : DEFAULT_VOLUNTEER_PERFORMANCE_POLICY.dimensions;
+  const notes = activePolicy.notes?.length ? activePolicy.notes : DEFAULT_VOLUNTEER_PERFORMANCE_POLICY.notes;
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(() => createPolicyDraft(activePolicy));
+
+  useEffect(() => {
+    if (!editing) setDraft(createPolicyDraft(activePolicy));
+  }, [activePolicy.id, activePolicy.version, activePolicy.updatedAt, editing]);
+
+  const updateDraftDimension = (key, field, value) => {
+    setDraft(current => ({
+      ...current,
+      dimensions: current.dimensions.map(item => {
+        if (item.key !== key) return item;
+        if (field === 'maxScore') {
+          const score = value === '' ? '' : Math.max(0, Math.min(100, Number(value)));
+          return { ...item, maxScore: score, capLabel: item.key === 'bonus' ? '附加' : `${score || 0}分` };
+        }
+        return { ...item, [field]: value };
+      })
+    }));
+  };
+
+  const submitDraft = async () => {
+    if (!onSave) return;
+    try {
+      await onSave(draft);
+      setEditing(false);
+    } catch {
+      // 保持编辑态，避免保存失败时丢失用户正在调整的规则。
+    }
+  };
+
+  return (
+  <section className={cls('siehub-policy-card', editing && 'is-editing')}>
+    <div className="siehub-policy-head">
+      <div>
+        <p>{module?.title || '部门工作台'} / VOLUNTEER PERFORMANCE</p>
+        <h3>志愿者绩效制度</h3>
+        <span>{activePolicy.description || '当前先完整复刻 SIEVOX 的六维考核体系，后续再按部门单独微调。'}</span>
+      </div>
+      <div className="siehub-policy-actions">
+        <b>{loading ? '同步中' : activePolicy.isCustomized ? `定制版 v${activePolicy.version || 1}` : canEdit ? '可编辑' : '只读'}</b>
+        {canEdit && (
+          <>
+            {!editing ? (
+              <button type="button" onClick={() => setEditing(true)} disabled={loading || saving}>编辑制度</button>
+            ) : (
+              <>
+                <button type="button" className="ghost" onClick={() => { setDraft(createPolicyDraft(activePolicy)); setEditing(false); }} disabled={saving}>取消</button>
+                <button type="button" onClick={submitDraft} disabled={saving}>{saving ? '保存中' : '保存制度'}</button>
+              </>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+    <div className="siehub-policy-note">
+      <ShieldCheck />
+      <div>
+        <strong>{activePolicy.sourceProduct || 'SIEVOX'} 同款模板</strong>
+        <span>{module?.title || '该部门'}当前采用「{activePolicy.title || 'SIEVOX 志愿者绩效考核制度'}」{activePolicy.updatedBy?.name ? `，最近由 ${activePolicy.updatedBy.name} 更新` : ''}。</span>
+      </div>
+      {canEdit && <button type="button" onClick={onReset} disabled={saving || loading}>恢复 SIEVOX 默认</button>}
+    </div>
+    {message && <div className="siehub-policy-message">{message}</div>}
+    {editing && (
+      <div className="siehub-policy-editor">
+        <label>
+          <span>制度标题</span>
+          <input value={draft.title} onChange={event => setDraft(current => ({ ...current, title: event.target.value }))} />
+        </label>
+        <label>
+          <span>制度说明</span>
+          <textarea value={draft.description} onChange={event => setDraft(current => ({ ...current, description: event.target.value }))} rows={3} />
+        </label>
+      </div>
+    )}
+    <div className="siehub-policy-grid">
+      {dimensions.map(item => (
+        <article key={item.key} className={`siehub-policy-item tone-${item.tone || item.color || 'slate'}`}>
+          {editing ? (
+            <>
+              <div className="siehub-policy-item-editor">
+                <label>
+                  <span>维度名称</span>
+                  <input value={draft.dimensions.find(d => d.key === item.key)?.label || item.label} onChange={event => updateDraftDimension(item.key, 'label', event.target.value)} />
+                </label>
+                <label>
+                  <span>{item.key === 'bonus' ? '计分方式' : '封顶分'}</span>
+                  <input
+                    type={item.key === 'bonus' ? 'text' : 'number'}
+                    value={item.key === 'bonus' ? '附加' : (draft.dimensions.find(d => d.key === item.key)?.maxScore ?? '')}
+                    disabled={item.key === 'bonus'}
+                    onChange={event => updateDraftDimension(item.key, 'maxScore', event.target.value)}
+                  />
+                </label>
+              </div>
+              <textarea value={draft.dimensions.find(d => d.key === item.key)?.rule || item.rule} onChange={event => updateDraftDimension(item.key, 'rule', event.target.value)} rows={4} />
+            </>
+          ) : (
+            <>
+              <span>{item.capLabel || (item.maxScore ? `${item.maxScore}分` : '附加')}</span>
+              <strong>{item.label}</strong>
+              <em>{item.rule}</em>
+            </>
+          )}
+        </article>
+      ))}
+    </div>
+    <div className="siehub-policy-footer">
+      <span>{notes[0]}</span>
+      <i></i>
+      <span>{notes[1]}</span>
+    </div>
+  </section>
+  );
+};
+
+const getTodayInputValue = () => new Date().toISOString().slice(0, 10);
+
+const calculateDepartmentScoreRows = (records = [], roster = [], policy = DEFAULT_VOLUNTEER_PERFORMANCE_POLICY) => {
+  const dimensions = policy?.dimensions?.length ? policy.dimensions : DEFAULT_VOLUNTEER_PERFORMANCE_POLICY.dimensions;
+  const caps = Object.fromEntries(dimensions.map(item => [item.key, item.maxScore]));
+  const rows = new Map(roster.map(user => [user.id || user._id, { user, byDimension: {}, total: 0 }]));
+  records.forEach(record => {
+    const userId = record.volunteer?.id || record.volunteer?._id;
+    if (!rows.has(userId)) return;
+    const row = rows.get(userId);
+    row.byDimension[record.dimension] = (row.byDimension[record.dimension] || 0) + Number(record.score || 0);
+  });
+  rows.forEach(row => {
+    row.total = dimensions.reduce((sum, item) => {
+      const raw = Math.max(0, row.byDimension[item.key] || 0);
+      return sum + (item.key === 'bonus' || item.scoringMode === 'bonus' ? raw : Math.min(Number(caps[item.key] || 0), raw));
+    }, 0);
+  });
+  return Array.from(rows.values()).sort((a, b) => b.total - a.total);
+};
+
+const DepartmentPerformanceWorkbench = ({ module, token, canManage }) => {
+  const [workbench, setWorkbench] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
+  const [rosterSelection, setRosterSelection] = useState([]);
+  const [recordSelection, setRecordSelection] = useState([]);
+  const [form, setForm] = useState({
+    dimension: 'attendance',
+    score: '',
+    reason: '',
+    activityName: '',
+    occurrenceDate: getTodayInputValue(),
+    targetSemester: ''
+  });
+
+  const refreshWorkbench = useCallback(async () => {
+    if (!module?.organization || !module?.key || !token || !canManage) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/hub/departments/${module.organization}/${module.key}/performance-workbench`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || '获取部门绩效工作台失败');
+      setWorkbench(data);
+      const rosterIds = (data.roster || []).map(user => user.id || user._id);
+      setRosterSelection(rosterIds);
+      setRecordSelection(current => current.filter(id => rosterIds.includes(id)));
+      setForm(current => ({
+        ...current,
+        targetSemester: data.semester || current.targetSemester,
+        dimension: data.policy?.dimensions?.[0]?.key || current.dimension
+      }));
+    } catch (error) {
+      setMessage(error.message || '获取部门绩效工作台失败');
+    } finally {
+      setLoading(false);
+    }
+  }, [module?.organization, module?.key, token, canManage]);
+
+  useEffect(() => {
+    refreshWorkbench();
+  }, [refreshWorkbench]);
+
+  if (!canManage) return null;
+
+  const volunteers = workbench?.volunteers || [];
+  const roster = workbench?.roster || [];
+  const records = workbench?.records || [];
+  const policy = workbench?.policy || DEFAULT_VOLUNTEER_PERFORMANCE_POLICY;
+  const dimensions = policy.dimensions?.length ? policy.dimensions : DEFAULT_VOLUNTEER_PERFORMANCE_POLICY.dimensions;
+  const scoreRows = calculateDepartmentScoreRows(records, roster, policy);
+
+  const toggleRoster = (id) => {
+    setRosterSelection(current => current.includes(id) ? current.filter(item => item !== id) : [...current, id]);
+  };
+
+  const toggleRecordMember = (id) => {
+    setRecordSelection(current => current.includes(id) ? current.filter(item => item !== id) : [...current, id]);
+  };
+
+  const saveRoster = async () => {
+    setSaving(true);
+    setMessage('');
+    try {
+      const res = await fetch(`${API_BASE}/hub/departments/${module.organization}/${module.key}/performance-roster`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ semester: workbench?.semester || form.targetSemester, volunteerIds: rosterSelection })
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || '保存成员名单失败');
+      setMessage('本学期绩效成员名单已保存。');
+      await refreshWorkbench();
+    } catch (error) {
+      setMessage(error.message || '保存成员名单失败');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const submitPerformance = async (event) => {
+    event.preventDefault();
+    if (recordSelection.length === 0) return setMessage('请先选择要录入绩效的成员。');
+    setSaving(true);
+    setMessage('');
+    try {
+      const res = await fetch(`${API_BASE}/hub/departments/${module.organization}/${module.key}/performance-records`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ...form, volunteerIds: recordSelection, targetSemester: workbench?.semester || form.targetSemester })
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || '绩效录入失败');
+      setMessage('绩效录入成功。');
+      setRecordSelection([]);
+      setForm(current => ({ ...current, score: '', reason: '', activityName: '', occurrenceDate: getTodayInputValue() }));
+      await refreshWorkbench();
+    } catch (error) {
+      setMessage(error.message || '绩效录入失败');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteRecord = async (recordId) => {
+    if (!window.confirm('确认撤回这条绩效记录吗？')) return;
+    setSaving(true);
+    setMessage('');
+    try {
+      const res = await fetch(`${API_BASE}/hub/departments/${module.organization}/${module.key}/performance-records/${recordId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || '撤回失败');
+      setMessage('绩效记录已撤回。');
+      await refreshWorkbench();
+    } catch (error) {
+      setMessage(error.message || '撤回失败');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <section className="siehub-performance-card">
+      <div className="siehub-performance-head">
+        <div>
+          <p>DEPARTMENT PERFORMANCE</p>
+          <h3>部门绩效工作台</h3>
+          <span>{workbench?.semester || '当前学期'} · 添加成员、批量录入、查看流水与排行。</span>
+        </div>
+        <button type="button" onClick={refreshWorkbench} disabled={loading || saving}>{loading ? '同步中' : '刷新'}</button>
+      </div>
+      {message && <div className="siehub-policy-message">{message}</div>}
+      <div className="siehub-performance-stats">
+        <span><strong>{volunteers.length}</strong><em>部门志愿者账号</em></span>
+        <span><strong>{roster.length}</strong><em>本学期成员</em></span>
+        <span><strong>{records.length}</strong><em>绩效流水</em></span>
+      </div>
+      <div className="siehub-performance-grid">
+        <section className="siehub-performance-panel">
+          <div className="siehub-performance-panel-head"><span>01</span><div><h4>添加本学期成员</h4><p>从该部门志愿者账号中选择参与绩效核算的成员。</p></div></div>
+          <div className="siehub-member-checks">
+            {volunteers.length === 0 ? <p className="siehub-empty-text">该部门还没有志愿者账号。</p> : volunteers.map(user => {
+              const id = user.id || user._id;
+              return (
+                <label key={id} className="siehub-member-check">
+                  <input type="checkbox" checked={rosterSelection.includes(id)} onChange={() => toggleRoster(id)} />
+                  <span><strong>{user.name}</strong><small>{user.studentId}</small></span>
+                </label>
+              );
+            })}
+          </div>
+          <button className="siehub-wide-action" type="button" onClick={saveRoster} disabled={saving || loading}>保存成员名单</button>
+        </section>
+
+        <form className="siehub-performance-panel" onSubmit={submitPerformance}>
+          <div className="siehub-performance-panel-head"><span>02</span><div><h4>批量录入绩效</h4><p>成员必须先加入本学期名单，才能录入绩效。</p></div></div>
+          <div className="siehub-record-targets">
+            {roster.length === 0 ? <p className="siehub-empty-text">请先添加本学期成员。</p> : roster.map(user => {
+              const id = user.id || user._id;
+              return (
+                <label key={id}>
+                  <input type="checkbox" checked={recordSelection.includes(id)} onChange={() => toggleRecordMember(id)} />
+                  <span>{user.name}</span>
+                </label>
+              );
+            })}
+          </div>
+          <div className="siehub-performance-form-grid">
+            <label><span>维度</span><select value={form.dimension} onChange={event => setForm({ ...form, dimension: event.target.value })}>{dimensions.map(item => <option key={item.key} value={item.key}>{item.label}</option>)}</select></label>
+            <label><span>加分</span><input type="number" step="0.5" min="0" value={form.score} onChange={event => setForm({ ...form, score: event.target.value })} required /></label>
+            <label><span>日期</span><input type="date" value={form.occurrenceDate} onChange={event => setForm({ ...form, occurrenceDate: event.target.value })} required /></label>
+            <label><span>事项名称</span><input value={form.activityName} onChange={event => setForm({ ...form, activityName: event.target.value })} placeholder="例：迎新活动统筹" /></label>
+          </div>
+          <label className="siehub-performance-reason"><span>加分事由</span><textarea value={form.reason} onChange={event => setForm({ ...form, reason: event.target.value })} rows={3} required /></label>
+          <button className="siehub-wide-action" type="submit" disabled={saving || loading}>{saving ? '处理中' : '录入绩效'}</button>
+        </form>
+      </div>
+
+      <div className="siehub-performance-grid lower">
+        <section className="siehub-performance-panel">
+          <div className="siehub-performance-panel-head"><span>03</span><div><h4>部门排行</h4><p>按当前学期已录入流水实时计算。</p></div></div>
+          <div className="siehub-score-list">
+            {scoreRows.length === 0 ? <p className="siehub-empty-text">暂无排行数据。</p> : scoreRows.map((row, index) => (
+              <div key={row.user.id || row.user._id} className="siehub-score-row">
+                <b>{index + 1}</b>
+                <span><strong>{row.user.name}</strong><small>{row.user.studentId}</small></span>
+                <em>{row.total.toFixed(1)}</em>
+              </div>
+            ))}
+          </div>
+        </section>
+        <section className="siehub-performance-panel">
+          <div className="siehub-performance-panel-head"><span>04</span><div><h4>绩效流水</h4><p>最近录入的部门绩效记录。</p></div></div>
+          <div className="siehub-record-list">
+            {records.length === 0 ? <p className="siehub-empty-text">暂无绩效流水。</p> : records.slice(0, 10).map(record => {
+              const dim = dimensions.find(item => item.key === record.dimension);
+              return (
+                <article key={record.id || record._id}>
+                  <div><strong>{record.volunteer?.name || '成员'}</strong><small>{dim?.label || record.dimension} · {record.activityName || '常规记录'}</small><p>{record.reason}</p></div>
+                  <span>+{record.score}</span>
+                  <button type="button" onClick={() => deleteRecord(record.id || record._id)}>撤回</button>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      </div>
+    </section>
+  );
+};
+
+const getAccessibleModules = (user) => {
+  if (user?.isUltimateAdmin) return SIEHUB_MODULES;
+
+  const rawCapabilities = Array.isArray(user?.moduleCapabilities) ? user.moduleCapabilities : [];
+  const capabilities = rawCapabilities.map(item => typeof item === 'string' ? item : item?.department || item?.key).filter(Boolean);
+  const managed = Array.isArray(user?.managedDepartments) ? user.managedDepartments.map(item => item?.department || item).filter(Boolean) : [];
+  const departments = [...new Set([...capabilities, ...managed, user?.department].filter(Boolean))];
+
+  if (departments.length) return SIEHUB_MODULES.filter(module => !module.ultimateOnly && departments.includes(module.key));
+  if (user?.role === 'student' || user?.memberRole === 'student') {
+    return SIEHUB_MODULES.filter(module => !module.ultimateOnly);
+  }
+  return [];
+};
+
+const HubUserChip = ({ user }) => (
+  <div className="siehub-user-chip" aria-label="当前登录身份">
+    <span className="siehub-avatar">{firstChar(user?.name)}</span>
+    <span><strong>{user?.name}</strong><small>{user?.studentId}</small></span>
+    <RoleTag user={user} />
+  </div>
+);
+
+const SIEHUBHome = ({ user, theme, onOpenModule, onLogout }) => {
+  const modules = getAccessibleModules(user);
+  const governanceModules = modules.filter(module => module.organization === 'hub');
+  const departmentModuleCount = modules.filter(module => module.organization !== 'hub').length;
+  const youthLeague = modules.filter(module => module.organization === 'youth_league');
+  const studentUnion = modules.filter(module => module.organization === 'student_union');
+  const roleScope = user?.isUltimateAdmin ? '全平台治理范围' : `${user?.organizationLabel || '学生服务'} / ${user?.departmentLabel || '可访问模块'}`;
+
+  const renderGroup = (title, marker, items) => (
+    <section className="siehub-module-group">
+      <div className="siehub-group-heading"><span>{marker}</span><div><p>MODULE GROUP</p><h2>{title}</h2></div><b>{items.length}</b></div>
+      <div className="siehub-module-grid">
+        {items.map(module => {
+          const Icon = module.icon;
+          const isSIEVOX = module.key === 'student_rights';
+          return <button key={module.key} className={`siehub-module-card tone-${module.tone} ${isSIEVOX ? 'is-product' : ''}`} type="button" onClick={() => onOpenModule(module)}>
+            <span className="siehub-module-icon"><Icon /></span>
+            <span className="siehub-module-copy"><small>{module.product || 'SIEHUB MODULE'}</small><strong>{module.title}</strong><em>{module.summary}</em></span>
+            <span className="siehub-module-action">{isSIEVOX ? <ExternalLink /> : <ChevronRight />}</span>
+          </button>;
+        })}
+      </div>
+    </section>
+  );
+
+  return <main className="siehub-shell">
+    <header className="siehub-topbar">
+      <div className="siehub-brand"><span className="siehub-brand-mark"><Radio /><i></i></span><div><strong>SIEHUB</strong><small>SIE LIFE PLATFORM</small></div></div>
+      <div className="siehub-topbar-actions"><ThemeModeButtons theme={theme} compact /><button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)} title="外观设置"><Palette /></button><HubUserChip user={user} /><button className="icon-button" type="button" onClick={onLogout} title="退出登录"><LogOut /></button></div>
+    </header>
+    <div className="siehub-content">
+      <section className="siehub-hero">
+        <div className="siehub-hero-meta"><span>SIE / PLATFORM 01</span><b>{roleScope}</b></div>
+        <div><p>北京化工大学国际教育学院</p><h1>一处入口，连接每一份学生工作。</h1><div className="siehub-hero-note"><span>已接入 {departmentModuleCount} 个部门模块</span><i></i><span>学生权益部已启用 SIEVOX</span></div></div>
+        <div className="siehub-hero-orbit" aria-hidden="true"><span>HUB</span><i></i><i></i><i></i></div>
+      </section>
+      {user?.isUltimateAdmin && governanceModules.length > 0 && renderGroup('平台治理', '00', governanceModules)}
+      {renderGroup('团委', '01', youthLeague)}
+      {renderGroup('学生会', '02', studentUnion)}
+      <section className="siehub-governance-note"><UsersRound /><div><strong>{user?.isUltimateAdmin ? '终极管理员已获得全部模块访问权限' : '部门工作台会按照当前身份与分管范围开放'}</strong><span>部门负责人及以上成员可在所属模块中维护志愿者绩效考核制度；具体业务能力将随模块逐步上线。</span></div></section>
+    </div>
+    <ThemePanel theme={theme} />
+  </main>;
+};
+
+const DepartmentStudentPortal = ({ module, onOpenSIEVOX }) => {
+  const isSIEVOX = module?.key === 'student_rights';
+  return (
+    <>
+      <section className="siehub-student-portal-card">
+        <div className="siehub-student-portal-head">
+          <p>STUDENT PORTAL</p>
+          <h2>{module?.title}学生端</h2>
+          <span>这里面向所有学生开放，用于查看部门服务说明、活动入口和后续上线的学生侧功能。</span>
+        </div>
+        <div className="siehub-student-service-grid">
+          <article><span>01</span><strong>部门介绍</strong><p>{module?.summary || '部门服务信息将在此持续补充。'}</p></article>
+          <article><span>02</span><strong>学生服务入口</strong><p>{isSIEVOX ? '学生权益反馈继续由 SIEVOX 承载。' : '该部门学生侧服务后续将在 SIEHUB 内逐步上线。'}</p></article>
+          <article><span>03</span><strong>通知与活动</strong><p>面向学生的通知、报名、活动材料与服务进度将集中展示。</p></article>
+        </div>
+      </section>
+      {isSIEVOX && (
+        <section className="siehub-bridge-card"><Scale /><div><strong>SIEVOX 是学生权益部学生端</strong><span>普通学生和非分管成员进入学生权益部学生端时，会进入成熟的权益反馈系统。</span></div><button className="primary-button" type="button" onClick={onOpenSIEVOX}>进入 SIEVOX <ArrowUpRight /></button></section>
+      )}
+    </>
+  );
+};
+
+const DepartmentPlaceholder = ({ module, user, token, theme, onBack, onOpenSIEVOX, onLogout }) => {
+  const Icon = module?.icon || Building2;
+  const [performancePolicy, setPerformancePolicy] = useState(null);
+  const [policyAccess, setPolicyAccess] = useState(null);
+  const [policyLoading, setPolicyLoading] = useState(false);
+  const [policySaving, setPolicySaving] = useState(false);
+  const [policyMessage, setPolicyMessage] = useState('');
+  const canSwitchPortal = canSwitchDepartmentPortal(user, module);
+  const [departmentPortal, setDepartmentPortal] = useState(canSwitchPortal ? 'manage' : 'student');
+  const fallbackCanManagePerformance = canManageVolunteerPolicy(user, module);
+  const canManagePerformance = policyAccess?.canEdit ?? fallbackCanManagePerformance;
+  const canEnterSIEVOX = module?.key === 'student_rights' || user?.isUltimateAdmin;
+  const showManagePortal = canSwitchPortal && departmentPortal === 'manage';
+
+  useEffect(() => {
+    setDepartmentPortal(canSwitchPortal ? 'manage' : 'student');
+  }, [canSwitchPortal, module?.key]);
+
+  useEffect(() => {
+    if (!module?.organization || !module?.key || !token) {
+      setPerformancePolicy(null);
+      setPolicyAccess(null);
+      return undefined;
+    }
+
+    let cancelled = false;
+    setPolicyLoading(true);
+    fetch(`${API_BASE}/hub/departments/${module.organization}/${module.key}/performance-policy`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (cancelled) return;
+        if (data.success) {
+          setPerformancePolicy(data.policy || null);
+          setPolicyAccess(data.access || null);
+        } else {
+          setPerformancePolicy(null);
+          setPolicyAccess(null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPerformancePolicy(null);
+          setPolicyAccess(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setPolicyLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [module?.organization, module?.key, token]);
+
+  const savePerformancePolicy = async (draft) => {
+    setPolicySaving(true);
+    setPolicyMessage('');
+    try {
+      const res = await fetch(`${API_BASE}/hub/departments/${module.organization}/${module.key}/performance-policy`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(draft)
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || '保存绩效制度失败');
+      setPerformancePolicy(data.policy || null);
+      setPolicyAccess(data.access || null);
+      setPolicyMessage('已保存为该部门的定制绩效制度。');
+      return data;
+    } catch (error) {
+      setPolicyMessage(error.message || '保存绩效制度失败，请稍后重试。');
+      throw error;
+    } finally {
+      setPolicySaving(false);
+    }
+  };
+
+  const resetPerformancePolicy = async () => {
+    if (!window.confirm(`确认将【${module?.title || '该部门'}】的志愿者绩效制度恢复为 SIEVOX 默认模板吗？`)) return;
+    setPolicySaving(true);
+    setPolicyMessage('');
+    try {
+      const res = await fetch(`${API_BASE}/hub/departments/${module.organization}/${module.key}/performance-policy/reset`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || '恢复默认失败');
+      setPerformancePolicy(data.policy || null);
+      setPolicyAccess(data.access || null);
+      setPolicyMessage('已恢复为 SIEVOX 默认绩效制度。');
+    } catch (error) {
+      setPolicyMessage(error.message || '恢复默认失败，请稍后重试。');
+    } finally {
+      setPolicySaving(false);
+    }
+  };
+
+  return <main className="siehub-shell siehub-department-shell">
+    <header className="siehub-topbar"><div className="siehub-brand"><span className="siehub-brand-mark"><Radio /><i></i></span><div><strong>SIEHUB</strong><small>{module?.title || '部门工作台'} / FRAMEWORK</small></div></div><div className="siehub-topbar-actions"><ThemeModeButtons theme={theme} compact /><button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)}><Palette /></button><HubUserChip user={user} /><button className="icon-button" type="button" onClick={onLogout} title="退出登录"><LogOut /></button></div></header>
+    <div className="siehub-content">
+      <button className="siehub-back" type="button" onClick={onBack}><ChevronLeft />返回模块总览</button>
+      <section className="siehub-department-hero"><span className={`siehub-module-icon tone-${module?.tone || 'slate'}`}><Icon /></span><div><p>SIEHUB / DEPARTMENT PLATFORM</p><h1>{module?.title}</h1><span>{module?.summary}</span></div></section>
+      {canSwitchPortal && (
+        <div className="siehub-portal-switch" aria-label="部门端口切换">
+          <button type="button" className={departmentPortal === 'student' ? 'is-active' : ''} onClick={() => setDepartmentPortal('student')}>学生端</button>
+          <button type="button" className={departmentPortal === 'manage' ? 'is-active' : ''} onClick={() => setDepartmentPortal('manage')}>管理端</button>
+        </div>
+      )}
+      {showManagePortal ? (
+        <>
+          <div className="siehub-framework-grid">
+            <section><span>01</span><h2>部门工作台</h2><p>项目、通知、成员协作和日常事项将在该入口逐步接入。</p><button type="button" disabled>规划中</button></section>
+            <section><span>02</span><h2>志愿者绩效制度</h2><p>{canManagePerformance ? '部门负责人及以上成员后续可在此调整规则细项；当前先沿用 SIEVOX 同款六维模板。' : '当前先统一沿用 SIEVOX 同款六维模板。'}</p><button type="button" disabled>{canManagePerformance ? '模板已同步' : '只读模板'}</button></section>
+            <section><span>03</span><h2>成员与归档</h2><p>届次成员、身份标签、分管关系与绩效档案将归入统一组织框架。</p><button type="button" disabled>规划中</button></section>
+          </div>
+          <DepartmentPerformancePolicyCard
+            module={module}
+            policy={performancePolicy}
+            canEdit={canManagePerformance}
+            loading={policyLoading}
+            saving={policySaving}
+            message={policyMessage}
+            onSave={savePerformancePolicy}
+            onReset={resetPerformancePolicy}
+          />
+          <DepartmentPerformanceWorkbench module={module} token={token} canManage={canManagePerformance} />
+          {canEnterSIEVOX ? (
+            <section className="siehub-bridge-card"><Scale /><div><strong>学生权益部已具备独立业务平台</strong><span>SIEVOX 保持现有反馈、账号、绩效与组织管理功能，继续作为学生权益部的成熟子模块运行。</span></div><button className="primary-button" type="button" onClick={onOpenSIEVOX}>进入 SIEVOX <ArrowUpRight /></button></section>
+          ) : (
+            <section className="siehub-bridge-card"><Scale /><div><strong>该部门暂不接入 SIEVOX</strong><span>当前仅学生权益部保留成熟的 SIEVOX 业务模块，其他部门将以框架工作台和后续专属平台的形式逐步展开。</span></div></section>
+          )}
+        </>
+      ) : (
+        <DepartmentStudentPortal module={module} onOpenSIEVOX={onOpenSIEVOX} />
+      )}
+    </div>
+    <ThemePanel theme={theme} />
+  </main>;
+};
+
+const UltimateOrganizationWindow = ({ user, token, theme, onBack, onLogout }) => {
+  const allowed = Boolean(user?.isUltimateAdmin);
+
+  return <main className="siehub-shell siehub-ultimate-window admin-demo-shell">
+    <header className="siehub-topbar">
+      <div className="siehub-brand"><span className="siehub-brand-mark"><ShieldCheck /><i></i></span><div><strong>SIEHUB</strong><small>ORGANIZATION GOVERNANCE</small></div></div>
+      <div className="siehub-topbar-actions"><ThemeModeButtons theme={theme} compact /><button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)} title="外观设置"><Palette /></button><HubUserChip user={user} /><button className="icon-button" type="button" onClick={onLogout} title="退出登录"><LogOut /></button></div>
+    </header>
+    <div className="siehub-content">
+      <button className="siehub-back" type="button" onClick={onBack}><ChevronLeft />返回模块总览</button>
+      <section className="siehub-ultimate-hero">
+        <span className="siehub-module-icon tone-gold"><ShieldCheck /></span>
+        <div>
+          <p>SIEHUB / ULTIMATE WINDOW</p>
+          <h1>团委学生会组织治理中枢</h1>
+          <span>届次成员、身份角色、分管部门与归档快照从 SIEVOX 中移出，由终极管理员在 SIEHUB 统一维护。</span>
+        </div>
+      </section>
+      {allowed ? (
+        <section className="siehub-organization-host">
+          <OrganizationFrameworkPanel token={token} />
+        </section>
+      ) : (
+        <section className="siehub-access-denied">
+          <LockKeyhole />
+          <div><strong>仅终极管理员可访问</strong><span>该窗口包含团委学生会组织架构、成员身份、分管关系与届次归档能力。</span></div>
+        </section>
+      )}
+    </div>
+    <ThemePanel theme={theme} />
+  </main>;
+};
+
+const HubReturnButton = ({ onClick }) => <button className="siehub-return" type="button" onClick={onClick} title="返回 SIEHUB 模块总览"><Radio /><span>SIEHUB</span></button>;
 
 const Sidebar = ({ user, activePage, setActivePage, openCompose, onLogout, openSettings }) => (
   <aside className="sidebar" aria-label="主导航">
@@ -571,7 +1314,7 @@ const MobileShell = ({ user, feedbacks, stats, page, setPage, openCompose, onOpe
       <div className="mobile-shell">
         <header className="mobile-header">
           <div className="mobile-brand"><img src={sieLogo} alt="SIEVOX" /><div><strong>SIEVOX</strong><span>学生权益反馈</span></div></div>
-          <div className="mobile-header-actions"><button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)}><Palette /></button><button className="icon-button"><Bell /><span className="notification-dot"></span></button></div>
+          <div className="mobile-header-actions"><span className="mobile-role-chip"><span>{user?.name}</span><RoleTag user={user} /></span><button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)}><Palette /></button><button className="icon-button"><Bell /><span className="notification-dot"></span></button></div>
         </header>
         <main className="mobile-main">
           <section className={cls('mobile-page', page === 'home' && 'is-active')}>
@@ -790,6 +1533,8 @@ export default function App() {
   const { user, token, login, register, logout, refreshUser } = useAuth();
   const theme = useTheme();
   const [portalView, setPortalView] = useState('superadmin');
+  const [appSurface, setAppSurface] = useState('hub');
+  const [activeModule, setActiveModule] = useState(null);
 
   useEffect(() => {
     document.body.classList.toggle('auth-active', !user);
@@ -801,17 +1546,38 @@ export default function App() {
     else setPortalView(current => ['student', 'admin', 'superadmin'].includes(current) ? current : 'superadmin');
   }, [user]);
 
+  useEffect(() => {
+    if (!user) {
+      setAppSurface('hub');
+      setActiveModule(null);
+    }
+  }, [user]);
+
+  const openModule = (module) => {
+    setActiveModule(module);
+    if (module.key === 'hub_governance') {
+      setAppSurface(user?.isUltimateAdmin ? 'ultimateOrganization' : 'hub');
+      return;
+    }
+    const shouldOpenSIEVOXStudentPortal = module.key === 'student_rights' && !canSwitchDepartmentPortal(user, module);
+    setAppSurface(shouldOpenSIEVOXStudentPortal ? 'sievox' : 'department');
+  };
+
   if (!user) return <LoginPage onLogin={login} onRegister={register} theme={theme} />;
+  if (appSurface === 'hub') return <SIEHUBHome user={user} theme={theme} onOpenModule={openModule} onLogout={logout} />;
+  if (appSurface === 'ultimateOrganization') return <UltimateOrganizationWindow user={user} token={token} theme={theme} onBack={() => setAppSurface('hub')} onLogout={logout} />;
+  if (appSurface === 'department') return <DepartmentPlaceholder module={activeModule} user={user} token={token} theme={theme} onBack={() => setAppSurface('hub')} onOpenSIEVOX={() => { setActiveModule(SIEHUB_MODULES.find(module => module.key === 'student_rights')); setAppSurface('sievox'); }} onLogout={logout} />;
   if (user.isUltimateAdmin && portalView === 'student') {
-    return <DashboardPage user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} theme={theme} portalView={portalView} onPortalChange={setPortalView} />;
+    return <><HubReturnButton onClick={() => setAppSurface('hub')} /><DashboardPage user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} theme={theme} portalView={portalView} onPortalChange={setPortalView} /></>;
   }
   if (user.role === 'admin' || user.role === 'superadmin') {
     return (
       <>
+        <HubReturnButton onClick={() => setAppSurface('hub')} />
         <AdminDashboard user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} themeTools={theme} portalView={user.isUltimateAdmin ? portalView : undefined} onPortalChange={setPortalView} />
         <ThemePanel theme={theme} />
       </>
     );
   }
-  return <DashboardPage user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} theme={theme} />;
+  return <><HubReturnButton onClick={() => setAppSurface('hub')} /><DashboardPage user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} theme={theme} /></>;
 }

@@ -61,6 +61,213 @@ const listDepartments = () => Object.entries(ORGANIZATIONS).flatMap(([organizati
   }))
 );
 
+const HUB_SYSTEM = Object.freeze({
+  id: 'siehub',
+  name: 'SIEHUB',
+  logo: null,
+  type: 'platform'
+});
+
+const HUB_WINDOWS = Object.freeze([
+  Object.freeze({
+    id: 'hub_governance',
+    hubId: HUB_SYSTEM.id,
+    productName: 'SIEHUB',
+    title: '组织治理中枢',
+    moduleType: 'governance_window',
+    status: 'active',
+    ultimateOnly: true
+  })
+]);
+
+const SIEVOX_DEPARTMENT = Object.freeze({
+  organization: 'student_union',
+  department: 'student_rights'
+});
+
+const SIEVOX_VOLUNTEER_PERFORMANCE_POLICY = Object.freeze({
+  id: 'sievox_volunteer_performance_v1',
+  version: 1,
+  template: 'sievox_default_v1',
+  sourceProduct: 'SIEVOX',
+  title: 'SIEVOX 志愿者绩效考核制度',
+  description: '所有部门初始统一复刻学生权益部 SIEVOX 的六维志愿者绩效考核制度。',
+  totalBaseScore: 100,
+  bonusMode: 'extra',
+  dimensions: Object.freeze([
+    Object.freeze({
+      key: 'attendance',
+      label: '考勤积分',
+      maxScore: 20,
+      capLabel: '20分',
+      color: 'purple',
+      rule: '准时出勤/合规请假 +2 分；迟到早退 +1 分；无故缺席 0 分。',
+      scoringMode: 'capped_additive'
+    }),
+    Object.freeze({
+      key: 'activity',
+      label: '活动贡献',
+      maxScore: 35,
+      capLabel: '35分',
+      color: 'blue',
+      rule: '核心统筹策划 +4~5 分；主要骨干 +2~3 分；普通参与 +1 分。',
+      scoringMode: 'capped_additive'
+    }),
+    Object.freeze({
+      key: 'feedback',
+      label: '权益跟进',
+      maxScore: 25,
+      capLabel: '25分',
+      color: 'green',
+      rule: '按时巡检系统与规范回复留言 +2 分/周；全月账号无违规 +1.25 分/月。',
+      scoringMode: 'capped_additive'
+    }),
+    Object.freeze({
+      key: 'copywriting',
+      label: '文案与策划',
+      maxScore: 15,
+      capLabel: '15分',
+      color: 'yellow',
+      rule: '主笔大型活动策划案 +4~5 分；主笔推送文案 +2~3 分；参与辅助 +1 分。',
+      scoringMode: 'capped_additive'
+    }),
+    Object.freeze({
+      key: 'others',
+      label: '其他常规',
+      maxScore: 5,
+      capLabel: '5分',
+      color: 'slate',
+      rule: '完成物资管理、资料整理或跨部门对接 +1 分/次。',
+      scoringMode: 'capped_additive'
+    }),
+    Object.freeze({
+      key: 'bonus',
+      label: '特别加分',
+      maxScore: null,
+      capLabel: '附加',
+      color: 'red',
+      rule: '获校级表彰、突出建设性贡献直接 +2~5 分，计入总分。',
+      scoringMode: 'bonus'
+    })
+  ]),
+  notes: Object.freeze([
+    '全员初始为 0 分。',
+    '前五项常规维度封顶后计入总分，特别加分为附加项。',
+    '当前各部门均沿用同一份 SIEVOX 模板，后续可按部门独立调整。'
+  ])
+});
+
+const isSievoxDepartment = (organization, department) =>
+  organization === SIEVOX_DEPARTMENT.organization &&
+  department === SIEVOX_DEPARTMENT.department;
+
+const getHubModuleId = (organization, department) =>
+  isSievoxDepartment(organization, department)
+    ? 'sievox'
+    : `department:${organization}:${department}`;
+
+const listHubModules = () => listDepartments().map((assignment) => {
+  const isSievox = isSievoxDepartment(assignment.organization, assignment.department);
+  return {
+    id: getHubModuleId(assignment.organization, assignment.department),
+    hubId: HUB_SYSTEM.id,
+    organization: assignment.organization,
+    organizationLabel: assignment.organizationLabel,
+    department: assignment.department,
+    departmentLabel: assignment.departmentLabel,
+    productName: isSievox ? 'SIEVOX' : assignment.departmentLabel,
+    moduleType: isSievox ? 'mature' : 'scaffold',
+    status: isSievox ? 'active' : 'planned',
+    studentEntry: isSievox
+  };
+});
+
+const listHubWindows = () => HUB_WINDOWS.map(window => ({ ...window }));
+
+const getHubModuleAccess = (user = {}) => {
+  const accessByModuleId = new Map();
+  const accessRank = { student: 1, member: 2, manage: 3, ultimate: 4 };
+  const grant = (organization, department, accessLevel, capabilities) => {
+    if (!isValidManagedDepartment({ organization, department })) return;
+    const moduleId = getHubModuleId(organization, department);
+    const existing = accessByModuleId.get(moduleId);
+    if (existing && (accessRank[existing.accessLevel] || 0) >= (accessRank[accessLevel] || 0)) return;
+    accessByModuleId.set(moduleId, {
+      moduleId,
+      organization,
+      department,
+      accessLevel,
+      capabilities
+    });
+  };
+
+  listDepartments().forEach(({ organization, department }) => {
+    grant(organization, department, 'student', [
+      'view',
+      'enter_student_portal'
+    ]);
+  });
+
+  if (user.isUltimateAdmin) {
+    listHubWindows().forEach(window => {
+      accessByModuleId.set(window.id, {
+        moduleId: window.id,
+        accessLevel: 'ultimate',
+        capabilities: [
+          'view',
+          'manage_organization_framework',
+          'manage_cohort_archive',
+          'manage_member_identity'
+        ]
+      });
+    });
+    listDepartments().forEach(({ organization, department }) => {
+      grant(organization, department, 'manage', [
+        'view',
+        'enter_student_portal',
+        'enter_manage_portal',
+        'switch_portal',
+        'manage_module',
+        'manage_volunteer_performance_policy'
+      ]);
+    });
+    return Array.from(accessByModuleId.values());
+  }
+
+  if (['department_head', 'youth_league_cadre'].includes(user.positionTitle)) {
+    grant(user.organization, user.department, 'manage', [
+      'view',
+      'enter_student_portal',
+      'enter_manage_portal',
+      'switch_portal',
+      'manage_module',
+      'manage_volunteer_performance_policy'
+    ]);
+    return Array.from(accessByModuleId.values());
+  }
+
+  if (user.positionTitle === 'presidium_member' || user.positionTitle === 'youth_league_deputy_secretary') {
+    normalizeManagedDepartments(user.managedDepartments).forEach(({ organization, department }) => {
+      grant(organization, department, 'manage', [
+        'view',
+        'enter_student_portal',
+        'enter_manage_portal',
+        'switch_portal',
+        'manage_module',
+        'manage_volunteer_performance_policy'
+      ]);
+    });
+    return Array.from(accessByModuleId.values());
+  }
+
+  if (user.memberRole === 'volunteer' || user.role === 'admin') {
+    grant(user.organization, user.department, 'member', ['view', 'enter_student_portal', 'participate']);
+    return Array.from(accessByModuleId.values());
+  }
+
+  return Array.from(accessByModuleId.values());
+};
+
 const isValidManagedDepartment = (assignment = {}) =>
   Boolean(getDepartment(assignment.organization, assignment.department));
 
@@ -76,6 +283,36 @@ const normalizeManagedDepartments = (assignments = []) => {
       seen.add(key);
       return true;
     });
+};
+
+const getVolunteerPerformancePolicy = (organization, department) => {
+  if (!isValidManagedDepartment({ organization, department })) return null;
+  return {
+    id: `${organization}_${department}_${SIEVOX_VOLUNTEER_PERFORMANCE_POLICY.template}`,
+    sourcePolicyId: SIEVOX_VOLUNTEER_PERFORMANCE_POLICY.id,
+    version: SIEVOX_VOLUNTEER_PERFORMANCE_POLICY.version,
+    template: SIEVOX_VOLUNTEER_PERFORMANCE_POLICY.template,
+    sourceProduct: SIEVOX_VOLUNTEER_PERFORMANCE_POLICY.sourceProduct,
+    title: SIEVOX_VOLUNTEER_PERFORMANCE_POLICY.title,
+    description: SIEVOX_VOLUNTEER_PERFORMANCE_POLICY.description,
+    totalBaseScore: SIEVOX_VOLUNTEER_PERFORMANCE_POLICY.totalBaseScore,
+    bonusMode: SIEVOX_VOLUNTEER_PERFORMANCE_POLICY.bonusMode,
+    moduleId: getHubModuleId(organization, department),
+    organization,
+    organizationLabel: ORGANIZATIONS[organization].label,
+    department,
+    departmentLabel: getDepartment(organization, department),
+    inheritedFrom: {
+      moduleId: getHubModuleId(SIEVOX_DEPARTMENT.organization, SIEVOX_DEPARTMENT.department),
+      organization: SIEVOX_DEPARTMENT.organization,
+      organizationLabel: ORGANIZATIONS[SIEVOX_DEPARTMENT.organization].label,
+      department: SIEVOX_DEPARTMENT.department,
+      departmentLabel: getDepartment(SIEVOX_DEPARTMENT.organization, SIEVOX_DEPARTMENT.department),
+      productName: 'SIEVOX'
+    },
+    dimensions: SIEVOX_VOLUNTEER_PERFORMANCE_POLICY.dimensions.map(item => ({ ...item })),
+    notes: [...SIEVOX_VOLUNTEER_PERFORMANCE_POLICY.notes]
+  };
 };
 
 const getDepartmentLabel = (organization, department) => {
@@ -149,12 +386,20 @@ module.exports = {
   POSITION_TITLES,
   ACCESS_ROLE_BY_MEMBER_ROLE,
   TITLES_BY_MEMBER_ROLE,
+  HUB_SYSTEM,
+  SIEVOX_DEPARTMENT,
+  SIEVOX_VOLUNTEER_PERFORMANCE_POLICY,
   getDepartment,
   getDepartmentLabel,
+  getHubModuleAccess,
+  getHubModuleId,
   getIdentityLabel,
   getAssignableScope,
+  getVolunteerPerformancePolicy,
   isValidManagedDepartment,
   listDepartments,
+  listHubModules,
+  listHubWindows,
   normalizeManagedDepartments,
   validateAssignment
 };

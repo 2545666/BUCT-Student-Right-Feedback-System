@@ -1102,3 +1102,68 @@ html[data-theme="dark"] .topbar-user-chip {
     display: none !important;
   }
 }
+
+@media (max-width: 760px) {
+  body:not(.auth-active) .desktop-shell.admin-demo-shell {
+    min-height: 100dvh;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .desktop-shell.admin-demo-shell > .sidebar {
+    display: none !important;
+  }
+
+  .desktop-shell.admin-demo-shell > .desktop-main {
+    width: 100%;
+    min-height: 100dvh;
+    display: block;
+  }
+
+  .admin-demo-shell .topbar {
+    min-height: 64px;
+    height: auto;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 14px;
+    flex-wrap: wrap;
+  }
+
+  .admin-demo-shell .breadcrumb {
+    width: 100%;
+    min-width: 0;
+    font-size: 11px;
+  }
+
+  .admin-demo-shell .topbar-actions {
+    width: 100%;
+    min-width: 0;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .admin-demo-shell .topbar-actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .admin-demo-shell .role-switch {
+    flex: 0 0 auto;
+  }
+
+  .admin-demo-shell .role-switch button {
+    padding-inline: 10px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .admin-demo-shell .topbar-user-chip,
+  .admin-demo-shell .topbar-actions .outline-button {
+    display: none;
+  }
+
+  .admin-demo-shell .role-view {
+    padding: 22px 14px 40px;
+  }
+}

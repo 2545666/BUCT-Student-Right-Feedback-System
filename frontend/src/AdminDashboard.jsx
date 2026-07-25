@@ -2,9 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import sieLogo from './assets/LOGO_1.png';
 import beian from './assets/beian.png';
 import collegeLogo from './assets/SIE_LOGO.svg';
+import { API_BASE } from './api';
 
-
-const API_BASE = import.meta.env.DEV ? `${window.location.protocol}//${window.location.hostname}:3101/api` : '/api';
 
 // ===================== 全局配置字典 =====================
 const categories = {
@@ -135,7 +134,7 @@ const emptyMemberForm = {
   managedDepartments: []
 };
 
-const OrganizationFrameworkPanel = ({ token }) => {
+export const OrganizationFrameworkPanel = ({ token }) => {
   const [cohorts, setCohorts] = useState([]);
   const [users, setUsers] = useState([]);
   const [members, setMembers] = useState([]);
@@ -1234,7 +1233,6 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
   const [responseText, setResponseText] = useState('');
   const [selectedReplyFiles, setSelectedReplyFiles] = useState([]);
   const [showAccountManagement, setShowAccountManagement] = useState(false);
-  const [showOrganizationFramework, setShowOrganizationFramework] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [settingsTab, setSettingsTab] = useState('profile');
   const [pwdData, setPwdData] = useState({ current: '', new: '' });
@@ -1244,11 +1242,10 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
   const showUltimatePortal = isUltimateAdmin && activePortal === 'superadmin';
 
   useEffect(() => {
-    if (!showUltimatePortal && (showAccountManagement || showOrganizationFramework)) {
+    if (!showUltimatePortal && showAccountManagement) {
       setShowAccountManagement(false);
-      setShowOrganizationFramework(false);
     }
-  }, [showUltimatePortal, showAccountManagement, showOrganizationFramework]);
+  }, [showUltimatePortal, showAccountManagement]);
 
   // 绩效与学期专属状态
   const [showPerformanceManagement, setShowPerformanceManagement] = useState(false);
@@ -1687,13 +1684,13 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
 
         <nav className="side-nav">
           <p className="nav-label">学生服务</p>
-          <button className="nav-item is-active" type="button" onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(false); setShowOrganizationFramework(false); }}>
+          <button className="nav-item is-active" type="button" onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(false); }}>
             <span>▦</span><span>权益工作台</span>
           </button>
-          <button className="nav-item" type="button" onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(false); setShowOrganizationFramework(false); }}>
+          <button className="nav-item" type="button" onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(false); }}>
             <span>□</span><span>发起反馈</span><kbd>N</kbd>
           </button>
-          <button className="nav-item" type="button" onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(true); setShowOrganizationFramework(false); }}>
+          <button className="nav-item" type="button" onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(true); }}>
             <span>▱</span><span>{user?.role === 'superadmin' ? '绩效管理' : '我的反馈'}</span><span className="nav-count">3</span>
           </button>
           <button className="nav-item" type="button">
@@ -1873,15 +1870,15 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
         )}
         <div className="superadmin-tabs admin-module-tabs">
           <button
-            onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(false); setShowOrganizationFramework(false); }}
-            className={!showAccountManagement && !showPerformanceManagement && !showOrganizationFramework ? 'is-active' : ''}
+            onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(false); }}
+            className={!showAccountManagement && !showPerformanceManagement ? 'is-active' : ''}
           >
             <span>📋</span> 业务反馈处理
           </button>
           
           {showUltimatePortal && (
             <button
-              onClick={() => { setShowAccountManagement(true); setShowPerformanceManagement(false); setShowOrganizationFramework(false); }}
+              onClick={() => { setShowAccountManagement(true); setShowPerformanceManagement(false); }}
               className={showAccountManagement ? 'is-active' : ''}
             >
               <span>👥</span> 账号管理面板
@@ -1889,25 +1886,14 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
           )}
 
           <button
-            onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(true); setShowOrganizationFramework(false); }}
+            onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(true); }}
             className={showPerformanceManagement ? 'is-active' : ''}
           >
             <span>📊</span> {user?.role === 'superadmin' ? '部门绩效管理' : '我的绩效档案'}
           </button>
-
-          {showUltimatePortal && (
-            <button
-              onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(false); setShowOrganizationFramework(true); }}
-              className={showOrganizationFramework ? 'is-active' : ''}
-            >
-              <span>🏛️</span> 团委学生会架构
-            </button>
-          )}
         </div>
 
-        {showOrganizationFramework && showUltimatePortal ? (
-          <OrganizationFrameworkPanel token={token} />
-        ) : showPerformanceManagement ? (
+        {showPerformanceManagement ? (
           <div className={`performance-redesign-panel ${user?.role === 'superadmin' ? 'super-performance-redesign' : 'self-performance-redesign'} animate-fadeIn space-y-4 md:space-y-6`}>
             <section className="performance-command">
               <div>

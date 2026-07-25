@@ -1,0 +1,1145 @@
+.siehub-shell {
+  min-height: 100vh;
+  color: var(--ink);
+  background: var(--canvas);
+}
+
+.siehub-topbar {
+  min-height: 78px;
+  padding: 14px clamp(20px, 4vw, 64px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  background: color-mix(in srgb, var(--paper) 90%, transparent);
+  border-bottom: 1px solid var(--line);
+}
+
+.siehub-brand, .siehub-topbar-actions, .siehub-user-chip, .siehub-hero-meta,
+.siehub-hero-note, .siehub-group-heading, .siehub-governance-note, .siehub-back,
+.siehub-department-hero, .siehub-bridge-card { display: flex; align-items: center; }
+
+.siehub-brand { gap: 11px; min-width: 180px; }
+.siehub-brand-mark {
+  width: 42px; height: 42px; display: grid; place-items: center; position: relative;
+  color: white; background: var(--theme-primary); border-radius: 12px;
+  box-shadow: 0 8px 18px rgba(var(--theme-rgb), .25);
+}
+.siehub-brand-mark svg { width: 21px; height: 21px; }
+.siehub-brand-mark i { position: absolute; width: 7px; height: 7px; right: 7px; top: 7px; border-radius: 999px; background: #fff; opacity: .9; }
+.siehub-brand div, .siehub-user-chip > span:nth-child(2), .siehub-module-copy, .siehub-department-hero > div, .siehub-bridge-card > div { display: grid; }
+.siehub-brand strong { font-size: 20px; line-height: 1; letter-spacing: .08em; }
+.siehub-brand small { margin-top: 4px; color: var(--muted); font-size: 9px; letter-spacing: .16em; font-weight: 800; }
+.siehub-topbar-actions { justify-content: flex-end; gap: 9px; }
+.siehub-user-chip { gap: 8px; padding: 5px 7px 5px 5px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); }
+.siehub-avatar { width: 31px; height: 31px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: var(--theme-primary); font-size: 13px; }
+.siehub-user-chip strong { max-width: 94px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.siehub-user-chip small { max-width: 94px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 9px; }
+.siehub-user-chip .role-pill { font-size: 10px; white-space: nowrap; }
+
+.siehub-content { width: min(1280px, calc(100% - 40px)); margin: 0 auto; padding: 36px 0 60px; }
+.siehub-hero { min-height: 280px; position: relative; isolation: isolate; overflow: hidden; padding: clamp(26px, 5vw, 62px); border-radius: 8px; color: #fff; background: #152234; box-shadow: 0 20px 52px rgba(22, 34, 52, .18); }
+.siehub-hero::before { content: ''; position: absolute; z-index: -1; inset: 0; background: linear-gradient(105deg, rgba(var(--theme-rgb), .72), transparent 58%), radial-gradient(circle at 85% 18%, rgba(255,255,255,.2), transparent 22%); }
+.siehub-hero-meta { justify-content: space-between; gap: 12px; color: rgba(255,255,255,.72); font-size: 10px; letter-spacing: .13em; font-weight: 800; }
+.siehub-hero-meta b { font-size: 10px; color: #fff; letter-spacing: 0; }
+.siehub-hero h1 { max-width: 680px; margin: 42px 0 22px; font-size: clamp(30px, 4vw, 54px); line-height: 1.15; letter-spacing: 0; color: #fff; }
+.siehub-hero p, .siehub-department-hero p { margin: 0; color: rgba(255,255,255,.7); font-size: 13px; font-weight: 800; }
+.siehub-hero-note { gap: 11px; color: rgba(255,255,255,.88); font-size: 12px; }
+.siehub-hero-note i { height: 16px; border-left: 1px solid rgba(255,255,255,.35); }
+.siehub-hero-orbit { position: absolute; right: 7%; bottom: -57px; width: 220px; height: 220px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.35); border-radius: 50%; color: rgba(255,255,255,.88); font-size: 20px; font-weight: 900; letter-spacing: .12em; }
+.siehub-hero-orbit::before, .siehub-hero-orbit::after, .siehub-hero-orbit i { content: ''; position: absolute; border: 1px solid rgba(255,255,255,.22); border-radius: 50%; }
+.siehub-hero-orbit::before { inset: 19px; }.siehub-hero-orbit::after { inset: 48px; }.siehub-hero-orbit i:nth-of-type(1) { width: 10px; height: 10px; top: 15px; background: #fff; }.siehub-hero-orbit i:nth-of-type(2) { width: 7px; height: 7px; left: 11px; top: 93px; background: #fff; }.siehub-hero-orbit i:nth-of-type(3) { width: 6px; height: 6px; right: 34px; bottom: 29px; background: #fff; }
+
+.siehub-module-group { margin-top: 42px; }
+.siehub-group-heading { min-height: 42px; gap: 10px; margin-bottom: 14px; }
+.siehub-group-heading > span { color: var(--theme-primary); font-size: 13px; font-weight: 900; letter-spacing: .1em; }
+.siehub-group-heading p { margin: 0 0 2px; color: var(--muted); font-size: 9px; letter-spacing: .12em; font-weight: 800; }
+.siehub-group-heading h2 { margin: 0; font-size: 21px; letter-spacing: 0; }.siehub-group-heading > b { margin-left: auto; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; color: var(--theme-primary); background: color-mix(in srgb, var(--theme-container) 70%, transparent); font-size: 11px; }
+.siehub-module-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.siehub-module-card { min-height: 150px; display: grid; grid-template-columns: auto 1fr auto; align-items: start; gap: 14px; position: relative; overflow: hidden; padding: 20px; text-align: left; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 8px; transition: transform .24s ease, border-color .24s ease, box-shadow .24s ease; }
+.siehub-module-card::after { content: ''; position: absolute; width: 92px; height: 92px; right: -38px; bottom: -40px; border-radius: 50%; background: color-mix(in srgb, var(--theme-primary) 11%, transparent); transition: transform .3s ease; }.siehub-module-card:hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--theme-primary) 50%, var(--line)); box-shadow: 0 16px 30px rgba(21,34,52,.1); }.siehub-module-card:hover::after { transform: scale(1.35); }
+.siehub-module-card.is-product { border-color: color-mix(in srgb, var(--theme-primary) 42%, var(--line)); background: linear-gradient(138deg, color-mix(in srgb, var(--theme-container) 36%, var(--paper)), var(--paper) 70%); }.siehub-module-icon { width: 38px; height: 38px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 10px; color: var(--theme-primary); background: color-mix(in srgb, var(--theme-container) 75%, transparent); }.siehub-module-icon svg { width: 19px; height: 19px; }
+.siehub-module-card.tone-gold { border-color: color-mix(in srgb, #c99a3d 42%, var(--line)); background: linear-gradient(138deg, color-mix(in srgb, #f6e9c8 48%, var(--paper)), var(--paper) 72%); }
+.siehub-module-card.tone-gold .siehub-module-icon { color: #7a5215; background: #f6e9c8; }
+.siehub-module-card.tone-gold .siehub-module-copy small,
+.siehub-module-card.tone-gold .siehub-module-action { color: #8a611e; }
+.siehub-module-copy { gap: 4px; min-width: 0; }.siehub-module-copy small { color: var(--theme-primary); font-size: 9px; letter-spacing: .08em; font-weight: 900; }.siehub-module-copy strong { font-size: 17px; }.siehub-module-copy em { display: block; overflow: hidden; color: var(--muted); font-size: 11px; font-style: normal; line-height: 1.5; }.siehub-module-action { z-index: 1; color: var(--theme-primary); }.siehub-module-action svg { width: 18px; height: 18px; }
+.siehub-governance-note { gap: 13px; margin-top: 30px; padding: 17px 20px; background: color-mix(in srgb, var(--theme-container) 32%, var(--paper)); border: 1px solid color-mix(in srgb, var(--theme-primary) 20%, var(--line)); border-radius: 8px; }.siehub-governance-note > svg { color: var(--theme-primary); }.siehub-governance-note div { display: grid; gap: 3px; }.siehub-governance-note strong { font-size: 13px; }.siehub-governance-note span { color: var(--muted); font-size: 11px; }
+
+.siehub-return { z-index: 100; position: fixed; left: 18px; bottom: 18px; display: flex; align-items: center; gap: 7px; padding: 9px 12px; color: #fff; background: var(--theme-primary); border: 0; border-radius: 7px; box-shadow: 0 10px 22px rgba(var(--theme-rgb), .34); font-size: 11px; font-weight: 900; }.siehub-return svg { width: 15px; height: 15px; }
+.siehub-back { gap: 5px; padding: 0; color: var(--muted); background: transparent; border: 0; font-size: 12px; font-weight: 800; }.siehub-back:hover { color: var(--theme-primary); }.siehub-back svg { width: 16px; }.siehub-department-hero { gap: 18px; margin-top: 24px; padding: 32px; color: #fff; border-radius: 8px; background: linear-gradient(135deg, color-mix(in srgb, var(--theme-primary) 72%, #152234), #152234); }.siehub-department-hero .siehub-module-icon { width: 58px; height: 58px; color: #fff; background: rgba(255,255,255,.15); }.siehub-department-hero h1 { margin: 4px 0; font-size: clamp(27px, 4vw, 42px); }.siehub-department-hero > div > span { color: rgba(255,255,255,.78); font-size: 13px; }.siehub-framework-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 20px; }.siehub-framework-grid section { min-height: 200px; padding: 21px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }.siehub-framework-grid span { color: var(--theme-primary); font-size: 11px; font-weight: 900; }.siehub-framework-grid h2 { margin: 30px 0 8px; font-size: 18px; }.siehub-framework-grid p { min-height: 44px; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.55; }.siehub-framework-grid button { margin-top: 15px; padding: 0; color: var(--muted); background: transparent; border: 0; font-size: 11px; font-weight: 800; }.siehub-bridge-card { gap: 15px; margin-top: 20px; padding: 20px; border: 1px solid color-mix(in srgb, var(--theme-primary) 26%, var(--line)); border-radius: 8px; background: color-mix(in srgb, var(--theme-container) 26%, var(--paper)); }.siehub-bridge-card > svg { flex: 0 0 auto; color: var(--theme-primary); }.siehub-bridge-card > div { gap: 3px; }.siehub-bridge-card strong { font-size: 15px; }.siehub-bridge-card span { color: var(--muted); font-size: 12px; line-height: 1.5; }.siehub-bridge-card .primary-button { margin-left: auto; white-space: nowrap; }
+
+.siehub-portal-switch {
+  display: inline-flex;
+  gap: 6px;
+  margin-top: 16px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  box-shadow: 0 10px 26px rgba(15, 36, 58, .06);
+}
+
+.siehub-portal-switch button {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  padding: 9px 16px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: background .2s ease, color .2s ease, transform .2s ease;
+}
+
+.siehub-portal-switch button:hover {
+  transform: translateY(-1px);
+  color: var(--theme-primary);
+}
+
+.siehub-portal-switch button.is-active {
+  color: var(--theme-on-primary);
+  background: var(--theme-primary);
+}
+
+.siehub-student-portal-card {
+  margin-top: 20px;
+  padding: 24px;
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 18%, var(--line));
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--theme-container) 16%, transparent), transparent 54%),
+    var(--paper);
+  box-shadow: 0 12px 34px rgba(15, 36, 58, .06);
+}
+
+.siehub-student-portal-head p {
+  margin: 0;
+  color: var(--theme-primary);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+
+.siehub-student-portal-head h2 {
+  margin: 8px 0 6px;
+  color: var(--ink);
+  font-family: "方正大标宋简体", "Source Han Serif SC", "Songti SC", Georgia, serif;
+  font-size: 25px;
+}
+
+.siehub-student-portal-head span {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.siehub-student-service-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.siehub-student-service-grid article {
+  min-height: 150px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--canvas) 38%, var(--paper));
+}
+
+.siehub-student-service-grid span {
+  color: var(--theme-primary);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.siehub-student-service-grid strong {
+  display: block;
+  margin-top: 18px;
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.siehub-student-service-grid p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.mobile-role-chip { display: none; }
+html[data-theme="dark"] .siehub-shell, html[data-theme="dark"] .siehub-topbar { color: var(--ink); background: var(--canvas); } html[data-theme="dark"] .siehub-user-chip, html[data-theme="dark"] .siehub-module-card, html[data-theme="dark"] .siehub-framework-grid section, html[data-theme="dark"] .siehub-portal-switch, html[data-theme="dark"] .siehub-student-portal-card, html[data-theme="dark"] .siehub-student-service-grid article { background: var(--paper); }
+
+.login-view.siehub-login-view {
+  grid-template-columns: minmax(560px, 1.03fr) minmax(430px, .97fr);
+  background: var(--canvas);
+}
+
+.siehub-login-art {
+  background:
+    linear-gradient(120deg, rgba(255,255,255,.07) 1px, transparent 1px),
+    linear-gradient(30deg, rgba(255,255,255,.04) 1px, transparent 1px),
+    linear-gradient(145deg, #071a2f, #0e2f4e 54%, color-mix(in srgb, var(--theme-primary) 34%, #071a2f));
+  background-size: 56px 56px, 36px 36px, auto;
+}
+
+.siehub-login-art::after {
+  content: "SIEHUB";
+  color: rgba(255,255,255,.045);
+}
+
+.siehub-institution-mark .siehub-login-logo {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  color: var(--theme-on-container);
+  background: var(--theme-container);
+  border: 1px solid rgba(255,255,255,.28);
+  border-radius: 8px;
+  box-shadow: 0 14px 34px rgba(0,0,0,.2);
+}
+
+.siehub-institution-mark .siehub-login-logo svg {
+  width: 23px;
+  height: 23px;
+}
+
+.siehub-institution-mark strong,
+.siehub-login-panel h2,
+.siehub-login-panel .login-submit,
+.siehub-login-art h1,
+.hub-node b {
+  font-family: "方正大标宋简体", "Source Han Serif SC", "Songti SC", Georgia, serif;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.siehub-login-blueprint {
+  position: absolute;
+  right: clamp(38px, 6vw, 92px);
+  top: 18%;
+  width: 360px;
+  height: 420px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.blueprint-axis {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.32), transparent);
+}
+
+.blueprint-axis.vertical {
+  inset: 0 auto 0 50%;
+  width: 1px;
+  height: auto;
+  background: linear-gradient(180deg, transparent, rgba(255,255,255,.28), transparent);
+}
+
+.hub-node {
+  position: absolute;
+  left: calc(var(--node-col) * 118px);
+  top: calc(var(--node-row) * 102px);
+  width: 112px;
+  min-height: 76px;
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 7px;
+  padding: 12px;
+  color: rgba(255,255,255,.78);
+  background: rgba(255,255,255,.075);
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 8px;
+  backdrop-filter: blur(12px);
+  animation: siehub-node-in .54s var(--ease-out) both;
+  animation-delay: calc(80ms + var(--node-index) * 38ms);
+}
+
+.hub-node svg {
+  width: 18px;
+  height: 18px;
+  color: var(--theme-container);
+}
+
+.hub-node b {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hub-node.is-live {
+  color: #fff;
+  background: color-mix(in srgb, var(--theme-primary) 44%, rgba(255,255,255,.11));
+  border-color: color-mix(in srgb, var(--theme-container) 54%, rgba(255,255,255,.2));
+  box-shadow: 0 16px 34px rgba(0,0,0,.18);
+}
+
+.siehub-access-seal {
+  right: 64px;
+  top: 58%;
+  border-radius: 8px;
+  transform: rotate(0deg);
+}
+
+.siehub-login-art .login-art-copy {
+  max-width: 650px;
+  margin-bottom: 11vh;
+}
+
+.siehub-login-art .login-art-copy h1 {
+  max-width: 640px;
+  font-size: 58px;
+  line-height: 1.18;
+}
+
+.siehub-login-art .art-caption {
+  max-width: 520px;
+}
+
+.siehub-login-panel {
+  color: var(--ink);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--theme-container) 20%, transparent), transparent 34%),
+    var(--paper);
+}
+
+.siehub-college-signature img {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+}
+
+.siehub-login-panel .login-form {
+  width: min(100%, 470px);
+}
+
+.siehub-login-panel .login-heading h2 {
+  font-size: 36px;
+}
+
+.siehub-login-panel .login-heading p,
+.siehub-routing-card span,
+.siehub-login-panel .login-help span {
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.siehub-routing-card {
+  align-items: flex-start;
+  margin-bottom: 14px;
+  border-radius: 8px;
+}
+
+.siehub-login-routes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: -4px 0 17px;
+}
+
+.siehub-login-routes span {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--theme-primary);
+  background: color-mix(in srgb, var(--theme-container) 42%, transparent);
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 18%, var(--line));
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.siehub-login-routes svg {
+  width: 15px;
+  height: 15px;
+}
+
+.siehub-login-panel .login-field > span,
+.siehub-login-panel .login-options label,
+.siehub-login-panel .login-options button,
+.siehub-login-panel .login-register,
+.siehub-login-panel .login-register button {
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.siehub-login-panel .login-field input {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.siehub-login-panel .login-submit {
+  height: 54px;
+  border-radius: 7px;
+  font-size: 14px;
+}
+
+@keyframes siehub-node-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+html[data-theme="dark"] .siehub-login-view {
+  background: var(--canvas);
+}
+
+html[data-theme="dark"] .siehub-login-panel {
+  color: var(--ink);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--theme-primary) 18%, transparent), transparent 34%),
+    var(--paper);
+}
+
+html[data-theme="dark"] .siehub-login-panel .login-field > div,
+html[data-theme="dark"] .siehub-login-panel .login-help {
+  background: color-mix(in srgb, var(--canvas) 72%, var(--paper));
+  border-color: var(--line);
+}
+
+.siehub-ultimate-window {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--theme-container) 20%, transparent), transparent 360px),
+    var(--canvas);
+}
+
+.siehub-ultimate-hero,
+.siehub-access-denied {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: 24px;
+  padding: 28px 32px;
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 24%, var(--line));
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--theme-primary) 16%, var(--paper)), var(--paper) 68%);
+  box-shadow: 0 12px 34px rgba(15, 36, 58, .06);
+}
+
+.siehub-ultimate-hero .siehub-module-icon {
+  width: 58px;
+  height: 58px;
+  color: #fff;
+  background: var(--theme-primary);
+}
+
+.siehub-ultimate-hero > div,
+.siehub-access-denied > div {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.siehub-ultimate-hero p {
+  margin: 0;
+  color: var(--theme-primary);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .1em;
+}
+
+.siehub-ultimate-hero h1 {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(28px, 4vw, 44px);
+  line-height: 1.18;
+}
+
+.siehub-ultimate-hero span,
+.siehub-access-denied span {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.siehub-organization-host {
+  margin-top: 20px;
+}
+
+.siehub-ultimate-window.admin-demo-shell .organization-framework-panel {
+  padding: 0;
+}
+
+.siehub-ultimate-window.admin-demo-shell .organization-framework-panel > .relative:first-child,
+.siehub-ultimate-window.admin-demo-shell .organization-framework-panel section,
+.siehub-ultimate-window.admin-demo-shell .organization-framework-panel form,
+.siehub-ultimate-window.admin-demo-shell .organization-framework-panel .overflow-x-auto {
+  border-radius: 8px !important;
+}
+
+.siehub-ultimate-window.admin-demo-shell .organization-framework-panel h2,
+.siehub-ultimate-window.admin-demo-shell .organization-framework-panel h3,
+.siehub-ultimate-window.admin-demo-shell .organization-framework-panel h4,
+.siehub-access-denied strong {
+  font-family: "方正大标宋简体", "Source Han Serif SC", "Songti SC", Georgia, serif;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.siehub-access-denied {
+  align-items: flex-start;
+}
+
+.siehub-access-denied > svg {
+  flex: 0 0 auto;
+  color: var(--theme-primary);
+}
+
+html[data-theme="dark"] .siehub-ultimate-hero,
+html[data-theme="dark"] .siehub-access-denied {
+  background: var(--paper);
+  border-color: var(--line);
+}
+
+.siehub-policy-card {
+  margin-top: 20px;
+  padding: 22px;
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 22%, var(--line));
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--theme-container) 14%, transparent), transparent 48%),
+    var(--paper);
+  box-shadow: 0 12px 34px rgba(15, 36, 58, .06);
+}
+
+.siehub-policy-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.siehub-policy-head p {
+  margin: 0;
+  color: var(--theme-primary);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+
+.siehub-policy-head h3 {
+  margin: 8px 0 6px;
+  color: var(--ink);
+  font-family: "方正大标宋简体", "Source Han Serif SC", "Songti SC", Georgia, serif;
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.siehub-policy-head span {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.siehub-policy-head b {
+  flex: 0 0 auto;
+  align-self: center;
+  padding: 7px 10px;
+  border-radius: 999px;
+  color: var(--theme-on-container);
+  background: var(--theme-container);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+.siehub-policy-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.siehub-policy-actions button,
+.siehub-policy-note button {
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 22%, var(--line));
+  border-radius: 999px;
+  background: var(--theme-primary);
+  color: var(--theme-on-primary);
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  cursor: pointer;
+  transition: transform .2s ease, opacity .2s ease, background .2s ease;
+}
+
+.siehub-policy-actions button:hover,
+.siehub-policy-note button:hover {
+  transform: translateY(-1px);
+}
+
+.siehub-policy-actions button.ghost,
+.siehub-policy-note button {
+  background: color-mix(in srgb, var(--theme-container) 28%, var(--paper));
+  color: var(--theme-primary);
+}
+
+.siehub-policy-actions button:disabled,
+.siehub-policy-note button:disabled {
+  cursor: not-allowed;
+  opacity: .58;
+  transform: none;
+}
+
+.siehub-policy-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 18%, var(--line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--theme-container) 26%, var(--paper));
+}
+
+.siehub-policy-note svg {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  color: var(--theme-primary);
+}
+
+.siehub-policy-note strong {
+  display: block;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.siehub-policy-note span {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.siehub-policy-note div {
+  display: grid;
+  gap: 3px;
+}
+
+.siehub-policy-note button {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.siehub-policy-message {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 20%, var(--line));
+  border-radius: 8px;
+  color: var(--theme-primary);
+  background: color-mix(in srgb, var(--theme-container) 20%, transparent);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.siehub-policy-editor {
+  display: grid;
+  grid-template-columns: minmax(0, .72fr) minmax(0, 1.28fr);
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.siehub-policy-editor label,
+.siehub-policy-item-editor label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.siehub-policy-editor label span,
+.siehub-policy-item-editor label span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+.siehub-policy-editor input,
+.siehub-policy-editor textarea,
+.siehub-policy-item input,
+.siehub-policy-item textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--canvas) 52%, var(--paper));
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.5;
+  outline: none;
+  padding: 10px 11px;
+  transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+}
+
+.siehub-policy-editor textarea,
+.siehub-policy-item textarea {
+  resize: vertical;
+}
+
+.siehub-policy-editor input:focus,
+.siehub-policy-editor textarea:focus,
+.siehub-policy-item input:focus,
+.siehub-policy-item textarea:focus {
+  border-color: color-mix(in srgb, var(--theme-primary) 58%, var(--line));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-primary) 12%, transparent);
+}
+
+.siehub-policy-item-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 92px;
+  gap: 8px;
+}
+
+.siehub-policy-item input:disabled {
+  color: var(--muted);
+  background: color-mix(in srgb, var(--line) 24%, transparent);
+}
+
+.siehub-policy-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.siehub-policy-item {
+  display: grid;
+  gap: 6px;
+  min-height: 132px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--canvas) 45%, var(--paper));
+}
+
+.siehub-policy-item span {
+  width: fit-content;
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.siehub-policy-item strong {
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.siehub-policy-item em {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.6;
+}
+
+.siehub-policy-item.tone-purple span { color: #6d28d9; background: #ede9fe; }
+.siehub-policy-item.tone-blue span { color: #1d4ed8; background: #dbeafe; }
+.siehub-policy-item.tone-green span { color: #166534; background: #dcfce7; }
+.siehub-policy-item.tone-yellow span { color: #a16207; background: #fef3c7; }
+.siehub-policy-item.tone-slate span { color: #334155; background: #e2e8f0; }
+.siehub-policy-item.tone-red span { color: #b91c1c; background: #fee2e2; }
+
+.siehub-policy-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.siehub-policy-footer i {
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+html[data-theme="dark"] .siehub-policy-card,
+html[data-theme="dark"] .siehub-policy-item,
+html[data-theme="dark"] .siehub-policy-note {
+  background: var(--paper);
+  border-color: var(--line);
+}
+
+.siehub-performance-card {
+  margin-top: 20px;
+  padding: 22px;
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 18%, var(--line));
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--theme-container) 24%, transparent), transparent 34%),
+    var(--paper);
+  box-shadow: 0 12px 34px rgba(15, 36, 58, .06);
+}
+
+.siehub-performance-head,
+.siehub-performance-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.siehub-performance-head p,
+.siehub-performance-panel-head p {
+  margin: 0;
+  color: var(--theme-primary);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+
+.siehub-performance-head h3,
+.siehub-performance-panel-head h4 {
+  margin: 8px 0 6px;
+  color: var(--ink);
+  font-family: "方正大标宋简体", "Source Han Serif SC", "Songti SC", Georgia, serif;
+  line-height: 1.2;
+}
+
+.siehub-performance-head h3 { font-size: 24px; }
+.siehub-performance-panel-head h4 { font-size: 18px; }
+
+.siehub-performance-head span,
+.siehub-performance-panel-head div p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+  letter-spacing: 0;
+}
+
+.siehub-performance-head button,
+.siehub-wide-action {
+  border: 0;
+  border-radius: 999px;
+  background: var(--theme-primary);
+  color: var(--theme-on-primary);
+  padding: 10px 14px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.siehub-performance-head button:disabled,
+.siehub-wide-action:disabled {
+  cursor: not-allowed;
+  opacity: .56;
+}
+
+.siehub-performance-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.siehub-performance-stats span,
+.siehub-performance-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--canvas) 42%, var(--paper));
+}
+
+.siehub-performance-stats span {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+}
+
+.siehub-performance-stats strong {
+  color: var(--ink);
+  font-size: 24px;
+  line-height: 1;
+}
+
+.siehub-performance-stats em {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.siehub-performance-grid {
+  display: grid;
+  grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.siehub-performance-grid.lower {
+  grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr);
+}
+
+.siehub-performance-panel {
+  padding: 16px;
+}
+
+.siehub-performance-panel-head {
+  justify-content: flex-start;
+}
+
+.siehub-performance-panel-head > span {
+  display: grid;
+  place-items: center;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: var(--theme-primary);
+  background: color-mix(in srgb, var(--theme-container) 42%, transparent);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.siehub-member-checks,
+.siehub-record-targets,
+.siehub-score-list,
+.siehub-record-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.siehub-member-check,
+.siehub-record-targets label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.siehub-member-check span {
+  display: grid;
+  gap: 2px;
+}
+
+.siehub-member-check strong,
+.siehub-record-targets span {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.siehub-member-check small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.siehub-wide-action {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.siehub-record-targets {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.siehub-performance-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.siehub-performance-form-grid label,
+.siehub-performance-reason {
+  display: grid;
+  gap: 6px;
+}
+
+.siehub-performance-form-grid span,
+.siehub-performance-reason span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+.siehub-performance-form-grid input,
+.siehub-performance-form-grid select,
+.siehub-performance-reason textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  outline: none;
+  padding: 10px 11px;
+}
+
+.siehub-performance-reason {
+  margin-top: 10px;
+}
+
+.siehub-score-row,
+.siehub-record-list article {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+}
+
+.siehub-score-row b {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--theme-container);
+  color: var(--theme-on-container);
+  font-size: 11px;
+}
+
+.siehub-score-row span,
+.siehub-record-list article div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.siehub-score-row strong,
+.siehub-record-list strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.siehub-score-row small,
+.siehub-record-list small,
+.siehub-record-list p,
+.siehub-empty-text {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.siehub-score-row em,
+.siehub-record-list article > span {
+  color: var(--theme-primary);
+  font-size: 18px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.siehub-record-list p {
+  overflow: hidden;
+  margin: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.siehub-record-list button {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  padding: 6px 9px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+html[data-theme="dark"] .siehub-performance-card,
+html[data-theme="dark"] .siehub-performance-panel,
+html[data-theme="dark"] .siehub-performance-stats span,
+html[data-theme="dark"] .siehub-member-check,
+html[data-theme="dark"] .siehub-record-targets label,
+html[data-theme="dark"] .siehub-score-row,
+html[data-theme="dark"] .siehub-record-list article,
+html[data-theme="dark"] .siehub-performance-form-grid input,
+html[data-theme="dark"] .siehub-performance-form-grid select,
+html[data-theme="dark"] .siehub-performance-reason textarea {
+  background: var(--paper);
+  border-color: var(--line);
+}
+
+@media (max-width: 920px) { .siehub-module-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }.siehub-framework-grid, .siehub-student-service-grid { grid-template-columns: 1fr; }.siehub-framework-grid section { min-height: 0; }.siehub-framework-grid h2 { margin-top: 18px; }.siehub-framework-grid p { min-height: 0; }.siehub-bridge-card { align-items: flex-start; flex-wrap: wrap; }.siehub-bridge-card .primary-button { margin-left: 45px; }.siehub-policy-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }.siehub-policy-editor { grid-template-columns: 1fr; }.siehub-performance-grid, .siehub-performance-grid.lower { grid-template-columns: 1fr; }.siehub-policy-card, .siehub-performance-card { padding: 18px; }.siehub-policy-head { flex-wrap: wrap; }.siehub-policy-head b { width: fit-content; } }
+@media (max-width: 980px) {
+  .login-view.siehub-login-view {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .siehub-login-art {
+    min-height: 360px;
+    flex: 0 0 auto;
+  }
+
+  .siehub-login-blueprint {
+    right: 18px;
+    top: 78px;
+    width: 286px;
+    height: 230px;
+    opacity: .54;
+  }
+
+  .hub-node {
+    left: calc(var(--node-col) * 92px);
+    top: calc(var(--node-row) * 74px);
+    width: 86px;
+    min-height: 58px;
+    padding: 9px;
+  }
+
+  .hub-node b {
+    font-size: 10px;
+  }
+
+  .siehub-access-seal {
+    right: 24px;
+    top: 46%;
+  }
+
+  .siehub-login-art .login-art-copy h1 {
+    max-width: 520px;
+    font-size: 42px;
+  }
+
+  .siehub-login-panel {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 640px) { .siehub-topbar { padding: 12px 16px; }.siehub-brand { min-width: 0; }.siehub-brand small, .siehub-user-chip > span:nth-child(2), .siehub-user-chip .role-pill, .siehub-topbar-actions .theme-mode-icons { display: none; }.siehub-content { width: min(100% - 28px, 1280px); padding-top: 20px; }.siehub-hero { min-height: 260px; padding: 24px; }.siehub-hero h1 { margin-top: 35px; font-size: 31px; }.siehub-hero-meta b, .siehub-hero-note i { display: none; }.siehub-hero-orbit { right: -40px; bottom: -63px; width: 170px; height: 170px; }.siehub-module-group { margin-top: 30px; }.siehub-module-grid { grid-template-columns: 1fr; }.siehub-module-card { min-height: 122px; }.siehub-governance-note { align-items: flex-start; }.siehub-governance-note span { line-height: 1.5; }.siehub-return { left: 12px; bottom: 12px; }.siehub-department-hero { padding: 24px; }.siehub-department-hero .siehub-module-icon { width: 45px; height: 45px; }.siehub-department-hero h1 { font-size: 30px; }.siehub-portal-switch { display: flex; width: 100%; }.siehub-portal-switch button { flex: 1; }.siehub-student-portal-card { padding: 16px; }.siehub-bridge-card .primary-button { width: 100%; margin-left: 0; }.siehub-policy-grid { grid-template-columns: 1fr; }.siehub-policy-card, .siehub-performance-card { padding: 16px; }.siehub-policy-actions { width: 100%; justify-content: flex-start; }.siehub-policy-actions button { flex: 1 1 118px; }.siehub-policy-note { padding: 12px 14px; flex-wrap: wrap; }.siehub-policy-note button { width: 100%; margin-left: 0; }.siehub-policy-item { min-height: 0; }.siehub-policy-item-editor { grid-template-columns: 1fr; }.siehub-policy-editor input, .siehub-policy-editor textarea, .siehub-policy-item input, .siehub-policy-item textarea { font-size: 12px; }.siehub-performance-head { flex-wrap: wrap; }.siehub-performance-head button { width: 100%; }.siehub-performance-stats { grid-template-columns: 1fr; }.siehub-record-targets, .siehub-performance-form-grid { grid-template-columns: 1fr; }.siehub-record-list article { align-items: flex-start; flex-wrap: wrap; }.siehub-record-list article > span { margin-left: auto; }.siehub-record-list button { width: 100%; }.mobile-header-actions { gap: 5px; }.mobile-role-chip { max-width: 120px; display: grid; gap: 1px; text-align: right; }.mobile-role-chip > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-size: 10px; font-weight: 800; }.mobile-role-chip .role-pill { justify-self: end; font-size: 8px; line-height: 1.3; }.siehub-login-art { min-height: 300px; padding: 20px 18px; }.siehub-login-blueprint { display: none; }.siehub-login-art .login-art-copy { margin: auto 0 4px; }.siehub-login-art .login-art-copy h1 { max-width: 330px; font-size: 31px; line-height: 1.25; }.siehub-login-art .art-caption { display: none; }.siehub-access-seal { width: 62px; height: 62px; right: 22px; top: 42%; }.siehub-login-panel { padding: 20px 18px 18px; }.siehub-college-signature img { width: 34px; height: 34px; }.siehub-login-panel .login-heading h2 { font-size: 28px; }.siehub-login-routes { grid-template-columns: 1fr; }.siehub-login-routes span { justify-content: flex-start; padding-left: 12px; }.siehub-login-panel .login-submit { height: 50px; } }

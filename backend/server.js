@@ -24,9 +24,14 @@ const {
   MEMBER_ROLES,
   POSITION_TITLES,
   getDepartmentLabel,
+  getHubModuleAccess,
   getIdentityLabel,
+  getVolunteerPerformancePolicy,
   isValidManagedDepartment,
   listDepartments,
+  listHubModules,
+  listHubWindows,
+  HUB_SYSTEM,
   validateAssignment
 } = require('./organization');
 const app = express();
@@ -59,6 +64,14 @@ const config = {
   jwtExpire: process.env.JWT_EXPIRE || '7d',
   nodeEnv: process.env.NODE_ENV || 'development'
 };
+
+app.set('etag', false);
+app.use('/api', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+});
 
 // ============================================
 // 安全中间件配置
@@ -365,6 +378,42 @@ const performanceRecordSchema = new mongoose.Schema({
 
 const PerformanceRecord = mongoose.model('PerformanceRecord', performanceRecordSchema);
 
+const performancePolicyDimensionSchema = new mongoose.Schema({
+  key: {
+    type: String,
+    enum: ['attendance', 'activity', 'feedback', 'copywriting', 'others', 'bonus'],
+    required: true
+  },
+  label: { type: String, required: true },
+  maxScore: { type: Number, default: null },
+  capLabel: { type: String, required: true },
+  color: { type: String, default: 'slate' },
+  rule: { type: String, required: true },
+  scoringMode: {
+    type: String,
+    enum: ['capped_additive', 'bonus'],
+    default: 'capped_additive'
+  }
+}, { _id: false });
+
+const departmentPerformancePolicySchema = new mongoose.Schema({
+  organization: { type: String, enum: Object.keys(ORGANIZATIONS), required: true },
+  department: { type: String, required: true },
+  sourcePolicyId: { type: String, required: true },
+  template: { type: String, default: 'sievox_default_v1' },
+  sourceProduct: { type: String, default: 'SIEVOX' },
+  title: { type: String, required: true },
+  description: { type: String, required: true },
+  totalBaseScore: { type: Number, default: 100 },
+  bonusMode: { type: String, enum: ['extra'], default: 'extra' },
+  dimensions: { type: [performancePolicyDimensionSchema], default: [] },
+  notes: { type: [String], default: [] },
+  version: { type: Number, default: 1 },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+}, { timestamps: true });
+departmentPerformancePolicySchema.index({ organization: 1, department: 1 }, { unique: true });
+const DepartmentPerformancePolicy = mongoose.model('DepartmentPerformancePolicy', departmentPerformancePolicySchema);
+
 // [新增] 系统配置模型 (用于存储当前运行的学期)
 const systemConfigSchema = new mongoose.Schema({
   key: { type: String, required: true, unique: true },
@@ -629,7 +678,156 @@ const serializeUser = (user) => ({
   organizationLabel: ORGANIZATIONS[user.organization]?.label || '',
   department: user.department || null,
   departmentLabel: getDepartmentLabel(user.organization, user.department),
-  managedDepartments: getUserManagedDepartments(user).map(serializeManagedDepartment)
+  managedDepartments: getUserManagedDepartments(user).map(serializeManagedDepartment),
+  moduleCapabilities: getHubModuleAccess(user)
+});
+
+const getPerformancePolicyModuleAccess = (user, assignment) => {
+  const moduleAccess = getHubModuleAccess(user).find(item =>
+    item.organization === assignment.organization &&
+    item.department === assignment.department
+  );
+  if (!moduleAccess) return null;
+  return {
+    moduleId: moduleAccess.moduleId,
+    accessLevel: moduleAccess.accessLevel,
+    capabilities: moduleAccess.capabilities || [],
+    canEdit: moduleAccess.capabilities?.includes('manage_volunteer_performance_policy') || false
+  };
+};
+
+const serializeDepartmentPerformancePolicy = (policyDoc, organization, department) => {
+  const basePolicy = getVolunteerPerformancePolicy(organization, department);
+  if (!basePolicy) return null;
+  if (!policyDoc) {
+    return {
+      ...basePolicy,
+      isCustomized: false,
+      updatedAt: null,
+      updatedBy: null
+    };
+  }
+
+  const policy = policyDoc.toObject ? policyDoc.toObject() : policyDoc;
+  const updatedBy = policy.updatedBy && typeof policy.updatedBy === 'object'
+    ? {
+      id: policy.updatedBy._id || policy.updatedBy.id,
+      name: policy.updatedBy.name || '',
+      studentId: policy.updatedBy.studentId || ''
+    }
+    : null;
+
+  return {
+    ...basePolicy,
+    id: policy._id || basePolicy.id,
+    sourcePolicyId: policy.sourcePolicyId || basePolicy.sourcePolicyId,
+    version: policy.version || 1,
+    template: policy.template || basePolicy.template,
+    sourceProduct: policy.sourceProduct || basePolicy.sourceProduct,
+    title: policy.title || basePolicy.title,
+    description: policy.description || basePolicy.description,
+    totalBaseScore: policy.totalBaseScore ?? basePolicy.totalBaseScore,
+    bonusMode: policy.bonusMode || basePolicy.bonusMode,
+    dimensions: Array.isArray(policy.dimensions) && policy.dimensions.length
+      ? policy.dimensions.map(item => ({
+        key: item.key,
+        label: item.label,
+        maxScore: item.maxScore ?? null,
+        capLabel: item.capLabel,
+        color: item.color,
+        rule: item.rule,
+        scoringMode: item.scoringMode
+      }))
+      : basePolicy.dimensions,
+    notes: Array.isArray(policy.notes) && policy.notes.length ? policy.notes : basePolicy.notes,
+    isCustomized: true,
+    updatedAt: policy.updatedAt || null,
+    updatedBy
+  };
+};
+
+const sanitizePolicyText = (value, fallback, maxLength = 220) => {
+  const clean = sanitizeInput(value);
+  const text = typeof clean === 'string' && clean.trim() ? clean.trim() : fallback;
+  return text.slice(0, maxLength);
+};
+
+const normalizeDepartmentPerformancePolicyPayload = (payload = {}, organization, department) => {
+  const basePolicy = getVolunteerPerformancePolicy(organization, department);
+  const incomingDimensions = Array.isArray(payload.dimensions) ? payload.dimensions : [];
+  const incomingByKey = new Map(incomingDimensions.map(item => [item?.key, item]));
+  const dimensions = basePolicy.dimensions.map(defaultDimension => {
+    const incoming = incomingByKey.get(defaultDimension.key) || {};
+    const isBonus = defaultDimension.key === 'bonus';
+    const requestedMax = Number(incoming.maxScore ?? defaultDimension.maxScore ?? 0);
+    const maxScore = isBonus ? null : Math.max(0, Math.min(100, Number.isFinite(requestedMax) ? requestedMax : defaultDimension.maxScore));
+    return {
+      key: defaultDimension.key,
+      label: sanitizePolicyText(incoming.label, defaultDimension.label, 32),
+      maxScore,
+      capLabel: sanitizePolicyText(incoming.capLabel, isBonus ? '附加' : `${maxScore}分`, 16),
+      color: defaultDimension.color,
+      rule: sanitizePolicyText(incoming.rule, defaultDimension.rule, 420),
+      scoringMode: defaultDimension.scoringMode
+    };
+  });
+  const totalBaseScore = dimensions
+    .filter(item => item.scoringMode !== 'bonus')
+    .reduce((sum, item) => sum + Number(item.maxScore || 0), 0);
+
+  const notes = Array.isArray(payload.notes)
+    ? payload.notes.map(item => sanitizePolicyText(item, '', 120)).filter(Boolean).slice(0, 4)
+    : basePolicy.notes;
+
+  return {
+    sourcePolicyId: basePolicy.sourcePolicyId,
+    template: basePolicy.template,
+    sourceProduct: basePolicy.sourceProduct,
+    title: sanitizePolicyText(payload.title, basePolicy.title, 80),
+    description: sanitizePolicyText(payload.description, basePolicy.description, 180),
+    totalBaseScore,
+    bonusMode: basePolicy.bonusMode,
+    dimensions,
+    notes: notes.length ? notes : basePolicy.notes
+  };
+};
+
+const getCurrentSemesterName = async () => {
+  let current = await SystemConfig.findOne({ key: 'currentSemester' });
+  if (!current) {
+    current = await SystemConfig.create({ key: 'currentSemester', value: '2025-2026学年 第二学期' });
+  }
+  return current.value;
+};
+
+const getDepartmentPerformanceAccess = (user, assignment) => {
+  const access = getPerformancePolicyModuleAccess(user, assignment);
+  if (!access || !access.canEdit) return null;
+  return access;
+};
+
+const serializeDepartmentPerformanceRecord = (record) => ({
+  id: record._id,
+  _id: record._id,
+  volunteer: record.volunteer ? {
+    id: record.volunteer._id || record.volunteer.id,
+    _id: record.volunteer._id || record.volunteer.id,
+    name: record.volunteer.name || '',
+    studentId: record.volunteer.studentId || ''
+  } : null,
+  recordedBy: record.recordedBy ? {
+    id: record.recordedBy._id || record.recordedBy.id,
+    name: record.recordedBy.name || ''
+  } : null,
+  dimension: record.dimension,
+  score: record.score,
+  reason: record.reason,
+  occurrenceDate: record.occurrenceDate,
+  activityName: record.activityName || '',
+  organization: record.organization,
+  department: record.department,
+  semester: record.semester,
+  createdAt: record.createdAt
 });
 
 const hasSuperadminAccess = (user) => Boolean(user?.isUltimateAdmin || user?.role === 'superadmin');
@@ -645,12 +843,21 @@ const ultimateOnly = (req, res, next) => {
 const buildDepartmentScopedQuery = (user) => {
   if (user.isUltimateAdmin) return {};
   const managed = getUserManagedDepartments(user);
-  if (managed.length === 0) return { _id: null };
+  const unassignedFeedbackScope = [
+    { handlingOrganization: null },
+    { handlingOrganization: { $exists: false } },
+    { handlingDepartment: null },
+    { handlingDepartment: { $exists: false } }
+  ];
+  if (managed.length === 0) return { $or: unassignedFeedbackScope };
   return {
-    $or: managed.map(item => ({
-      handlingOrganization: item.organization,
-      handlingDepartment: item.department
-    }))
+    $or: [
+      ...unassignedFeedbackScope,
+      ...managed.map(item => ({
+        handlingOrganization: item.organization,
+        handlingDepartment: item.department
+      }))
+    ]
   };
 };
 
@@ -824,6 +1031,336 @@ app.get('/api/organization/meta', (req, res) => {
     memberRoles: MEMBER_ROLES,
     positionTitles: POSITION_TITLES
   });
+});
+
+app.get('/api/hub/modules', (req, res) => {
+  res.json({
+    success: true,
+    hub: HUB_SYSTEM,
+    modules: listHubModules(),
+    windows: listHubWindows()
+  });
+});
+
+app.get('/api/hub/me', authenticate, (req, res) => {
+  res.json({
+    success: true,
+    hub: HUB_SYSTEM,
+    user: serializeUser(req.user),
+    modules: listHubModules(),
+    windows: listHubWindows(),
+    accessibleModules: getHubModuleAccess(req.user)
+  });
+});
+
+app.get('/api/hub/departments/:organization/:department/performance-policy', authenticate, async (req, res) => {
+  const assignment = {
+    organization: req.params.organization,
+    department: req.params.department
+  };
+  if (!isValidManagedDepartment(assignment)) {
+    return res.status(404).json({ success: false, message: '部门模块不存在' });
+  }
+
+  const access = getPerformancePolicyModuleAccess(req.user, assignment);
+  if (!access) {
+    return res.status(403).json({ success: false, message: '无权访问该部门绩效制度' });
+  }
+
+  try {
+    const policy = await DepartmentPerformancePolicy
+      .findOne(assignment)
+      .populate('updatedBy', 'name studentId')
+      .lean();
+    res.json({
+      success: true,
+      policy: serializeDepartmentPerformancePolicy(policy, assignment.organization, assignment.department),
+      access
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '获取部门绩效制度失败' });
+  }
+});
+
+app.put('/api/hub/departments/:organization/:department/performance-policy', authenticate, async (req, res) => {
+  const assignment = {
+    organization: req.params.organization,
+    department: req.params.department
+  };
+  if (!isValidManagedDepartment(assignment)) {
+    return res.status(404).json({ success: false, message: '部门模块不存在' });
+  }
+
+  const access = getPerformancePolicyModuleAccess(req.user, assignment);
+  if (!access) {
+    return res.status(403).json({ success: false, message: '无权访问该部门绩效制度' });
+  }
+  if (!access.canEdit) {
+    return res.status(403).json({ success: false, message: '当前身份不能编辑该部门绩效制度' });
+  }
+
+  try {
+    const existing = await DepartmentPerformancePolicy.findOne(assignment).lean();
+    const normalizedPolicy = normalizeDepartmentPerformancePolicyPayload(req.body, assignment.organization, assignment.department);
+    const policy = await DepartmentPerformancePolicy.findOneAndUpdate(
+      assignment,
+      {
+        ...assignment,
+        ...normalizedPolicy,
+        version: (existing?.version || 0) + 1,
+        updatedBy: req.user._id
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    ).populate('updatedBy', 'name studentId');
+
+    await logAction(req.user._id, 'update_performance_policy', 'departmentPerformancePolicy', policy._id, assignment, req);
+    res.json({
+      success: true,
+      message: '绩效制度已保存',
+      policy: serializeDepartmentPerformancePolicy(policy, assignment.organization, assignment.department),
+      access
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '保存部门绩效制度失败' });
+  }
+});
+
+app.post('/api/hub/departments/:organization/:department/performance-policy/reset', authenticate, async (req, res) => {
+  const assignment = {
+    organization: req.params.organization,
+    department: req.params.department
+  };
+  if (!isValidManagedDepartment(assignment)) {
+    return res.status(404).json({ success: false, message: '部门模块不存在' });
+  }
+
+  const access = getPerformancePolicyModuleAccess(req.user, assignment);
+  if (!access) {
+    return res.status(403).json({ success: false, message: '无权访问该部门绩效制度' });
+  }
+  if (!access.canEdit) {
+    return res.status(403).json({ success: false, message: '当前身份不能恢复该部门绩效制度' });
+  }
+
+  try {
+    const existing = await DepartmentPerformancePolicy.findOneAndDelete(assignment).lean();
+    await logAction(req.user._id, 'reset_performance_policy', 'departmentPerformancePolicy', existing?._id, assignment, req);
+    res.json({
+      success: true,
+      message: '已恢复 SIEVOX 默认绩效制度',
+      policy: serializeDepartmentPerformancePolicy(null, assignment.organization, assignment.department),
+      access
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '恢复部门绩效制度失败' });
+  }
+});
+
+app.get('/api/hub/departments/:organization/:department/performance-workbench', authenticate, async (req, res) => {
+  const assignment = {
+    organization: req.params.organization,
+    department: req.params.department
+  };
+  if (!isValidManagedDepartment(assignment)) {
+    return res.status(404).json({ success: false, message: '部门模块不存在' });
+  }
+
+  const access = getDepartmentPerformanceAccess(req.user, assignment);
+  if (!access) {
+    return res.status(403).json({ success: false, message: '当前身份不能管理该部门绩效' });
+  }
+
+  try {
+    const currentSemester = await getCurrentSemesterName();
+    const semester = sanitizeInput(req.query.semester) || currentSemester;
+    const volunteers = await User.find({
+      role: 'admin',
+      organization: assignment.organization,
+      department: assignment.department,
+      isActive: true
+    }).select('-password').sort({ studentId: 1 });
+    const volunteerIds = volunteers.map(user => user._id);
+    const rosterDocs = await SemesterMember.find({
+      semester,
+      volunteer: { $in: volunteerIds }
+    }).populate('volunteer', 'name studentId email phone role memberRole positionTitle organization department').lean();
+    const records = await PerformanceRecord.find({
+      semester,
+      organization: assignment.organization,
+      department: assignment.department
+    })
+      .populate('volunteer', 'name studentId organization department')
+      .populate('recordedBy', 'name')
+      .sort({ occurrenceDate: -1, createdAt: -1 })
+      .lean();
+    const policyDoc = await DepartmentPerformancePolicy.findOne(assignment).populate('updatedBy', 'name studentId').lean();
+    const recordSemesters = await PerformanceRecord.find({
+      organization: assignment.organization,
+      department: assignment.department
+    }).distinct('semester');
+    const semesters = Array.from(new Set([currentSemester, semester, ...recordSemesters].filter(Boolean)));
+
+    res.json({
+      success: true,
+      access,
+      currentSemester,
+      semester,
+      semesters,
+      volunteers: volunteers.map(serializeUser),
+      roster: rosterDocs.map(doc => doc.volunteer ? serializeUser(doc.volunteer) : null).filter(Boolean),
+      records: records.map(serializeDepartmentPerformanceRecord),
+      policy: serializeDepartmentPerformancePolicy(policyDoc, assignment.organization, assignment.department)
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '获取部门绩效工作台失败' });
+  }
+});
+
+app.put('/api/hub/departments/:organization/:department/performance-roster', authenticate, async (req, res) => {
+  const assignment = {
+    organization: req.params.organization,
+    department: req.params.department
+  };
+  if (!isValidManagedDepartment(assignment)) {
+    return res.status(404).json({ success: false, message: '部门模块不存在' });
+  }
+
+  const access = getDepartmentPerformanceAccess(req.user, assignment);
+  if (!access) {
+    return res.status(403).json({ success: false, message: '当前身份不能维护该部门成员名单' });
+  }
+
+  try {
+    const semester = sanitizeInput(req.body.semester) || await getCurrentSemesterName();
+    const requestedIds = Array.from(new Set((Array.isArray(req.body.volunteerIds) ? req.body.volunteerIds : []).map(String).filter(Boolean)));
+    const departmentVolunteers = await User.find({
+      role: 'admin',
+      organization: assignment.organization,
+      department: assignment.department,
+      isActive: true
+    }).select('name studentId');
+    const allowedIds = new Set(departmentVolunteers.map(user => user._id.toString()));
+    const hasOutOfScope = requestedIds.some(id => !allowedIds.has(id));
+    if (hasOutOfScope) {
+      return res.status(403).json({ success: false, message: '只能添加该部门内的志愿者账号' });
+    }
+
+    await SemesterMember.deleteMany({ semester, volunteer: { $in: Array.from(allowedIds) } });
+    const selectedVolunteers = departmentVolunteers.filter(user => requestedIds.includes(user._id.toString()));
+    if (selectedVolunteers.length > 0) {
+      await SemesterMember.insertMany(selectedVolunteers.map(user => ({
+        volunteer: user._id,
+        semester,
+        name: user.name,
+        studentId: user.studentId,
+        addedBy: req.user._id
+      })));
+    }
+    await markSemesterManaged(semester);
+    await logAction(req.user._id, 'update_department_performance_roster', 'semesterMember', req.user._id, { ...assignment, semester, count: selectedVolunteers.length }, req);
+    res.json({ success: true, message: '部门成员名单已保存' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '保存部门成员名单失败' });
+  }
+});
+
+app.post('/api/hub/departments/:organization/:department/performance-records', authenticate, async (req, res) => {
+  const assignment = {
+    organization: req.params.organization,
+    department: req.params.department
+  };
+  if (!isValidManagedDepartment(assignment)) {
+    return res.status(404).json({ success: false, message: '部门模块不存在' });
+  }
+
+  const access = getDepartmentPerformanceAccess(req.user, assignment);
+  if (!access) {
+    return res.status(403).json({ success: false, message: '当前身份不能录入该部门绩效' });
+  }
+
+  try {
+    const semester = sanitizeInput(req.body.targetSemester) || await getCurrentSemesterName();
+    const volunteerIds = Array.from(new Set((Array.isArray(req.body.volunteerIds) ? req.body.volunteerIds : []).map(String).filter(Boolean)));
+    if (volunteerIds.length === 0) return res.status(400).json({ success: false, message: '请选择成员' });
+    const policy = serializeDepartmentPerformancePolicy(
+      await DepartmentPerformancePolicy.findOne(assignment).lean(),
+      assignment.organization,
+      assignment.department
+    );
+    const dimension = sanitizeInput(req.body.dimension);
+    if (!policy.dimensions.some(item => item.key === dimension)) {
+      return res.status(400).json({ success: false, message: '绩效维度无效' });
+    }
+    const score = Number(req.body.score);
+    if (!Number.isFinite(score) || score <= 0) {
+      return res.status(400).json({ success: false, message: '请输入有效加分' });
+    }
+    const reason = sanitizeInput(req.body.reason);
+    if (!reason) return res.status(400).json({ success: false, message: '请填写加分事由' });
+
+    const targetVolunteers = await User.find({
+      _id: { $in: volunteerIds },
+      role: 'admin',
+      organization: assignment.organization,
+      department: assignment.department,
+      isActive: true
+    }).select('organization department');
+    if (targetVolunteers.length !== volunteerIds.length) {
+      return res.status(403).json({ success: false, message: '只能为该部门志愿者录入绩效' });
+    }
+    const rosterCount = await SemesterMember.countDocuments({ semester, volunteer: { $in: volunteerIds } });
+    if (rosterCount !== volunteerIds.length) {
+      return res.status(400).json({ success: false, message: '请先将成员加入本学期绩效名单' });
+    }
+
+    const occurrenceDate = req.body.occurrenceDate ? new Date(req.body.occurrenceDate) : new Date();
+    const records = volunteerIds.map(volunteerId => ({
+      volunteer: volunteerId,
+      recordedBy: req.user._id,
+      dimension,
+      score,
+      reason,
+      occurrenceDate,
+      activityName: sanitizeInput(req.body.activityName) || '',
+      organization: assignment.organization,
+      department: assignment.department,
+      semester
+    }));
+    await PerformanceRecord.insertMany(records);
+    await logAction(req.user._id, 'create_department_performance_records', 'performanceRecord', req.user._id, { ...assignment, semester, count: records.length, dimension, score }, req);
+    res.json({ success: true, message: '绩效录入成功' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '录入部门绩效失败' });
+  }
+});
+
+app.delete('/api/hub/departments/:organization/:department/performance-records/:id', authenticate, async (req, res) => {
+  const assignment = {
+    organization: req.params.organization,
+    department: req.params.department
+  };
+  if (!isValidManagedDepartment(assignment)) {
+    return res.status(404).json({ success: false, message: '部门模块不存在' });
+  }
+
+  const access = getDepartmentPerformanceAccess(req.user, assignment);
+  if (!access) {
+    return res.status(403).json({ success: false, message: '当前身份不能撤回该部门绩效' });
+  }
+
+  try {
+    const record = await PerformanceRecord.findOne({
+      _id: req.params.id,
+      organization: assignment.organization,
+      department: assignment.department
+    });
+    if (!record) return res.status(404).json({ success: false, message: '记录不存在' });
+    await record.deleteOne();
+    await logAction(req.user._id, 'delete_department_performance_record', 'performanceRecord', req.params.id, assignment, req);
+    res.json({ success: true, message: '绩效记录已撤回' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '撤回部门绩效失败' });
+  }
 });
 
 app.get('/api/ultimate/overview', authenticate, ultimateOnly, async (req, res) => {
@@ -2433,7 +2970,6 @@ const startServer = async () => {
       }
     }
 
-    
     // [修改] 根据环境决定启动 HTTP 还是 HTTPS
     if (config.nodeEnv === 'production') {
       // 生产环境：读取 SSL 证书并启动 HTTPS
