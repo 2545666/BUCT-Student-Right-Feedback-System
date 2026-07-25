@@ -383,7 +383,7 @@ const OrganizationFrameworkPanel = ({ token }) => {
             <div className={`bg-gradient-to-br ${org.accent} border-b border-white/10 p-5`}>
               <p className="text-xs text-purple-100/60">组织</p>
               <h3 className="mt-1 text-2xl font-black text-white">{org.title}</h3>
-              <div className="mt-3 inline-flex rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs text-purple-100/80">
+              <div className="org-leadership-tag mt-3 inline-flex rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs text-purple-100/80">
                 对应负责人标签：{org.leadership}
               </div>
             </div>
@@ -1743,7 +1743,6 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
             </div>
           )}
           <AdminThemeModeButtons themeTools={themeTools} />
-          <AdminPaletteBar themeTools={themeTools} />
           <button className="icon-button theme-trigger" type="button" onClick={() => themeTools?.setOpen?.(true)} aria-label="外观设置">🎨</button>
           {isUltimateAdmin && <button className="outline-button" type="button">▯ 手机端预览</button>}
           <button className="icon-button" type="button" onClick={() => setShowNotifs(!showNotifs)}>🔔{notifications.length > 0 && <span className="notification-dot"></span>}</button>

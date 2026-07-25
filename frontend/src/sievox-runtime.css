@@ -707,3 +707,356 @@ th,
     border-radius: 12px 12px 0 0;
   }
 }
+
+/* Final theme + typography corrections for the deployed demo UI. */
+:root {
+  --ink: #152234;
+  --muted: #697687;
+  --line: #dfe4e8;
+  --line-soft: #edf0f2;
+  --canvas: #f4f6f5;
+  --paper: #ffffff;
+  --warm: #fff9ef;
+  --theme-primary: #1a6ce3;
+  --theme-primary-hover: #155fc8;
+  --theme-container: #d7e3ff;
+  --theme-on-container: #001a41;
+  --theme-rgb: 26,108,227;
+  --shadow: 0 18px 50px rgba(15, 36, 58, .12);
+}
+
+[data-color="purple"] {
+  --theme-primary: #6750a4;
+  --theme-primary-hover: #59428f;
+  --theme-container: #eaddff;
+  --theme-on-container: #21005d;
+  --theme-rgb: 103,80,164;
+}
+
+[data-color="blue"] {
+  --theme-primary: #1a6ce3;
+  --theme-primary-hover: #155fc8;
+  --theme-container: #d7e3ff;
+  --theme-on-container: #001a41;
+  --theme-rgb: 26,108,227;
+}
+
+[data-color="green"] {
+  --theme-primary: #4a8d3f;
+  --theme-primary-hover: #3e7b35;
+  --theme-container: #c5efba;
+  --theme-on-container: #002200;
+  --theme-rgb: 74,141,63;
+}
+
+[data-color="orange"] {
+  --theme-primary: #c85100;
+  --theme-primary-hover: #ad4600;
+  --theme-container: #ffdbca;
+  --theme-on-container: #3a1500;
+  --theme-rgb: 200,81,0;
+}
+
+[data-color="teal"] {
+  --theme-primary: #007b7b;
+  --theme-primary-hover: #006969;
+  --theme-container: #b8eeee;
+  --theme-on-container: #002020;
+  --theme-rgb: 0,123,123;
+}
+
+[data-theme="dark"] {
+  --ink: #ffffff;
+  --muted: rgba(255, 255, 255, .72);
+  --line: rgba(var(--theme-rgb), .34);
+  --line-soft: rgba(var(--theme-rgb), .2);
+  --canvas: color-mix(in srgb, rgb(var(--theme-rgb)) 13%, #05070d);
+  --paper: color-mix(in srgb, rgb(var(--theme-rgb)) 20%, #0b1018);
+  --warm: color-mix(in srgb, rgb(var(--theme-rgb)) 16%, #101016);
+  --theme-container: color-mix(in srgb, rgb(var(--theme-rgb)) 34%, #111827);
+  --theme-on-container: #ffffff;
+  --shadow: 0 22px 70px rgba(0, 0, 0, .44);
+}
+
+html[data-theme="dark"],
+html[data-theme="dark"] body {
+  color: var(--ink) !important;
+  background: var(--canvas) !important;
+}
+
+.desktop-main,
+.admin-demo-shell,
+.role-view,
+.student-dashboard,
+.business-feedback-redesign,
+.performance-redesign-panel,
+.people-management-panel,
+.organization-framework-panel {
+  background-color: var(--canvas) !important;
+  color: var(--ink) !important;
+}
+
+.topbar,
+.theme-panel,
+.login-panel,
+.stats-strip,
+.category-grid,
+.active-case,
+.queue-panel,
+.case-inspector,
+.role-ledger,
+.audit-inspector,
+.scoreboard,
+.score-form,
+.record-ledger,
+.performance-summary,
+.performance-radar-card,
+.performance-note,
+.performance-ledger,
+.feedback-dialog,
+.compose-drawer,
+.mobile-sheet,
+.organization-framework-panel section,
+.organization-framework-panel > div,
+.admin-demo-shell .rounded-2xl,
+.admin-demo-shell .rounded-xl,
+.admin-demo-shell .rounded-lg {
+  transition:
+    background-color var(--duration-base, 320ms) var(--ease-smooth, ease),
+    background var(--duration-base, 320ms) var(--ease-smooth, ease),
+    color var(--duration-base, 320ms) var(--ease-smooth, ease),
+    border-color var(--duration-base, 320ms) var(--ease-smooth, ease),
+    box-shadow var(--duration-base, 320ms) var(--ease-smooth, ease),
+    transform var(--duration-fast, 180ms) var(--ease-out, ease) !important;
+}
+
+html[data-theme="dark"] .topbar,
+html[data-theme="dark"] .theme-panel,
+html[data-theme="dark"] .login-panel,
+html[data-theme="dark"] .stats-strip,
+html[data-theme="dark"] .category-grid,
+html[data-theme="dark"] .active-case,
+html[data-theme="dark"] .queue-panel,
+html[data-theme="dark"] .case-inspector,
+html[data-theme="dark"] .case-tr,
+html[data-theme="dark"] .search-field,
+html[data-theme="dark"] .filter-chip,
+html[data-theme="dark"] .outline-button,
+html[data-theme="dark"] .wide-outline-button,
+html[data-theme="dark"] .icon-button,
+html[data-theme="dark"] .role-ledger,
+html[data-theme="dark"] .audit-inspector,
+html[data-theme="dark"] .scoreboard,
+html[data-theme="dark"] .score-form,
+html[data-theme="dark"] .record-ledger,
+html[data-theme="dark"] .performance-summary,
+html[data-theme="dark"] .performance-radar-card,
+html[data-theme="dark"] .performance-note,
+html[data-theme="dark"] .performance-ledger,
+html[data-theme="dark"] .feedback-dialog,
+html[data-theme="dark"] .compose-drawer,
+html[data-theme="dark"] .mobile-sheet,
+html[data-theme="dark"] .admin-demo-shell .business-feedback-redesign .queue-panel,
+html[data-theme="dark"] .admin-demo-shell .business-feedback-redesign .case-inspector,
+html[data-theme="dark"] .admin-demo-shell .people-management-panel .role-ledger,
+html[data-theme="dark"] .admin-demo-shell .people-management-panel .audit-inspector,
+html[data-theme="dark"] .admin-demo-shell .performance-redesign-panel > section,
+html[data-theme="dark"] .admin-demo-shell .performance-redesign-panel > div,
+html[data-theme="dark"] .admin-demo-shell .organization-framework-panel > section,
+html[data-theme="dark"] .admin-demo-shell .organization-framework-panel > div,
+html[data-theme="dark"] .admin-demo-shell .organization-framework-panel .grid .group,
+html[data-theme="dark"] .admin-demo-shell .organization-framework-panel .rounded-xl,
+html[data-theme="dark"] .admin-demo-shell .organization-framework-panel .rounded-lg {
+  color: #ffffff !important;
+  background:
+    linear-gradient(135deg, rgba(var(--theme-rgb), .12), transparent 58%),
+    var(--paper) !important;
+  border-color: var(--line) !important;
+  box-shadow: var(--shadow) !important;
+}
+
+html[data-theme="dark"] .admin-demo-shell,
+html[data-theme="dark"] .admin-demo-shell *,
+html[data-theme="dark"] .theme-panel,
+html[data-theme="dark"] .theme-panel *,
+html[data-theme="dark"] .login-view,
+html[data-theme="dark"] .login-view * {
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .admin-demo-shell input,
+html[data-theme="dark"] .admin-demo-shell textarea,
+html[data-theme="dark"] .admin-demo-shell select,
+html[data-theme="dark"] .theme-panel input,
+html[data-theme="dark"] .theme-panel textarea,
+html[data-theme="dark"] .theme-panel select {
+  color: #ffffff !important;
+  background: color-mix(in srgb, rgb(var(--theme-rgb)) 16%, #07101a) !important;
+  border-color: var(--line) !important;
+}
+
+html[data-theme="dark"] .admin-demo-shell input::placeholder,
+html[data-theme="dark"] .admin-demo-shell textarea::placeholder,
+html[data-theme="dark"] .login-view input::placeholder,
+html[data-theme="dark"] .login-view textarea::placeholder {
+  color: rgba(255, 255, 255, .54) !important;
+}
+
+html[data-theme="dark"] .admin-demo-shell .table-head,
+html[data-theme="dark"] .admin-demo-shell thead,
+html[data-theme="dark"] .admin-demo-shell .sticky.top-0 {
+  color: rgba(255, 255, 255, .72) !important;
+  background: color-mix(in srgb, rgb(var(--theme-rgb)) 18%, #080f18) !important;
+}
+
+html[data-theme="dark"] .admin-demo-shell .case-tr:not(.table-head):hover,
+html[data-theme="dark"] .admin-demo-shell .person-row:hover,
+html[data-theme="dark"] .admin-demo-shell .score-person:hover,
+html[data-theme="dark"] .admin-demo-shell .record-tr:not(.table-head):hover {
+  background: color-mix(in srgb, rgb(var(--theme-rgb)) 26%, #0c1320) !important;
+}
+
+html[data-theme="dark"] .admin-demo-shell .case-tr.is-selected {
+  background: color-mix(in srgb, rgb(var(--theme-rgb)) 34%, #101827) !important;
+  box-shadow: inset 3px 0 var(--theme-primary), 0 10px 24px rgba(0, 0, 0, .22) !important;
+}
+
+.admin-demo-shell .organization-framework-panel .org-leadership-tag {
+  max-width: 100%;
+  color: var(--theme-on-container) !important;
+  background: var(--theme-container) !important;
+  border-color: color-mix(in srgb, var(--theme-primary) 34%, var(--line)) !important;
+  line-height: 1.55 !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+}
+
+html[data-theme="dark"] .admin-demo-shell .organization-framework-panel .org-leadership-tag {
+  color: #ffffff !important;
+  background: color-mix(in srgb, rgb(var(--theme-rgb)) 38%, #111827) !important;
+  border-color: rgba(var(--theme-rgb), .5) !important;
+}
+
+.admin-demo-shell,
+.admin-demo-shell * {
+  min-width: 0;
+}
+
+.admin-demo-shell p,
+.admin-demo-shell small,
+.admin-demo-shell span,
+.admin-demo-shell strong,
+.admin-demo-shell h1,
+.admin-demo-shell h2,
+.admin-demo-shell h3,
+.admin-demo-shell h4,
+.admin-demo-shell button,
+.admin-demo-shell input,
+.admin-demo-shell textarea,
+.admin-demo-shell select {
+  line-height: 1.45;
+}
+
+.admin-demo-shell p,
+.admin-demo-shell .case-body,
+.admin-demo-shell .audit-list p,
+.admin-demo-shell .people-command p,
+.admin-demo-shell .performance-command p,
+.admin-demo-shell .theme-note,
+.admin-demo-shell textarea {
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+}
+
+.admin-demo-shell .topbar-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.admin-demo-shell .people-layout {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(280px, .9fr) !important;
+}
+
+.admin-demo-shell .admin-workspace {
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 340px) !important;
+}
+
+.admin-demo-shell .case-tr {
+  grid-template-columns: minmax(180px, 2fr) minmax(88px, .85fr) minmax(70px, .65fr) minmax(56px, .45fr) minmax(72px, .55fr) !important;
+  gap: 10px !important;
+  padding-inline: 14px !important;
+}
+
+.admin-demo-shell .record-tr {
+  grid-template-columns: minmax(76px, .8fr) minmax(80px, .9fr) minmax(120px, 1.5fr) minmax(48px, .5fr) minmax(50px, .5fr) !important;
+  gap: 9px !important;
+}
+
+.admin-demo-shell .case-tr > *,
+.admin-demo-shell .record-tr > *,
+.admin-demo-shell .person-row > *,
+.admin-demo-shell .score-person > * {
+  min-width: 0;
+}
+
+.admin-demo-shell .case-tr strong,
+.admin-demo-shell .case-tr small,
+.admin-demo-shell .record-tr span,
+.admin-demo-shell .record-tr strong,
+.admin-demo-shell .record-tr b,
+.admin-demo-shell .person-row strong,
+.admin-demo-shell .person-row small,
+.admin-demo-shell .score-person strong,
+.admin-demo-shell .score-person small,
+.admin-demo-shell .feedback-copy strong {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-demo-shell .case-tr strong,
+.admin-demo-shell .person-row strong,
+.admin-demo-shell .score-person strong {
+  font-size: clamp(11px, .78vw, 13px) !important;
+}
+
+.admin-demo-shell .case-tr small,
+.admin-demo-shell .person-row small,
+.admin-demo-shell .score-person small,
+.admin-demo-shell .record-tr {
+  font-size: clamp(9px, .7vw, 11px) !important;
+}
+
+.admin-demo-shell .role-ledger,
+.admin-demo-shell .audit-inspector,
+.admin-demo-shell .score-form,
+.admin-demo-shell .record-ledger,
+.admin-demo-shell .queue-panel,
+.admin-demo-shell .case-inspector {
+  overflow: hidden;
+}
+
+@media (max-width: 1180px) {
+  .admin-demo-shell .people-layout,
+  .admin-demo-shell .admin-workspace {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-demo-shell .case-tr {
+    grid-template-columns: minmax(160px, 1.6fr) minmax(78px, .8fr) minmax(64px, .6fr) minmax(52px, .45fr) minmax(66px, .5fr) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .admin-demo-shell .case-tr,
+  .admin-demo-shell .record-tr {
+    grid-template-columns: 1fr !important;
+    gap: 6px !important;
+  }
+
+  .admin-demo-shell .case-tr.table-head,
+  .admin-demo-shell .record-tr.table-head {
+    display: none !important;
+  }
+}
