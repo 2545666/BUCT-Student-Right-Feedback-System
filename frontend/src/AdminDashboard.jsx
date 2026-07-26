@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import sieLogo from './assets/LOGO_1.png';
+import siehubLogo from './assets/SIEHUB_LOGO.png';
 import beian from './assets/beian.png';
 import collegeLogo from './assets/SIE_LOGO.svg';
 import { API_BASE } from './api';
@@ -168,7 +169,8 @@ export const OrganizationFrameworkPanel = ({ token }) => {
       if (cohortData.success) {
         const nextCohorts = cohortData.cohorts || [];
         setCohorts(nextCohorts);
-        if (!selectedCohortId && nextCohorts.length > 0) setSelectedCohortId(nextCohorts[0].id || nextCohorts[0]._id);
+        const stillExists = nextCohorts.some(item => (item.id || item._id) === selectedCohortId);
+        if ((!selectedCohortId || !stillExists) && nextCohorts.length > 0) setSelectedCohortId(nextCohorts[0].id || nextCohorts[0]._id);
       }
       if (userData.success) setUsers(userData.users || []);
     } catch (error) {
@@ -331,6 +333,37 @@ export const OrganizationFrameworkPanel = ({ token }) => {
     }
   };
 
+  const handleDeleteCohort = async () => {
+    if (!selectedCohortId || !selectedCohort) return alert('请先选择要删除的届次');
+    const memberCount = members.length;
+    const typedName = window.prompt(`危险操作：删除届次会同时删除该届次下 ${memberCount} 条成员归档记录，且不可恢复。\n\n请输入届次完整名称以继续：\n${selectedCohort.name}`);
+    if (typedName === null) return;
+    if (typedName.trim() !== selectedCohort.name) return alert('届次名称输入不一致，已取消删除');
+    const confirmation = window.prompt('请再次输入“确认删除”四个字完成最终确认：');
+    if (confirmation === null) return;
+    if (confirmation.trim() !== '确认删除') return alert('最终确认文本不一致，已取消删除');
+
+    setBusy(true);
+    try {
+      const res = await fetch(`${API_BASE}/ultimate/cohorts/${selectedCohortId}`, {
+        method: 'DELETE',
+        headers: jsonHeaders,
+        body: JSON.stringify({ cohortName: typedName.trim(), confirmation: confirmation.trim() })
+      });
+      const data = await res.json();
+      if (!data.success) return alert(data.message || '删除届次失败');
+      setSelectedCohortId('');
+      setMembers([]);
+      setArchivePreview(null);
+      await loadBase();
+      alert(`届次已删除，同时删除 ${data.deletedMembers || 0} 条成员记录`);
+    } catch (error) {
+      alert('删除届次失败');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handleEditMember = (member) => {
     if (isArchivedCohort) return;
     setMemberForm({
@@ -420,19 +453,19 @@ export const OrganizationFrameworkPanel = ({ token }) => {
       </section>
 
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
-        <section className="xl:col-span-2 rounded-2xl border border-white/10 bg-white/5 p-5 md:p-6 space-y-5">
+        <section className="org-governance-card xl:col-span-2 rounded-2xl border border-white/10 bg-white/5 p-5 md:p-6 space-y-5">
           <div>
             <p className="text-xs text-purple-200/60">Cohort Archive</p>
             <h3 className="mt-1 text-xl font-black text-white">届次与归档</h3>
           </div>
           <form onSubmit={handleCreateCohort} className="space-y-3">
-            <input value={cohortForm.name} onChange={e => setCohortForm({ ...cohortForm, name: e.target.value })} placeholder="例：2026届团委学生会" className="w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-purple-500" />
-            <input value={cohortForm.semesters} onChange={e => setCohortForm({ ...cohortForm, semesters: e.target.value })} placeholder="包含绩效学期，可用空格或逗号分隔" className="w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-purple-500" />
-            <select value={cohortForm.status} onChange={e => setCohortForm({ ...cohortForm, status: e.target.value })} className="w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500">
-              <option value="active" className="bg-slate-900">当前届</option>
-              <option value="draft" className="bg-slate-900">草稿届次</option>
+            <input value={cohortForm.name} onChange={e => setCohortForm({ ...cohortForm, name: e.target.value })} placeholder="例：2026届团委学生会" className="org-governance-field w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-purple-500" />
+            <input value={cohortForm.semesters} onChange={e => setCohortForm({ ...cohortForm, semesters: e.target.value })} placeholder="包含绩效学期，可用空格或逗号分隔" className="org-governance-field w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-purple-500" />
+            <select value={cohortForm.status} onChange={e => setCohortForm({ ...cohortForm, status: e.target.value })} className="org-governance-field w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500">
+              <option value="active">当前届</option>
+              <option value="draft">草稿届次</option>
             </select>
-            <button disabled={busy} className="w-full px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-bold transition-all">
+            <button disabled={busy} className="org-action-primary w-full px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-bold transition-all">
               创建届次
             </button>
           </form>
@@ -451,9 +484,15 @@ export const OrganizationFrameworkPanel = ({ token }) => {
             })}
             {cohorts.length === 0 && <div className="rounded-xl border border-dashed border-white/10 p-4 text-center text-sm text-purple-100/50">暂无届次，请先创建</div>}
           </div>
+          {selectedCohort && (
+            <div className="org-delete-zone rounded-xl border border-red-300/25 bg-red-500/10 p-3">
+              <p className="text-xs leading-5 text-red-100/80">删除会移除当前届次及其成员归档记录，需输入完整届次名称和“确认删除”。</p>
+              <button type="button" onClick={handleDeleteCohort} disabled={busy} className="org-action-danger mt-3 w-full rounded-lg border border-red-300/40 bg-red-500/20 px-3 py-2 text-xs font-black text-red-50 hover:bg-red-500/35 disabled:opacity-50 transition-all">删除当前届次</button>
+            </div>
+          )}
         </section>
 
-        <section className="xl:col-span-3 rounded-2xl border border-white/10 bg-white/5 p-5 md:p-6 space-y-5">
+        <section className="org-governance-card xl:col-span-3 rounded-2xl border border-white/10 bg-white/5 p-5 md:p-6 space-y-5">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
             <div>
               <p className="text-xs text-purple-200/60">Member Assignment</p>
@@ -468,20 +507,20 @@ export const OrganizationFrameworkPanel = ({ token }) => {
           </div>
 
           <form onSubmit={handleSaveMember} className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <select disabled={isArchivedCohort} value={memberForm.studentId} onChange={e => setMemberForm({ ...memberForm, studentId: e.target.value })} className="px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500 disabled:opacity-50">
-              <option value="" className="bg-slate-900">选择成员账号</option>
-              {visibleUsers.map(item => <option key={item.id || item._id} value={item.studentId} className="bg-slate-900">{item.name} · {item.studentId} · {item.identityLabel || item.role}</option>)}
+            <select disabled={isArchivedCohort} value={memberForm.studentId} onChange={e => setMemberForm({ ...memberForm, studentId: e.target.value })} className="org-governance-field px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500 disabled:opacity-50">
+              <option value="">选择成员账号</option>
+              {visibleUsers.map(item => <option key={item.id || item._id} value={item.studentId}>{item.name} · {item.studentId} · {item.identityLabel || item.role}</option>)}
             </select>
-            <select disabled={isArchivedCohort} value={memberForm.memberRole} onChange={e => updateMemberRole(e.target.value)} className="px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500 disabled:opacity-50">
-              {Object.entries(MEMBER_ROLE_LABELS).map(([value, label]) => <option key={value} value={value} className="bg-slate-900">{label}</option>)}
+            <select disabled={isArchivedCohort} value={memberForm.memberRole} onChange={e => updateMemberRole(e.target.value)} className="org-governance-field px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500 disabled:opacity-50">
+              {Object.entries(MEMBER_ROLE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
-            <select disabled={isArchivedCohort} value={memberForm.positionTitle} onChange={e => updatePositionTitle(e.target.value)} className="px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500 disabled:opacity-50">
-              {titleOptions.map(item => <option key={item.value} value={item.value} className="bg-slate-900">{item.label}</option>)}
+            <select disabled={isArchivedCohort} value={memberForm.positionTitle} onChange={e => updatePositionTitle(e.target.value)} className="org-governance-field px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500 disabled:opacity-50">
+              {titleOptions.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
             </select>
             {memberForm.memberRole === 'department_lead' ? (
-              <select disabled={isArchivedCohort} value={memberForm.organization && memberForm.department ? `${memberForm.organization}:${memberForm.department}` : ''} onChange={e => updateSingleDepartment(e.target.value)} className="px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500 disabled:opacity-50">
-                <option value="" className="bg-slate-900">选择所属组织与部门</option>
-                {singleDepartmentOptions.map(item => <option key={`${item.organization}:${item.department}`} value={`${item.organization}:${item.department}`} className="bg-slate-900">{item.organizationLabel} · {item.departmentLabel}</option>)}
+              <select disabled={isArchivedCohort} value={memberForm.organization && memberForm.department ? `${memberForm.organization}:${memberForm.department}` : ''} onChange={e => updateSingleDepartment(e.target.value)} className="org-governance-field px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500 disabled:opacity-50">
+                <option value="">选择所属组织与部门</option>
+                {singleDepartmentOptions.map(item => <option key={`${item.organization}:${item.department}`} value={`${item.organization}:${item.department}`}>{item.organizationLabel} · {item.departmentLabel}</option>)}
               </select>
             ) : (
               <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-purple-100/60">
@@ -504,7 +543,7 @@ export const OrganizationFrameworkPanel = ({ token }) => {
               </div>
             )}
             <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
-              <button disabled={busy || isArchivedCohort} className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-bold transition-all">保存成员身份与分管部门</button>
+              <button disabled={busy || isArchivedCohort} className="org-action-save px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-bold transition-all">保存成员身份与分管部门</button>
               <button type="button" onClick={() => setMemberForm(emptyMemberForm)} className="px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-purple-100 text-sm font-bold transition-all">清空编辑</button>
             </div>
           </form>
@@ -1219,7 +1258,7 @@ const BusinessFeedbackWorkspace = ({
 };
 
 // ===================== 主页面: AdminDashboard =====================
-export default function AdminDashboard({ user, token, onLogout, onRefreshUser, themeTools, portalView, onPortalChange }) {
+export default function AdminDashboard({ user, token, onLogout, onRefreshUser, themeTools, portalView, onPortalChange, onBackToHub, languageSwitcher = null }) {
   const [feedbacks, setFeedbacks] = useState([]);
   const [stats, setStats] = useState(null);
   const [selectedFeedback, setSelectedFeedback] = useState(null);
@@ -1739,6 +1778,12 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
               <button className={activePortal === 'superadmin' ? 'is-active' : ''} type="button" onClick={() => onPortalChange?.('superadmin')}>超级管理员</button>
             </div>
           )}
+          {onBackToHub && (
+            <button className="hub-inline-return" type="button" onClick={onBackToHub} title="返回 SIEHUB 模块总览">
+              <img src={siehubLogo} alt="" />
+              <span>返回 SIEHUB</span>
+            </button>
+          )}
           <div className="topbar-user-chip" aria-label="当前登录身份">
             <span>{user?.name}</span>
             <RoleTag user={user} />
@@ -1748,6 +1793,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
           {isUltimateAdmin && <button className="outline-button" type="button">▯ 手机端预览</button>}
           <button className="icon-button" type="button" onClick={() => setShowNotifs(!showNotifs)}>🔔{notifications.length > 0 && <span className="notification-dot"></span>}</button>
           <button className="outline-button" type="button" onClick={onLogout}>退出</button>
+          {languageSwitcher}
         </div>
         {false && <div className="max-w-7xl mx-auto px-2 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-1 sm:gap-4">
           <div className="flex items-center gap-1.5 sm:gap-3 md:gap-4 flex-1 min-w-0">
@@ -1896,43 +1942,52 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
         {showPerformanceManagement ? (
           <div className={`performance-redesign-panel ${user?.role === 'superadmin' ? 'super-performance-redesign' : 'self-performance-redesign'} animate-fadeIn space-y-4 md:space-y-6`}>
             <section className="performance-command">
-              <div>
+              <div className="performance-command-copy">
+                <p className="performance-command-kicker">PERFORMANCE COMMAND</p>
                 <h2>{user?.role === 'superadmin' ? '部门绩效管理' : '我的绩效档案'}</h2>
                 <p>{user?.role === 'superadmin' ? '学期管理、成员名单、批量赋分、绩效流水撤回与期末动态加权统一在这里完成。' : '仅查看本人当前学期的积分、维度分布和绩效流水。'}</p>
               </div>
               {user?.role === 'superadmin' && (
-                <div className="performance-actions">
-                  <button className="outline-button" type="button" onClick={openRosterModal}>管理本学期成员</button>
-                  <button className="primary-button" type="button" onClick={() => setShowWeightCalc(true)}>期末动态加权结算</button>
+                <div className="performance-action-board">
+                  <button className="performance-action-card roster" type="button" onClick={openRosterModal}>
+                    <span>👥</span>
+                    <strong>管理本学期成员</strong>
+                    <small>从子管理员账号中选择参与本学期绩效核算的成员。<br />录入前先维护名单，避免历史学期数据混入。</small>
+                  </button>
+                  <button className="performance-action-card weight" type="button" onClick={() => setShowWeightCalc(true)}>
+                    <span>🧮</span>
+                    <strong>期末动态加权结算</strong>
+                    <small>按活动参与人数与规则自动校准板块得分。<br />生成加权结果前，请先确认成员名单和绩效流水。</small>
+                  </button>
                 </div>
               )}
             </section>
             <PerformanceRulesAccordion />
             
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between bg-white/80 dark:bg-slate-900/80 p-4 rounded-2xl border border-slate-200 dark:border-white/10 mb-4 md:mb-6 shadow-lg gap-4 transition-colors">
-               <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 w-full md:w-auto">
-                 <span className="text-slate-800 dark:text-white font-bold shrink-0 transition-colors">当前管理学期：</span>
-                 <div className="flex items-center gap-2 w-full sm:w-auto">
+            <section className="performance-semester-console">
+               <div className="performance-semester-copy">
+                 <span>当前管理学期：</span>
+                 <div className="performance-semester-control">
                    <select 
                      value={selectedSemester} 
                      onChange={(e) => { setSelectedSemester(e.target.value); fetchPerformanceAndUsers(e.target.value); }}
-                     className="flex-1 sm:flex-none px-4 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg text-slate-800 dark:text-white border border-slate-200 dark:border-white/10 outline-none text-sm transition-colors"
+                     className="performance-semester-select"
                    >
                      {availableSemesters.map(s => <option key={s} value={s} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">{s} {s === currentSemester ? '(当前运行中)' : '(历史归档)'}</option>)}
                    </select>
                    {showUltimatePortal && (
-                     <button onClick={handleRenameSemester} title="重命名此学期" className="p-2 shrink-0 bg-white/5 hover:bg-white/10 rounded-lg text-purple-300 hover:text-white transition-colors border border-white/5">
+                     <button onClick={handleRenameSemester} title="重命名此学期" className="performance-rename-button" type="button">
                        ✏️ 
                      </button>
                    )}
                  </div>
                </div>
                {showUltimatePortal && (
-                 <button onClick={handleArchiveSemester} className="w-full md:w-auto px-4 py-2 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white border border-red-500/30 rounded-lg transition-all text-sm font-medium shrink-0">
+                 <button onClick={handleArchiveSemester} className="performance-archive-button" type="button">
                    📦 归档并开启新学期
                  </button>
                )}
-            </div>
+            </section>
             
             {user?.role === 'superadmin' ? (
               <div className="space-y-4 md:space-y-6">
@@ -1940,16 +1995,6 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
                   {/* [修复] 在这里加回了呼出“加权核算器”的按钮！ */}
                   <h3 className="text-base md:text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2"><span>🏆</span> 部门全员期末核算总榜单</div>
-                    {user?.role === 'superadmin' && (
-                      <div className="flex items-center gap-2">
-                        <button onClick={openRosterModal} className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded-lg shadow-md transition-colors flex items-center gap-1">
-                          <span>👥</span> 管理本学期成员名单
-                        </button>
-                        <button onClick={() => setShowWeightCalc(true)} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-lg shadow-md transition-colors flex items-center gap-1">
-                          <span>🧮</span> 期末动态加权结算
-                        </button>
-                      </div>
-                    )}
                   </h3>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm whitespace-nowrap">

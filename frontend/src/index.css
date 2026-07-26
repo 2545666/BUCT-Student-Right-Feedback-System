@@ -993,6 +993,113 @@ body:has(.sievox-loading) {
   }
 }
 
+/* English mode resilience for the SIEVOX/Tailwind-heavy workspaces. */
+html[data-language="en"] body:has(.sievox-demo-app),
+html[data-language="en"] body:has(.sievox-demo-login) {
+  font-family: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
+  letter-spacing: -0.01em;
+}
+
+html[data-language="en"] .sievox-demo-app,
+html[data-language="en"] .sievox-demo-login {
+  overflow-wrap: anywhere;
+}
+
+html[data-language="en"] .sievox-demo-app header,
+html[data-language="en"] .sievox-demo-app header > div,
+html[data-language="en"] .sievox-demo-app .topbar,
+html[data-language="en"] .sievox-demo-app .admin-tabs,
+html[data-language="en"] .sievox-demo-app .filter-row,
+html[data-language="en"] .sievox-demo-app .page-heading,
+html[data-language="en"] .sievox-demo-app .mobile-header-actions {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+html[data-language="en"] .sievox-demo-app h1,
+html[data-language="en"] .sievox-demo-app h2,
+html[data-language="en"] .sievox-demo-app h3,
+html[data-language="en"] .sievox-demo-app h4,
+html[data-language="en"] .sievox-demo-app p,
+html[data-language="en"] .sievox-demo-app span,
+html[data-language="en"] .sievox-demo-app small,
+html[data-language="en"] .sievox-demo-app strong,
+html[data-language="en"] .sievox-demo-app label,
+html[data-language="en"] .sievox-demo-app button,
+html[data-language="en"] .sievox-demo-app input,
+html[data-language="en"] .sievox-demo-app select,
+html[data-language="en"] .sievox-demo-app textarea {
+  min-width: 0;
+}
+
+html[data-language="en"] .sievox-demo-app button,
+html[data-language="en"] .sievox-demo-app .primary-button,
+html[data-language="en"] .sievox-demo-app .outline-button,
+html[data-language="en"] .sievox-demo-app .send-button,
+html[data-language="en"] .sievox-demo-app .resolve-button,
+html[data-language="en"] .sievox-demo-app .filter-chip {
+  white-space: normal;
+  line-height: 1.25;
+}
+
+html[data-language="en"] .sievox-demo-app .icon-button {
+  white-space: nowrap;
+}
+
+html[data-language="en"] .sievox-demo-app table {
+  min-width: 760px;
+}
+
+html[data-language="en"] .sievox-demo-app .overflow-x-auto,
+html[data-language="en"] .sievox-demo-app .custom-scrollbar {
+  max-width: 100%;
+}
+
+html[data-language="en"] .sievox-demo-app .grid,
+html[data-language="en"] .sievox-demo-app [class*="grid-cols"] {
+  min-width: 0;
+}
+
+html[data-language="en"] .sievox-demo-app .person-row,
+html[data-language="en"] .sievox-demo-app .feedback-card,
+html[data-language="en"] .sievox-demo-app .mobile-feedback,
+html[data-language="en"] .sievox-demo-app .mobile-active-case,
+html[data-language="en"] .sievox-demo-app .mobile-guide button,
+html[data-language="en"] .sievox-demo-app .mobile-history button {
+  min-width: 0;
+}
+
+html[data-language="en"] .sievox-demo-app .mobile-tabbar button span {
+  font-size: 10px;
+  line-height: 1.1;
+}
+
+html[data-language="en"] .sievox-demo-app .mobile-tabbar {
+  gap: 2px;
+}
+
+html[data-language="en"] .sievox-demo-app .role-pill,
+html[data-language="en"] .sievox-demo-app .status,
+html[data-language="en"] .sievox-demo-app .case-state {
+  white-space: nowrap;
+}
+
+html[data-language="en"] .sievox-demo-login .sievox-demo-auth-card {
+  max-width: min(94vw, 560px);
+}
+
+html[data-language="en"] .sievox-demo-login input,
+html[data-language="en"] .sievox-demo-login button {
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  html[data-language="en"] .sievox-demo-app .filter-row,
+  html[data-language="en"] .sievox-demo-app .page-heading {
+    align-items: stretch;
+  }
+}
+
 @media (max-width: 900px) {
   body:has(.sievox-shell),
   body:has(.sievox-login),

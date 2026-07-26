@@ -62,9 +62,10 @@ test('组织框架包含团委 4 个部门和学生会 5 个部门', () => {
   assert.equal(departments.filter(d => d.organization === 'student_union').length, 5);
 });
 
-test('SIEHUB marks SIEVOX as the active mature module', () => {
+test('SIEHUB marks SIEVOX and SIEBridge as active mature modules', () => {
   const modules = listHubModules();
   const sievox = modules.find(module => module.id === 'sievox');
+  const siebridge = modules.find(module => module.id === 'siebridge');
 
   assert.equal(modules.length, 9);
   assert.equal(sievox.hubId, 'siehub');
@@ -73,7 +74,13 @@ test('SIEHUB marks SIEVOX as the active mature module', () => {
   assert.equal(sievox.productName, 'SIEVOX');
   assert.equal(sievox.moduleType, 'mature');
   assert.equal(sievox.status, 'active');
-  assert.equal(modules.filter(module => module.moduleType === 'scaffold').length, 8);
+  assert.equal(siebridge.organization, 'student_union');
+  assert.equal(siebridge.department, 'academic_technology');
+  assert.equal(siebridge.productName, 'SIEBridge');
+  assert.equal(siebridge.moduleType, 'mature');
+  assert.equal(siebridge.status, 'active');
+  assert.equal(siebridge.studentEntry, true);
+  assert.equal(modules.filter(module => module.moduleType === 'scaffold').length, 7);
 });
 
 test('SIEHUB exposes organization governance as an ultimate-only window', () => {
@@ -126,6 +133,29 @@ test('SIEHUB student portals are open while management stays department-scoped',
   const volunteerAccess = getHubModuleAccess({ role: 'admin' });
   assert.equal(volunteerAccess.length, 9);
   assert.equal(volunteerAccess.filter(item => item.accessLevel === 'student').length, 9);
+});
+
+test('SIEBridge review capability is limited to ultimate and assigned presidium', () => {
+  const ultimateAccess = getHubModuleAccess({ isUltimateAdmin: true });
+  const ultimateBridge = ultimateAccess.find(item => item.moduleId === 'siebridge');
+  assert.ok(ultimateBridge.capabilities.includes('review_siebridge_content'));
+
+  const assignedPresidiumAccess = getHubModuleAccess({
+    role: 'superadmin',
+    positionTitle: 'presidium_member',
+    managedDepartments: [{ organization: 'student_union', department: 'academic_technology' }]
+  });
+  const assignedBridge = assignedPresidiumAccess.find(item => item.moduleId === 'siebridge');
+  assert.ok(assignedBridge.capabilities.includes('review_siebridge_content'));
+
+  const departmentHeadAccess = getHubModuleAccess({
+    role: 'superadmin',
+    positionTitle: 'department_head',
+    organization: 'student_union',
+    department: 'academic_technology'
+  });
+  const departmentHeadBridge = departmentHeadAccess.find(item => item.moduleId === 'siebridge');
+  assert.ok(!departmentHeadBridge.capabilities.includes('review_siebridge_content'));
 });
 
 test('all SIEHUB departments inherit the SIEVOX volunteer performance policy', () => {

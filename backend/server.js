@@ -3,6 +3,8 @@
 // 后端服务器 - Express + MongoDB + JWT
 // ============================================
 
+require('dotenv').config();
+// SMTP credentials are loaded from backend/.env when the process starts.
 const express = require('express');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
@@ -15,6 +17,8 @@ const hpp = require('hpp');
 const compression = require('compression');
 const morgan = require('morgan');
 const multer = require('multer');
+const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 const path = require('path');
 const fs = require('fs');
 const https = require('https'); // [新增] 引入 https 模块
@@ -23,6 +27,7 @@ const {
   ORGANIZATIONS,
   MEMBER_ROLES,
   POSITION_TITLES,
+  getDepartment,
   getDepartmentLabel,
   getHubModuleAccess,
   getIdentityLabel,
@@ -34,6 +39,7 @@ const {
   HUB_SYSTEM,
   validateAssignment
 } = require('./organization');
+const { installSieBridgeRoutes } = require('./siebridge');
 const app = express();
 app.set('trust proxy', 1);
 const uploadDir = path.join(__dirname, 'uploads');
@@ -52,8 +58,33 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage, limits: { fileSize: 50 * 1024 * 1024 } }); // 限制 50MB
 
+const departmentIntroUploadDir = path.join(__dirname, 'department_intro_uploads');
+if (!fs.existsSync(departmentIntroUploadDir)) {
+  fs.mkdirSync(departmentIntroUploadDir, { recursive: true });
+}
+const departmentIntroStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, departmentIntroUploadDir);
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    cb(null, `${Date.now()}-${crypto.randomBytes(8).toString('hex')}${ext}`);
+  }
+});
+const departmentIntroUpload = multer({
+  storage: departmentIntroStorage,
+  limits: { fileSize: 100 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    const allowed = new Set(['.jpg', '.jpeg', '.png', '.webp', '.mp4']);
+    if (!allowed.has(ext)) return cb(new Error('仅支持 jpg、png、webp 图片与 mp4 视频'));
+    cb(null, true);
+  }
+});
+
 // [修复] 将静态资源映射到 /api/uploads 下，完美利用现有的代理配置
 app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/api/department-intro-assets', express.static(departmentIntroUploadDir));
 // ============================================
 // 环境配置
 // ============================================
@@ -62,7 +93,13 @@ const config = {
   mongoUri: process.env.MONGODB_URI || 'mongodb://localhost:27017/buct_feedback',
   jwtSecret: process.env.JWT_SECRET || 'your-super-secret-jwt-key-buct-2024-secure',
   jwtExpire: process.env.JWT_EXPIRE || '7d',
-  nodeEnv: process.env.NODE_ENV || 'development'
+  nodeEnv: process.env.NODE_ENV || 'development',
+  smtpHost: process.env.SMTP_HOST || '',
+  smtpPort: Number(process.env.SMTP_PORT || 587),
+  smtpSecure: process.env.SMTP_SECURE === 'true',
+  smtpUser: process.env.SMTP_USER || '',
+  smtpPass: process.env.SMTP_PASS || '',
+  smtpFrom: process.env.SMTP_FROM || process.env.SMTP_USER || 'SIEHUB <no-reply@siehub.local>'
 };
 
 app.set('etag', false);
@@ -104,8 +141,8 @@ app.use(cors({
 }));
 
 // 请求体解析
-app.use(express.json({ limit: '10kb' }));
-app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+app.use(express.json({ limit: '256kb' }));
+app.use(express.urlencoded({ extended: true, limit: '256kb' }));
 
 // 数据清洗 - 防止NoSQL注入
 app.use(mongoSanitize());
@@ -137,7 +174,12 @@ const userSchema = new mongoose.Schema({
     required: [true, '学号是必填项'],
     unique: true,
     trim: true,
-    match: [/^\d{8,12}$/, '学号格式不正确']
+    validate: {
+      validator: function(value) {
+        return this.isUltimateAdmin || this.role !== 'student' || /^\d{10}$/.test(value);
+      },
+      message: '学生账号学号必须为唯一的10位数字'
+    }
   },
   password: {
     type: String,
@@ -233,6 +275,20 @@ userSchema.methods.isLocked = function() {
 };
 
 const User = mongoose.model('User', userSchema);
+
+const emailVerificationSchema = new mongoose.Schema({
+  email: { type: String, required: true, lowercase: true, index: true },
+  purpose: { type: String, enum: ['register', 'reset_password'], required: true, index: true },
+  codeHash: { type: String, required: true },
+  expiresAt: { type: Date, required: true, index: { expires: 0 } },
+  attempts: { type: Number, default: 0 },
+  lastSentAt: { type: Date, default: Date.now },
+  verifiedAt: Date
+}, { timestamps: true });
+
+emailVerificationSchema.index({ email: 1, purpose: 1 });
+
+const EmailVerification = mongoose.model('EmailVerification', emailVerificationSchema);
 
 // 反馈模型
 const feedbackSchema = new mongoose.Schema({
@@ -358,6 +414,29 @@ const auditLogSchema = new mongoose.Schema({
 
 const AuditLog = mongoose.model('AuditLog', auditLogSchema);
 
+const PRIVACY_NOTICE_VERSION = 'siehub_privacy_notice_v1';
+
+const privacyNoticeAcceptanceSchema = new mongoose.Schema({
+  ipHash: { type: String, required: true, index: true },
+  noticeVersion: { type: String, required: true, default: PRIVACY_NOTICE_VERSION, index: true },
+  acceptedAt: { type: Date, default: Date.now },
+  userAgentHash: String
+});
+
+privacyNoticeAcceptanceSchema.index({ ipHash: 1, noticeVersion: 1 }, { unique: true });
+
+const PrivacyNoticeAcceptance = mongoose.model('PrivacyNoticeAcceptance', privacyNoticeAcceptanceSchema);
+
+const getClientIp = (req) => {
+  const rawIp = req.ip || req.connection?.remoteAddress || '';
+  return rawIp.replace(/^::ffff:/, '') || 'unknown';
+};
+
+const hashPrivacyValue = (value) => crypto
+  .createHash('sha256')
+  .update(`${config.jwtSecret}:${value || 'unknown'}`)
+  .digest('hex');
+
 // [修改] 纯加分制绩效考核流水模型
 const performanceRecordSchema = new mongoose.Schema({
   volunteer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -413,6 +492,49 @@ const departmentPerformancePolicySchema = new mongoose.Schema({
 }, { timestamps: true });
 departmentPerformancePolicySchema.index({ organization: 1, department: 1 }, { unique: true });
 const DepartmentPerformancePolicy = mongoose.model('DepartmentPerformancePolicy', departmentPerformancePolicySchema);
+
+const departmentIntroductionSchema = new mongoose.Schema({
+  organization: { type: String, enum: Object.keys(ORGANIZATIONS), required: true },
+  department: { type: String, required: true },
+  status: { type: String, enum: ['draft', 'published'], default: 'draft' },
+  draftContent: { type: mongoose.Schema.Types.Mixed, default: null },
+  publishedContent: { type: mongoose.Schema.Types.Mixed, default: null },
+  draftVersion: { type: Number, default: 0 },
+  publishedVersion: { type: Number, default: 0 },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  publishedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  publishedAt: Date
+}, { timestamps: true });
+departmentIntroductionSchema.index({ organization: 1, department: 1 }, { unique: true });
+const DepartmentIntroduction = mongoose.model('DepartmentIntroduction', departmentIntroductionSchema);
+
+const departmentIntroductionRevisionSchema = new mongoose.Schema({
+  organization: { type: String, enum: Object.keys(ORGANIZATIONS), required: true },
+  department: { type: String, required: true },
+  version: { type: Number, required: true },
+  content: { type: mongoose.Schema.Types.Mixed, required: true },
+  action: { type: String, enum: ['publish', 'restore'], default: 'publish' },
+  actor: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  reason: String
+}, { timestamps: true });
+departmentIntroductionRevisionSchema.index({ organization: 1, department: 1, version: -1 });
+const DepartmentIntroductionRevision = mongoose.model('DepartmentIntroductionRevision', departmentIntroductionRevisionSchema);
+
+const departmentIntroductionMediaSchema = new mongoose.Schema({
+  organization: { type: String, enum: Object.keys(ORGANIZATIONS), required: true },
+  department: { type: String, required: true },
+  uploader: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  originalName: String,
+  filename: String,
+  url: String,
+  mimeType: String,
+  type: { type: String, enum: ['image', 'video'], required: true },
+  size: Number,
+  hash: String,
+  status: { type: String, enum: ['active', 'deleted'], default: 'active' }
+}, { timestamps: true });
+departmentIntroductionMediaSchema.index({ organization: 1, department: 1, createdAt: -1 });
+const DepartmentIntroductionMedia = mongoose.model('DepartmentIntroductionMedia', departmentIntroductionMediaSchema);
 
 // [新增] 系统配置模型 (用于存储当前运行的学期)
 const systemConfigSchema = new mongoose.Schema({
@@ -609,6 +731,95 @@ const sanitizeInput = (input) => {
   return input;
 };
 
+const normalizeEmail = (email) => sanitizeInput(email || '').toLowerCase();
+const isValidEmail = (email) => /^\S+@\S+\.\S+$/.test(email);
+const isValidStudentId = (studentId) => /^\d{10}$/.test(studentId);
+const createVerificationCode = () => String(Math.floor(100000 + Math.random() * 900000));
+const hashVerificationCode = (email, purpose, code) => crypto
+  .createHash('sha256')
+  .update(`${config.jwtSecret}:${purpose}:${normalizeEmail(email)}:${code}`)
+  .digest('hex');
+
+const hasSmtpConfig = () => Boolean(config.smtpHost && config.smtpUser && config.smtpPass);
+
+const sendVerificationEmail = async ({ email, code, purpose }) => {
+  const purposeLabel = purpose === 'reset_password' ? '找回密码' : '注册账号';
+  const subject = `SIEHUB ${purposeLabel}验证码`;
+  const text = `你的 SIEHUB ${purposeLabel}验证码是：${code}。验证码10分钟内有效，请勿转发给他人。`;
+  const html = `
+    <div style="font-family:Arial,'Microsoft YaHei',sans-serif;line-height:1.7;color:#123766">
+      <h2 style="margin:0 0 12px">SIEHUB ${purposeLabel}验证码</h2>
+      <p>你的验证码为：</p>
+      <p style="font-size:28px;font-weight:700;letter-spacing:6px;margin:12px 0">${code}</p>
+      <p>验证码10分钟内有效，请勿转发给他人。如非本人操作，请忽略本邮件。</p>
+    </div>
+  `;
+
+  if (!hasSmtpConfig()) {
+    console.log(`[DEV EMAIL CODE] ${purposeLabel} ${email}: ${code}`);
+    return { delivered: false, devMode: true };
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: config.smtpHost,
+    port: config.smtpPort,
+    secure: config.smtpSecure,
+    auth: { user: config.smtpUser, pass: config.smtpPass }
+  });
+  await transporter.sendMail({ from: config.smtpFrom, to: email, subject, text, html });
+  return { delivered: true, devMode: false };
+};
+
+const issueEmailVerification = async ({ email, purpose }) => {
+  const normalizedEmail = normalizeEmail(email);
+  const latest = await EmailVerification.findOne({ email: normalizedEmail, purpose }).sort({ createdAt: -1 });
+  if (latest?.lastSentAt && Date.now() - latest.lastSentAt.getTime() < 60000) {
+    const retryAfter = Math.ceil((60000 - (Date.now() - latest.lastSentAt.getTime())) / 1000);
+    return { ok: false, status: 429, message: `验证码发送过于频繁，请 ${retryAfter} 秒后再试` };
+  }
+
+  const code = createVerificationCode();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+  await EmailVerification.create({
+    email: normalizedEmail,
+    purpose,
+    codeHash: hashVerificationCode(normalizedEmail, purpose, code),
+    expiresAt,
+    lastSentAt: new Date()
+  });
+  const delivery = await sendVerificationEmail({ email: normalizedEmail, code, purpose });
+  return { ok: true, expiresAt, ...delivery };
+};
+
+const verifyEmailCode = async ({ email, purpose, code, consume = true }) => {
+  const normalizedEmail = normalizeEmail(email);
+  const cleanCode = sanitizeInput(code || '');
+  if (!/^\d{6}$/.test(cleanCode)) return { ok: false, message: '请输入6位邮箱验证码' };
+
+  const record = await EmailVerification.findOne({
+    email: normalizedEmail,
+    purpose,
+    expiresAt: { $gt: new Date() },
+    verifiedAt: null
+  }).sort({ createdAt: -1 });
+
+  if (!record) return { ok: false, message: '验证码不存在或已过期，请重新获取' };
+  if (record.attempts >= 5) return { ok: false, message: '验证码错误次数过多，请重新获取' };
+
+  const expectedHash = hashVerificationCode(normalizedEmail, purpose, cleanCode);
+  if (record.codeHash !== expectedHash) {
+    record.attempts += 1;
+    await record.save();
+    return { ok: false, message: '验证码错误' };
+  }
+
+  if (consume) {
+    record.verifiedAt = new Date();
+    await record.save();
+  }
+  return { ok: true, record };
+};
+
 const sanitizeManagedDepartments = (departments = [], assignedBy = null) => {
   if (!Array.isArray(departments)) return [];
   const seen = new Set();
@@ -693,6 +904,134 @@ const getPerformancePolicyModuleAccess = (user, assignment) => {
     accessLevel: moduleAccess.accessLevel,
     capabilities: moduleAccess.capabilities || [],
     canEdit: moduleAccess.capabilities?.includes('manage_volunteer_performance_policy') || false
+  };
+};
+
+const getDepartmentIntroductionAccess = (user, assignment) => {
+  const moduleAccess = getHubModuleAccess(user).find(item =>
+    item.organization === assignment.organization &&
+    item.department === assignment.department
+  );
+  if (!moduleAccess) return null;
+  return {
+    moduleId: moduleAccess.moduleId,
+    accessLevel: moduleAccess.accessLevel,
+    capabilities: moduleAccess.capabilities || [],
+    canEdit: moduleAccess.capabilities?.includes('manage_department_introduction') || false,
+    canPublish: moduleAccess.capabilities?.includes('manage_department_introduction') || false
+  };
+};
+
+const cleanText = (value, maxLength = 500) => {
+  const clean = sanitizeInput(value || '');
+  return typeof clean === 'string' ? clean.slice(0, maxLength) : '';
+};
+
+const cleanLocalizedText = (value = {}, fallback = {}, maxLength = 500) => ({
+  zh: cleanText(value.zh ?? fallback.zh ?? '', maxLength),
+  en: cleanText(value.en ?? fallback.en ?? '', maxLength)
+});
+
+const createDefaultDepartmentIntroduction = (organization, department) => {
+  const departmentLabel = getDepartment(organization, department) || '部门';
+  const organizationLabel = ORGANIZATIONS[organization]?.label || '';
+  return {
+    blocks: [
+      {
+        id: 'default-hero',
+        type: 'hero',
+        visible: true,
+        data: {
+          title: { zh: departmentLabel, en: departmentLabel },
+          subtitle: {
+            zh: `${organizationLabel}${departmentLabel}介绍页面正在建设中。`,
+            en: `${departmentLabel} introduction page is being prepared.`
+          }
+        }
+      },
+      {
+        id: 'default-text',
+        type: 'text',
+        visible: true,
+        data: {
+          title: { zh: '部门简介', en: 'Department Profile' },
+          body: {
+            zh: '该部门将持续完善职责介绍、成员风采、服务流程与联系方式。',
+            en: 'This department will keep improving its responsibilities, team profile, service process and contact information.'
+          }
+        }
+      }
+    ]
+  };
+};
+
+const normalizeIntroductionBlock = (block = {}, index = 0) => {
+  const allowedTypes = new Set(['hero', 'text', 'image', 'video', 'duties', 'contact']);
+  const type = allowedTypes.has(block.type) ? block.type : 'text';
+  const base = {
+    id: cleanText(block.id, 48) || crypto.randomUUID(),
+    type,
+    visible: block.visible !== false,
+    data: {}
+  };
+
+  if (type === 'hero') {
+    base.data.title = cleanLocalizedText(block.data?.title, { zh: '部门介绍', en: 'Department Introduction' }, 80);
+    base.data.subtitle = cleanLocalizedText(block.data?.subtitle, {}, 240);
+  } else if (type === 'text') {
+    base.data.title = cleanLocalizedText(block.data?.title, { zh: `正文 ${index + 1}`, en: `Section ${index + 1}` }, 80);
+    base.data.body = cleanLocalizedText(block.data?.body, {}, 1600);
+  } else if (type === 'image' || type === 'video') {
+    base.data.title = cleanLocalizedText(block.data?.title, { zh: type === 'image' ? '图片展示' : '视频展示', en: type === 'image' ? 'Image' : 'Video' }, 80);
+    base.data.caption = cleanLocalizedText(block.data?.caption, {}, 240);
+    base.data.url = cleanText(block.data?.url, 300);
+    base.data.alt = cleanLocalizedText(block.data?.alt, {}, 120);
+  } else if (type === 'duties') {
+    base.data.title = cleanLocalizedText(block.data?.title, { zh: '部门职责', en: 'Responsibilities' }, 80);
+    const items = Array.isArray(block.data?.items) ? block.data.items : [];
+    base.data.items = items.slice(0, 12).map(item => cleanLocalizedText(item, {}, 220)).filter(item => item.zh || item.en);
+  } else if (type === 'contact') {
+    base.data.title = cleanLocalizedText(block.data?.title, { zh: '联系方式', en: 'Contact' }, 80);
+    const items = Array.isArray(block.data?.items) ? block.data.items : [];
+    base.data.items = items.slice(0, 12).map(item => ({
+      label: cleanLocalizedText(item?.label, {}, 40),
+      value: cleanLocalizedText(item?.value, {}, 160)
+    })).filter(item => item.label.zh || item.label.en || item.value.zh || item.value.en);
+  }
+
+  return base;
+};
+
+const normalizeIntroductionContent = (payload = {}, assignment) => {
+  const incomingBlocks = Array.isArray(payload.blocks) ? payload.blocks : [];
+  const blocks = incomingBlocks
+    .slice(0, 24)
+    .map(normalizeIntroductionBlock)
+    .filter(block => block.visible !== false || block.data);
+
+  return {
+    blocks: blocks.length ? blocks : createDefaultDepartmentIntroduction(assignment.organization, assignment.department).blocks
+  };
+};
+
+const serializeDepartmentIntroduction = (doc, assignment, mode = 'published') => {
+  const intro = doc?.toObject ? doc.toObject() : doc;
+  const fallback = createDefaultDepartmentIntroduction(assignment.organization, assignment.department);
+  const content = mode === 'editor'
+    ? (intro?.draftContent || intro?.publishedContent || fallback)
+    : (intro?.publishedContent || fallback);
+
+  return {
+    organization: assignment.organization,
+    department: assignment.department,
+    organizationLabel: ORGANIZATIONS[assignment.organization]?.label || '',
+    departmentLabel: getDepartment(assignment.organization, assignment.department) || '',
+    status: intro?.status || 'draft',
+    draftVersion: intro?.draftVersion || 0,
+    publishedVersion: intro?.publishedVersion || 0,
+    publishedAt: intro?.publishedAt || null,
+    hasPublished: Boolean(intro?.publishedContent),
+    content
   };
 };
 
@@ -1023,6 +1362,36 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+app.get('/api/privacy/notice-status', async (req, res) => {
+  try {
+    const ipHash = hashPrivacyValue(getClientIp(req));
+    const accepted = await PrivacyNoticeAcceptance.exists({ ipHash, noticeVersion: PRIVACY_NOTICE_VERSION });
+    res.json({
+      success: true,
+      required: !accepted,
+      accepted: Boolean(accepted),
+      noticeVersion: PRIVACY_NOTICE_VERSION
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '隐私条款状态查询失败' });
+  }
+});
+
+app.post('/api/privacy/notice-acceptance', async (req, res) => {
+  try {
+    const ipHash = hashPrivacyValue(getClientIp(req));
+    const userAgentHash = hashPrivacyValue(req.get('user-agent') || '');
+    await PrivacyNoticeAcceptance.updateOne(
+      { ipHash, noticeVersion: PRIVACY_NOTICE_VERSION },
+      { $set: { acceptedAt: new Date(), userAgentHash } },
+      { upsert: true }
+    );
+    res.json({ success: true, accepted: true, noticeVersion: PRIVACY_NOTICE_VERSION });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '隐私条款确认失败' });
+  }
+});
+
 app.get('/api/organization/meta', (req, res) => {
   res.json({
     success: true,
@@ -1051,6 +1420,231 @@ app.get('/api/hub/me', authenticate, (req, res) => {
     windows: listHubWindows(),
     accessibleModules: getHubModuleAccess(req.user)
   });
+});
+
+app.get('/api/hub/departments/:organization/:department/introduction', authenticate, async (req, res) => {
+  const assignment = {
+    organization: req.params.organization,
+    department: req.params.department
+  };
+  if (!isValidManagedDepartment(assignment)) {
+    return res.status(404).json({ success: false, message: '部门模块不存在' });
+  }
+
+  const access = getDepartmentIntroductionAccess(req.user, assignment);
+  if (!access) {
+    return res.status(403).json({ success: false, message: '无权访问该部门介绍页' });
+  }
+
+  try {
+    const intro = await DepartmentIntroduction.findOne(assignment).lean();
+    res.json({
+      success: true,
+      introduction: serializeDepartmentIntroduction(intro, assignment, 'published')
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '获取部门介绍失败' });
+  }
+});
+
+app.get('/api/hub/departments/:organization/:department/introduction/editor', authenticate, async (req, res) => {
+  const assignment = {
+    organization: req.params.organization,
+    department: req.params.department
+  };
+  if (!isValidManagedDepartment(assignment)) {
+    return res.status(404).json({ success: false, message: '部门模块不存在' });
+  }
+
+  const access = getDepartmentIntroductionAccess(req.user, assignment);
+  if (!access?.canEdit) {
+    return res.status(403).json({ success: false, message: '当前身份不能编辑该部门介绍页' });
+  }
+
+  try {
+    const intro = await DepartmentIntroduction.findOne(assignment).lean();
+    const revisions = await DepartmentIntroductionRevision
+      .find(assignment)
+      .sort({ version: -1 })
+      .limit(12)
+      .populate('actor', 'name studentId')
+      .lean();
+    res.json({
+      success: true,
+      introduction: serializeDepartmentIntroduction(intro, assignment, 'editor'),
+      access,
+      revisions: revisions.map(item => ({
+        id: item._id,
+        version: item.version,
+        action: item.action,
+        reason: item.reason || '',
+        createdAt: item.createdAt,
+        actor: item.actor ? { name: item.actor.name, studentId: item.actor.studentId } : null
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '获取部门介绍编辑数据失败' });
+  }
+});
+
+app.put('/api/hub/departments/:organization/:department/introduction/draft', authenticate, async (req, res) => {
+  const assignment = {
+    organization: req.params.organization,
+    department: req.params.department
+  };
+  if (!isValidManagedDepartment(assignment)) {
+    return res.status(404).json({ success: false, message: '部门模块不存在' });
+  }
+
+  const access = getDepartmentIntroductionAccess(req.user, assignment);
+  if (!access?.canEdit) {
+    return res.status(403).json({ success: false, message: '当前身份不能编辑该部门介绍页' });
+  }
+
+  try {
+    const existing = await DepartmentIntroduction.findOne(assignment).lean();
+    const baseVersion = Number(req.body?.baseVersion ?? existing?.draftVersion ?? 0);
+    if (existing && Number.isFinite(baseVersion) && baseVersion !== existing.draftVersion) {
+      return res.status(409).json({
+        success: false,
+        message: '草稿已被其他成员更新，请刷新后再继续编辑',
+        currentVersion: existing.draftVersion
+      });
+    }
+
+    const draftContent = normalizeIntroductionContent(req.body?.content || {}, assignment);
+    const intro = await DepartmentIntroduction.findOneAndUpdate(
+      assignment,
+      {
+        ...assignment,
+        draftContent,
+        status: existing?.publishedContent ? existing.status : 'draft',
+        draftVersion: (existing?.draftVersion || 0) + 1,
+        updatedBy: req.user._id
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    ).lean();
+
+    await logAction(req.user._id, 'save_department_introduction_draft', 'departmentIntroduction', intro._id, assignment, req);
+    res.json({
+      success: true,
+      message: '部门介绍草稿已保存',
+      introduction: serializeDepartmentIntroduction(intro, assignment, 'editor'),
+      access
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '保存部门介绍草稿失败' });
+  }
+});
+
+app.post('/api/hub/departments/:organization/:department/introduction/publish', authenticate, async (req, res) => {
+  const assignment = {
+    organization: req.params.organization,
+    department: req.params.department
+  };
+  if (!isValidManagedDepartment(assignment)) {
+    return res.status(404).json({ success: false, message: '部门模块不存在' });
+  }
+
+  const access = getDepartmentIntroductionAccess(req.user, assignment);
+  if (!access?.canPublish) {
+    return res.status(403).json({ success: false, message: '当前身份不能发布该部门介绍页' });
+  }
+
+  try {
+    const existing = await DepartmentIntroduction.findOne(assignment).lean();
+    if (!existing?.draftContent) {
+      return res.status(400).json({ success: false, message: '请先保存草稿后再发布' });
+    }
+
+    const intro = await DepartmentIntroduction.findOneAndUpdate(
+      assignment,
+      {
+        ...assignment,
+        publishedContent: existing.draftContent,
+        publishedVersion: (existing.publishedVersion || 0) + 1,
+        status: 'published',
+        updatedBy: req.user._id,
+        publishedBy: req.user._id,
+        publishedAt: new Date()
+      },
+      { new: true }
+    ).lean();
+
+    await DepartmentIntroductionRevision.create({
+      ...assignment,
+      version: intro.publishedVersion,
+      content: intro.publishedContent,
+      action: 'publish',
+      actor: req.user._id,
+      reason: cleanText(req.body?.reason, 160)
+    });
+    await logAction(req.user._id, 'publish_department_introduction', 'departmentIntroduction', intro._id, { ...assignment, version: intro.publishedVersion }, req);
+    res.json({
+      success: true,
+      message: '部门介绍页已发布',
+      introduction: serializeDepartmentIntroduction(intro, assignment, 'editor'),
+      access
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '发布部门介绍页失败' });
+  }
+});
+
+app.post('/api/hub/departments/:organization/:department/introduction/media', authenticate, departmentIntroUpload.single('file'), async (req, res) => {
+  const assignment = {
+    organization: req.params.organization,
+    department: req.params.department
+  };
+  if (!isValidManagedDepartment(assignment)) {
+    if (req.file?.path) fs.unlink(req.file.path, () => {});
+    return res.status(404).json({ success: false, message: '部门模块不存在' });
+  }
+
+  const access = getDepartmentIntroductionAccess(req.user, assignment);
+  if (!access?.canEdit) {
+    if (req.file?.path) fs.unlink(req.file.path, () => {});
+    return res.status(403).json({ success: false, message: '当前身份不能上传该部门介绍页媒体' });
+  }
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: '请选择要上传的文件' });
+  }
+
+  const isImage = ['image/jpeg', 'image/png', 'image/webp'].includes(req.file.mimetype);
+  const isVideo = req.file.mimetype === 'video/mp4';
+  if (!isImage && !isVideo) {
+    fs.unlink(req.file.path, () => {});
+    return res.status(400).json({ success: false, message: '仅支持 jpg、png、webp 图片与 mp4 视频' });
+  }
+
+  try {
+    const hash = crypto.createHash('sha256').update(fs.readFileSync(req.file.path)).digest('hex');
+    const media = await DepartmentIntroductionMedia.create({
+      ...assignment,
+      uploader: req.user._id,
+      originalName: req.file.originalname,
+      filename: req.file.filename,
+      url: `/api/department-intro-assets/${req.file.filename}`,
+      mimeType: req.file.mimetype,
+      type: isVideo ? 'video' : 'image',
+      size: req.file.size,
+      hash
+    });
+    await logAction(req.user._id, 'upload_department_introduction_media', 'departmentIntroductionMedia', media._id, { ...assignment, type: media.type, size: media.size }, req);
+    res.json({
+      success: true,
+      media: {
+        id: media._id,
+        url: media.url,
+        type: media.type,
+        originalName: media.originalName,
+        size: media.size
+      }
+    });
+  } catch (error) {
+    if (req.file?.path) fs.unlink(req.file.path, () => {});
+    res.status(500).json({ success: false, message: '上传部门介绍媒体失败' });
+  }
 });
 
 app.get('/api/hub/departments/:organization/:department/performance-policy', authenticate, async (req, res) => {
@@ -1426,6 +2020,36 @@ app.patch('/api/ultimate/cohorts/:id', authenticate, ultimateOnly, async (req, r
   }
 });
 
+app.delete('/api/ultimate/cohorts/:id', authenticate, ultimateOnly, async (req, res) => {
+  try {
+    const cohort = await Cohort.findById(req.params.id);
+    if (!cohort) return res.status(404).json({ success: false, message: '届次不存在' });
+
+    const typedName = sanitizeInput(req.body?.cohortName || '');
+    const confirmation = sanitizeInput(req.body?.confirmation || '');
+    if (typedName !== cohort.name || confirmation !== '确认删除') {
+      return res.status(400).json({
+        success: false,
+        message: '删除确认信息不匹配，请完整输入届次名称和“确认删除”'
+      });
+    }
+
+    const memberCount = await CohortMembership.countDocuments({ cohort: cohort._id });
+    await CohortMembership.deleteMany({ cohort: cohort._id });
+    await Cohort.deleteOne({ _id: cohort._id });
+    await logAction(req.user._id, 'delete_cohort', 'cohort', cohort._id, {
+      name: cohort.name,
+      status: cohort.status,
+      deletedMembers: memberCount
+    }, req);
+
+    res.json({ success: true, message: '届次已删除', deletedMembers: memberCount });
+  } catch (error) {
+    console.error('删除届次失败:', error);
+    res.status(500).json({ success: false, message: '删除届次失败' });
+  }
+});
+
 app.get('/api/ultimate/users', authenticate, ultimateOnly, async (req, res) => {
   try {
     const users = await User.find().select('-password').sort({ createdAt: -1 }).lean();
@@ -1468,7 +2092,10 @@ app.get('/api/ultimate/members', authenticate, ultimateOnly, async (req, res) =>
 app.post('/api/ultimate/members', authenticate, ultimateOnly, async (req, res) => {
   try {
     const { cohortId, studentId, password, name, email, phone } = req.body;
+    const cleanStudentId = sanitizeInput(studentId);
+    const cleanEmail = normalizeEmail(email);
     if (!cohortId || !studentId) return res.status(400).json({ success: false, message: '缺少届次或学号' });
+    if (!isValidStudentId(cleanStudentId)) return res.status(400).json({ success: false, message: '成员账号学号必须为唯一的10位数字' });
     const cohort = await Cohort.findById(cohortId);
     if (!cohort) return res.status(404).json({ success: false, message: '届次不存在' });
     if (cohort.status === 'archived') return res.status(400).json({ success: false, message: '已归档届次不可继续编辑成员' });
@@ -1476,22 +2103,30 @@ app.post('/api/ultimate/members', authenticate, ultimateOnly, async (req, res) =
     const identity = buildIdentityUpdate(req.body, req.user._id);
     if (!identity.valid) return res.status(400).json({ success: false, message: identity.message });
 
-    let user = await User.findOne({ studentId });
+    let user = await User.findOne({ studentId: cleanStudentId });
     if (!user) {
       if (!password || !name || !email) {
         return res.status(400).json({ success: false, message: '新成员账号需要姓名、邮箱和初始密码' });
       }
+      if (!isValidEmail(cleanEmail)) return res.status(400).json({ success: false, message: '邮箱格式不正确' });
+      const duplicatedEmail = await User.findOne({ email: cleanEmail });
+      if (duplicatedEmail) return res.status(400).json({ success: false, message: '该邮箱已被其他账号绑定' });
       user = await User.create({
-        studentId: sanitizeInput(studentId),
+        studentId: cleanStudentId,
         password,
         name: sanitizeInput(name),
-        email: sanitizeInput(email),
+        email: cleanEmail,
         phone: sanitizeInput(phone),
         ...identity.update
       });
     } else {
       if (name) user.name = sanitizeInput(name);
-      if (email) user.email = sanitizeInput(email);
+      if (email) {
+        if (!isValidEmail(cleanEmail)) return res.status(400).json({ success: false, message: '邮箱格式不正确' });
+        const duplicatedEmail = await User.findOne({ _id: { $ne: user._id }, email: cleanEmail });
+        if (duplicatedEmail) return res.status(400).json({ success: false, message: '该邮箱已被其他账号绑定' });
+        user.email = cleanEmail;
+      }
       if (phone !== undefined) user.phone = sanitizeInput(phone);
       Object.assign(user, identity.update);
       await user.save();
@@ -1662,6 +2297,8 @@ app.post('/api/upload', authenticate, upload.array('files', 10), (req, res) => {
   }
 });
 
+installSieBridgeRoutes({ app, authenticate, logAction, Notification });
+
 // [修改] 消息撤回接口 (限制仅本人或超管可撤回，并记录撤回人角色)
 app.patch('/api/feedback/:id/reply/:replyId/recall', authenticate, async (req, res) => {
   try {
@@ -1693,34 +2330,120 @@ app.patch('/api/feedback/:id/reply/:replyId/recall', authenticate, async (req, r
 
 // ================== 认证相关 ==================
 
+app.post('/api/auth/email-code/register', async (req, res) => {
+  try {
+    const email = normalizeEmail(req.body.email);
+    if (!email || !isValidEmail(email)) {
+      return res.status(400).json({ success: false, message: '请输入有效邮箱' });
+    }
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ success: false, message: '该邮箱已被绑定' });
+    }
+    const result = await issueEmailVerification({ email, purpose: 'register' });
+    if (!result.ok) return res.status(result.status || 400).json({ success: false, message: result.message });
+    res.json({
+      success: true,
+      message: result.devMode ? '验证码已生成，请查看后端运行日志' : '验证码已发送至邮箱',
+      devMode: result.devMode,
+      expiresAt: result.expiresAt
+    });
+  } catch (error) {
+    console.error('发送注册验证码失败:', error);
+    res.status(500).json({ success: false, message: '验证码发送失败，请稍后重试' });
+  }
+});
+
+app.post('/api/auth/email-code/password-reset', async (req, res) => {
+  try {
+    const email = normalizeEmail(req.body.email);
+    if (!email || !isValidEmail(email)) {
+      return res.status(400).json({ success: false, message: '请输入有效邮箱' });
+    }
+    const user = await User.findOne({ email, isActive: true });
+    if (!user) {
+      return res.status(404).json({ success: false, message: '未找到绑定该邮箱的账号' });
+    }
+    const result = await issueEmailVerification({ email, purpose: 'reset_password' });
+    if (!result.ok) return res.status(result.status || 400).json({ success: false, message: result.message });
+    res.json({
+      success: true,
+      message: result.devMode ? '验证码已生成，请查看后端运行日志' : '验证码已发送至绑定邮箱',
+      devMode: result.devMode,
+      expiresAt: result.expiresAt
+    });
+  } catch (error) {
+    console.error('发送找回密码验证码失败:', error);
+    res.status(500).json({ success: false, message: '验证码发送失败，请稍后重试' });
+  }
+});
+
+app.post('/api/auth/password-reset', async (req, res) => {
+  try {
+    const email = normalizeEmail(req.body.email);
+    const { code, password } = req.body;
+    if (!email || !isValidEmail(email)) return res.status(400).json({ success: false, message: '请输入有效邮箱' });
+    if (!password || password.length < 6) return res.status(400).json({ success: false, message: '新密码至少6位' });
+
+    const verification = await verifyEmailCode({ email, purpose: 'reset_password', code, consume: true });
+    if (!verification.ok) return res.status(400).json({ success: false, message: verification.message });
+
+    const user = await User.findOne({ email, isActive: true });
+    if (!user) return res.status(404).json({ success: false, message: '未找到绑定该邮箱的账号' });
+
+    user.password = password;
+    user.loginAttempts = 0;
+    user.lockUntil = undefined;
+    await user.save();
+    await logAction(user._id, 'reset_password_by_email', 'user', user._id, { email }, req);
+    res.json({ success: true, message: '密码已重置，请使用新密码登录' });
+  } catch (error) {
+    console.error('找回密码失败:', error);
+    res.status(500).json({ success: false, message: '密码重置失败，请稍后重试' });
+  }
+});
+
 // 用户注册
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { studentId, password, name, email, phone } = req.body;
+    const { studentId, password, name, email, phone, emailCode } = req.body;
+    const cleanStudentId = sanitizeInput(studentId);
+    const cleanEmail = normalizeEmail(email);
     
     // 验证必填字段
     if (!studentId || !password || !name || !email) {
       return res.status(400).json({ success: false, message: '请填写所有必填字段' });
     }
+    if (!isValidStudentId(cleanStudentId)) {
+      return res.status(400).json({ success: false, message: '学生账号学号必须为唯一的10位数字' });
+    }
+    if (!isValidEmail(cleanEmail)) {
+      return res.status(400).json({ success: false, message: '邮箱格式不正确' });
+    }
     
     // 检查用户是否已存在
     const existingUser = await User.findOne({ 
-      $or: [{ studentId }, { email }] 
+      $or: [{ studentId: cleanStudentId }, { email: cleanEmail }]
     });
     
     if (existingUser) {
       return res.status(400).json({ 
         success: false, 
-        message: existingUser.studentId === studentId ? '学号已被注册' : '邮箱已被注册' 
+        message: existingUser.studentId === cleanStudentId ? '学号已被注册' : '邮箱已被注册'
       });
+    }
+
+    const verification = await verifyEmailCode({ email: cleanEmail, purpose: 'register', code: emailCode, consume: true });
+    if (!verification.ok) {
+      return res.status(400).json({ success: false, message: verification.message });
     }
     
     // 创建用户
     const user = await User.create({
-      studentId: sanitizeInput(studentId),
+      studentId: cleanStudentId,
       password,
       name: sanitizeInput(name),
-      email: sanitizeInput(email),
+      email: cleanEmail,
       phone: sanitizeInput(phone)
     });
     
@@ -1847,33 +2570,41 @@ app.put('/api/auth/password', authenticate, async (req, res) => {
 app.put('/api/auth/profile', authenticate, async (req, res) => {
   try {
     const { name, email, phone, studentId } = req.body;
+    const cleanStudentId = sanitizeInput(studentId);
+    const cleanEmail = normalizeEmail(email);
 
     // 基本验证
     if (!name || !email || !studentId) {
       return res.status(400).json({ success: false, message: '姓名、邮箱和学号为必填项' });
+    }
+    if (!req.user.isUltimateAdmin && req.user.role === 'student' && !isValidStudentId(cleanStudentId)) {
+      return res.status(400).json({ success: false, message: '学生账号学号必须为唯一的10位数字' });
+    }
+    if (!isValidEmail(cleanEmail)) {
+      return res.status(400).json({ success: false, message: '邮箱格式不正确' });
     }
 
     // 检查学号或邮箱是否被其他用户占用
     const existingUser = await User.findOne({
       $and: [
         { _id: { $ne: req.user._id } }, // 排除当前用户自己
-        { $or: [{ studentId }, { email }] }
+        { $or: [{ studentId: cleanStudentId }, { email: cleanEmail }] }
       ]
     });
 
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: existingUser.studentId === studentId ? '该学号已被其他账号使用' : '该邮箱已被其他账号绑定'
+        message: existingUser.studentId === cleanStudentId ? '该学号已被其他账号使用' : '该邮箱已被其他账号绑定'
       });
     }
 
     // 更新用户信息 (禁止修改 role 权限)
     const user = await User.findById(req.user._id);
     user.name = sanitizeInput(name);
-    user.email = sanitizeInput(email);
+    user.email = cleanEmail;
     user.phone = sanitizeInput(phone);
-    user.studentId = sanitizeInput(studentId);
+    user.studentId = cleanStudentId;
     await user.save();
 
     await logAction(req.user._id, 'update_profile', 'user', req.user._id, { action: 'update_info' }, req);
@@ -2909,67 +3640,6 @@ const startServer = async () => {
     });
     console.log('✅ MongoDB 连接成功');
     
-// [修改] 初始化 1 个临时终极管理员和 2 个普通超级管理员账号
-    const superadminsToInit = [
-      {
-        studentId: '20240901010',
-        name: '终极管理员',
-        email: 'ultimate_admin@buct.edu.cn',
-        isUltimateAdmin: true,
-        memberRole: 'presidium',
-        positionTitle: 'presidium_member'
-      },
-      {
-        studentId: '20240901008',
-        name: '超级管理员2',
-        email: 'superadmin2@buct.edu.cn',
-        memberRole: 'presidium',
-        positionTitle: 'presidium_member'
-      },
-      {
-        studentId: '20240901009',
-        name: '超级管理员3',
-        email: 'superadmin3@buct.edu.cn',
-        memberRole: 'presidium',
-        positionTitle: 'youth_league_deputy_secretary'
-      }
-    ];
-    
-    for (const adminData of superadminsToInit) {
-      try {
-        const exists = await User.findOne({
-          $or: [
-            { studentId: adminData.studentId },
-            { email: adminData.email }
-          ]
-        });
-        if (!exists) {
-          // 若账号不存在，直接创建为 superadmin
-          await User.create({
-            studentId: adminData.studentId,
-            name: adminData.name,
-            email: adminData.email,
-            password: 'SIEVOX2026.', // pre-save hook 会自动加密
-            role: 'superadmin',
-            isUltimateAdmin: Boolean(adminData.isUltimateAdmin),
-            memberRole: adminData.memberRole,
-            positionTitle: adminData.positionTitle
-          });
-          console.log(`✅ Superadmin ${adminData.studentId} created`);
-        } else {
-          exists.role = 'superadmin';
-          exists.isUltimateAdmin = Boolean(adminData.isUltimateAdmin);
-          exists.memberRole = adminData.memberRole;
-          exists.positionTitle = adminData.positionTitle;
-          await exists.save();
-          console.log(`✅ Superadmin ${adminData.studentId} ensured`);
-        }
-      } catch (e) {
-        // [修复] 单个超管初始化失败(如邮箱/学号与既有账号冲突)时仅告警跳过，避免整个服务启动崩溃
-        console.warn(`⚠️  跳过超管初始化 ${adminData.studentId}: ${e.message}`);
-      }
-    }
-
     // [修改] 根据环境决定启动 HTTP 还是 HTTPS
     if (config.nodeEnv === 'production') {
       // 生产环境：读取 SSL 证书并启动 HTTPS

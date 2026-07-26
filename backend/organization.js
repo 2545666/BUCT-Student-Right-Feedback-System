@@ -85,6 +85,11 @@ const SIEVOX_DEPARTMENT = Object.freeze({
   department: 'student_rights'
 });
 
+const SIEBRIDGE_DEPARTMENT = Object.freeze({
+  organization: 'student_union',
+  department: 'academic_technology'
+});
+
 const SIEVOX_VOLUNTEER_PERFORMANCE_POLICY = Object.freeze({
   id: 'sievox_volunteer_performance_v1',
   version: 1,
@@ -161,13 +166,20 @@ const isSievoxDepartment = (organization, department) =>
   organization === SIEVOX_DEPARTMENT.organization &&
   department === SIEVOX_DEPARTMENT.department;
 
+const isSiebridgeDepartment = (organization, department) =>
+  organization === SIEBRIDGE_DEPARTMENT.organization &&
+  department === SIEBRIDGE_DEPARTMENT.department;
+
 const getHubModuleId = (organization, department) =>
   isSievoxDepartment(organization, department)
     ? 'sievox'
+    : isSiebridgeDepartment(organization, department)
+      ? 'siebridge'
     : `department:${organization}:${department}`;
 
 const listHubModules = () => listDepartments().map((assignment) => {
   const isSievox = isSievoxDepartment(assignment.organization, assignment.department);
+  const isSiebridge = isSiebridgeDepartment(assignment.organization, assignment.department);
   return {
     id: getHubModuleId(assignment.organization, assignment.department),
     hubId: HUB_SYSTEM.id,
@@ -175,10 +187,10 @@ const listHubModules = () => listDepartments().map((assignment) => {
     organizationLabel: assignment.organizationLabel,
     department: assignment.department,
     departmentLabel: assignment.departmentLabel,
-    productName: isSievox ? 'SIEVOX' : assignment.departmentLabel,
-    moduleType: isSievox ? 'mature' : 'scaffold',
-    status: isSievox ? 'active' : 'planned',
-    studentEntry: isSievox
+    productName: isSievox ? 'SIEVOX' : isSiebridge ? 'SIEBridge' : assignment.departmentLabel,
+    moduleType: (isSievox || isSiebridge) ? 'mature' : 'scaffold',
+    status: (isSievox || isSiebridge) ? 'active' : 'planned',
+    studentEntry: isSievox || isSiebridge
   };
 });
 
@@ -228,7 +240,9 @@ const getHubModuleAccess = (user = {}) => {
         'enter_manage_portal',
         'switch_portal',
         'manage_module',
-        'manage_volunteer_performance_policy'
+        'manage_department_introduction',
+        'manage_volunteer_performance_policy',
+        ...(isSiebridgeDepartment(organization, department) ? ['review_siebridge_content'] : [])
       ]);
     });
     return Array.from(accessByModuleId.values());
@@ -241,6 +255,7 @@ const getHubModuleAccess = (user = {}) => {
       'enter_manage_portal',
       'switch_portal',
       'manage_module',
+      'manage_department_introduction',
       'manage_volunteer_performance_policy'
     ]);
     return Array.from(accessByModuleId.values());
@@ -254,7 +269,9 @@ const getHubModuleAccess = (user = {}) => {
         'enter_manage_portal',
         'switch_portal',
         'manage_module',
-        'manage_volunteer_performance_policy'
+        'manage_department_introduction',
+        'manage_volunteer_performance_policy',
+        ...(isSiebridgeDepartment(organization, department) ? ['review_siebridge_content'] : [])
       ]);
     });
     return Array.from(accessByModuleId.values());
@@ -387,6 +404,7 @@ module.exports = {
   ACCESS_ROLE_BY_MEMBER_ROLE,
   TITLES_BY_MEMBER_ROLE,
   HUB_SYSTEM,
+  SIEBRIDGE_DEPARTMENT,
   SIEVOX_DEPARTMENT,
   SIEVOX_VOLUNTEER_PERFORMANCE_POLICY,
   getDepartment,

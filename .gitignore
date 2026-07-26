@@ -24,10 +24,13 @@ npm-debug.log*
 dist/
 build/
 frontend/dist/
+*.tar.gz
 
 # 上传文件目录
 uploads/
 backend/uploads/
+backend/siebridge_uploads/
+backend/department_intro_uploads/
 
 # 系统文件
 .DS_Store

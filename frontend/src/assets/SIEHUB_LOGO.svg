@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" role="img" aria-labelledby="title desc">
+  <title id="title">SIEHUB logo</title>
+  <desc id="desc">A navy academic shield with a gold open connection arc and a linked hub symbol, followed by the SIEHUB wordmark.</desc>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M400 58C326 111 238 141 142 150v190c0 143 83 260 258 354 175-94 258-211 258-354V150c-96-9-184-39-258-92Z" fill="#123766" stroke="#123766" stroke-width="18"/>
+    <path d="M400 89c-70 47-153 75-242 84v167c0 126 72 231 242 327 170-96 242-201 242-327V173c-89-9-172-37-242-84Z" stroke="#F8F5EF" stroke-width="8"/>
+    <path d="M216 188c54-15 107-39 151-71 15-11 30-22 43-34 13 12 28 23 43 34 44 32 97 56 151 71" stroke="#C89B4B" stroke-width="18"/>
+    <path d="M400 183v209M284 266l116 126 116-126M284 266v126M516 266v126" stroke="#F8F5EF" stroke-width="18"/>
+    <circle cx="400" cy="183" r="25" fill="#C89B4B" stroke="#F8F5EF" stroke-width="8"/>
+    <circle cx="284" cy="266" r="25" fill="#C89B4B" stroke="#F8F5EF" stroke-width="8"/>
+    <circle cx="516" cy="266" r="25" fill="#C89B4B" stroke="#F8F5EF" stroke-width="8"/>
+    <circle cx="400" cy="392" r="25" fill="#C89B4B" stroke="#F8F5EF" stroke-width="8"/>
+    <path d="M261 471h278" stroke="#C89B4B" stroke-width="10"/>
+  </g>
+  <text x="400" y="632" text-anchor="middle" fill="#123766" font-family="Arial, Helvetica, sans-serif" font-size="94" font-weight="700" letter-spacing="13">SIEHUB</text>
+  <text x="400" y="680" text-anchor="middle" fill="#C89B4B" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" letter-spacing="7">SIE LIFE PLATFORM</text>
+</svg>

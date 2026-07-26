@@ -1,0 +1,782 @@
+.siebridge-shell,
+.siebridge-review {
+  margin-top: 20px;
+}
+
+.siebridge-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px;
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 18%, var(--line));
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, #0f766e 10%, transparent), transparent 62%),
+    var(--paper);
+}
+
+.siebridge-toolbar p,
+.siebridge-submissions header p,
+.siebridge-panel-head span {
+  margin: 0;
+  color: var(--theme-primary);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+
+.siebridge-toolbar h2,
+.siebridge-submissions h3,
+.siebridge-panel h3 {
+  margin: 6px 0 0;
+  color: var(--ink);
+  font-family: "方正大标宋简体", "Source Han Serif SC", "Songti SC", Georgia, serif;
+  letter-spacing: 0;
+}
+
+.siebridge-toolbar h2 {
+  font-size: 28px;
+}
+
+.siebridge-searchbar {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) 220px 160px;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.siebridge-searchbar label,
+.siebridge-searchbar select,
+.siebridge-panel label,
+.siebridge-wide-field {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+}
+
+.siebridge-searchbar label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 13px;
+}
+
+.siebridge-searchbar svg {
+  width: 17px;
+  height: 17px;
+  color: var(--theme-primary);
+}
+
+.siebridge-searchbar input,
+.siebridge-searchbar select,
+.siebridge-panel input,
+.siebridge-panel textarea {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.siebridge-searchbar select {
+  padding: 12px 13px;
+}
+
+.siebridge-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, .86fr) minmax(0, 1.5fr);
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.siebridge-course-list,
+.siebridge-course-detail,
+.siebridge-submissions,
+.siebridge-review-list article,
+.siebridge-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  box-shadow: 0 12px 34px rgba(15, 36, 58, .06);
+}
+
+.siebridge-course-list {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  max-height: 650px;
+  overflow: auto;
+  padding: 10px;
+}
+
+.siebridge-course-list button {
+  display: grid;
+  gap: 5px;
+  width: 100%;
+  padding: 14px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--canvas) 50%, var(--paper));
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.siebridge-course-list button:hover,
+.siebridge-course-list button.is-active {
+  border-color: color-mix(in srgb, var(--theme-primary) 40%, var(--line));
+  background: color-mix(in srgb, var(--theme-container) 20%, var(--paper));
+}
+
+.siebridge-course-list span,
+.siebridge-review-list article span,
+.siebridge-submissions article span {
+  color: var(--theme-primary);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+.siebridge-course-list strong,
+.siebridge-review-list article strong,
+.siebridge-submissions article strong {
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.siebridge-course-list small,
+.siebridge-review-list article small,
+.siebridge-submissions article small,
+.siebridge-muted {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.siebridge-course-detail {
+  min-height: 520px;
+  padding: 20px;
+}
+
+.siebridge-course-detail > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.siebridge-course-detail h3 {
+  margin: 4px 0;
+  color: var(--ink);
+  font-size: 24px;
+}
+
+.siebridge-course-detail p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.siebridge-resource-section {
+  margin-top: 18px;
+}
+
+.siebridge-resource-section h4 {
+  margin: 0 0 10px;
+  color: var(--ink);
+  font-size: 15px;
+}
+
+.siebridge-resource-section article {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) 34px 34px;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--canvas) 42%, var(--paper));
+}
+
+.siebridge-resource-section article > svg {
+  color: var(--theme-primary);
+}
+
+.siebridge-resource-section article div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.siebridge-resource-section article strong,
+.siebridge-resource-section article span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.siebridge-resource-section article button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--theme-primary);
+  cursor: pointer;
+}
+
+.siebridge-submissions {
+  margin-top: 14px;
+  padding: 18px;
+}
+
+.siebridge-submissions header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.siebridge-submissions header svg {
+  color: var(--theme-primary);
+}
+
+.siebridge-submissions > div {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.siebridge-submissions article {
+  display: grid;
+  gap: 5px;
+  min-height: 118px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--canvas) 42%, var(--paper));
+}
+
+.siebridge-submissions em {
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+}
+
+.siebridge-status {
+  width: fit-content;
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.siebridge-status.pending {
+  color: #8a611e;
+  background: #fff3cf;
+}
+
+.siebridge-status.approved {
+  color: #166534;
+  background: #dff7e8;
+}
+
+.siebridge-status.rejected {
+  color: #9f1239;
+  background: #ffe4eb;
+}
+
+.siebridge-message {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 11px 13px;
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 24%, var(--line));
+  border-radius: 8px;
+  color: var(--theme-primary);
+  background: color-mix(in srgb, var(--theme-container) 22%, var(--paper));
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.siebridge-message button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.siebridge-empty {
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  min-height: 220px;
+  padding: 24px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.siebridge-empty.large {
+  min-height: 420px;
+}
+
+.siebridge-empty svg {
+  color: var(--theme-primary);
+}
+
+.siebridge-drawer,
+.siebridge-preview {
+  position: fixed;
+  z-index: 90;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(6, 18, 30, .44);
+}
+
+.siebridge-panel {
+  width: min(760px, 100%);
+  max-height: min(860px, 92vh);
+  overflow: auto;
+  padding: 20px;
+}
+
+.siebridge-panel.small {
+  width: min(560px, 100%);
+}
+
+.siebridge-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.siebridge-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.siebridge-panel label,
+.siebridge-wide-field {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+}
+
+.siebridge-panel label span,
+.siebridge-wide-field span,
+.siebridge-choice-row strong {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+.siebridge-wide-field {
+  margin-top: 10px;
+}
+
+.siebridge-panel textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.siebridge-choice-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.siebridge-choice-row button,
+.siebridge-review-tabs button {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--muted);
+  padding: 8px 11px;
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.siebridge-choice-row button.is-active,
+.siebridge-review-tabs button.is-active {
+  border-color: var(--theme-primary);
+  background: var(--theme-primary);
+  color: var(--theme-on-primary);
+}
+
+.siebridge-upload {
+  position: relative;
+  display: flex !important;
+  align-items: center;
+  gap: 12px !important;
+  margin-top: 12px;
+  min-height: 92px;
+  border-style: dashed !important;
+  cursor: pointer;
+}
+
+.siebridge-upload svg {
+  flex: 0 0 auto;
+  color: var(--theme-primary);
+}
+
+.siebridge-upload > div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.siebridge-upload input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.siebridge-file-list {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 5px;
+  max-height: 118px;
+  margin: 4px 0 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.siebridge-file-list li {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  padding: 5px 8px;
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 18%, var(--line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--theme-container) 14%, var(--paper));
+}
+
+.siebridge-file-list svg {
+  width: 15px;
+  height: 15px;
+}
+
+.siebridge-file-list span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.siebridge-file-list em {
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.siebridge-panel footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.siebridge-review-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.siebridge-review-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.siebridge-review-list article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 16px;
+}
+
+.siebridge-review-list article > div {
+  display: grid;
+  gap: 4px;
+}
+
+.siebridge-review-list article p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.siebridge-review-files {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.siebridge-review-files button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--theme-primary);
+  padding: 7px 10px;
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.siebridge-review-list footer {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+}
+
+.siebridge-review-list footer button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 30%, var(--line));
+  border-radius: 999px;
+  background: var(--theme-primary);
+  color: var(--theme-on-primary);
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.siebridge-review-list footer button.danger {
+  border-color: #fecdd3;
+  background: #be123c;
+  color: #fff;
+}
+
+.siebridge-preview dialog {
+  width: min(1040px, 96vw);
+  height: min(820px, 92vh);
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: var(--paper);
+  overflow: hidden;
+}
+
+.siebridge-preview header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.siebridge-preview iframe {
+  width: 100%;
+  height: calc(100% - 56px);
+  border: 0;
+}
+
+html[data-theme="dark"] .siebridge-status.pending {
+  color: #fcd34d;
+  background: rgba(161, 98, 7, .24);
+}
+
+html[data-theme="dark"] .siebridge-status.approved {
+  color: #86efac;
+  background: rgba(22, 101, 52, .24);
+}
+
+html[data-theme="dark"] .siebridge-status.rejected {
+  color: #fda4af;
+  background: rgba(159, 18, 57, .24);
+}
+
+@media (max-width: 980px) {
+  .siebridge-searchbar,
+  .siebridge-layout,
+  .siebridge-submissions > div {
+    grid-template-columns: 1fr;
+  }
+
+  .siebridge-course-list {
+    max-height: none;
+  }
+
+  .siebridge-course-detail > header,
+  .siebridge-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .siebridge-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .siebridge-toolbar,
+  .siebridge-course-detail,
+  .siebridge-submissions,
+  .siebridge-panel {
+    padding: 16px;
+  }
+
+  .siebridge-toolbar h2 {
+    font-size: 24px;
+  }
+
+  .siebridge-resource-section article {
+    grid-template-columns: 28px minmax(0, 1fr) 32px 32px;
+  }
+
+  .siebridge-drawer,
+  .siebridge-preview {
+    padding: 12px;
+  }
+}
+
+/* English layout: preserve hierarchy while allowing longer labels to breathe. */
+html[data-language="en"] .siebridge-shell,
+html[data-language="en"] .siebridge-review {
+  font-family: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
+}
+
+html[data-language="en"] .siebridge-toolbar,
+html[data-language="en"] .siebridge-course-detail > header,
+html[data-language="en"] .siebridge-panel-head,
+html[data-language="en"] .siebridge-submissions header {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+html[data-language="en"] .siebridge-toolbar > div,
+html[data-language="en"] .siebridge-course-detail > header > div,
+html[data-language="en"] .siebridge-panel-head > div {
+  min-width: 0;
+}
+
+html[data-language="en"] .siebridge-toolbar h2,
+html[data-language="en"] .siebridge-course-detail h3,
+html[data-language="en"] .siebridge-panel h3,
+html[data-language="en"] .siebridge-submissions h3 {
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+
+html[data-language="en"] .siebridge-toolbar h2 {
+  max-width: 680px;
+  font-size: clamp(22px, 3vw, 32px);
+}
+
+html[data-language="en"] .siebridge-searchbar {
+  grid-template-columns: minmax(220px, 1fr) minmax(150px, .42fr) minmax(130px, .32fr);
+}
+
+html[data-language="en"] .siebridge-searchbar label,
+html[data-language="en"] .siebridge-searchbar select {
+  min-width: 0;
+}
+
+html[data-language="en"] .siebridge-searchbar input,
+html[data-language="en"] .siebridge-searchbar select,
+html[data-language="en"] .siebridge-panel input,
+html[data-language="en"] .siebridge-panel textarea {
+  min-width: 0;
+  font-family: inherit;
+}
+
+html[data-language="en"] .siebridge-course-list button,
+html[data-language="en"] .siebridge-course-detail,
+html[data-language="en"] .siebridge-submissions article,
+html[data-language="en"] .siebridge-review-list article {
+  min-width: 0;
+}
+
+html[data-language="en"] .siebridge-course-list strong,
+html[data-language="en"] .siebridge-course-list small,
+html[data-language="en"] .siebridge-course-detail p,
+html[data-language="en"] .siebridge-review-list article strong,
+html[data-language="en"] .siebridge-review-list article small,
+html[data-language="en"] .siebridge-submissions article strong,
+html[data-language="en"] .siebridge-submissions article small,
+html[data-language="en"] .siebridge-submissions article em {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+html[data-language="en"] .siebridge-course-list strong,
+html[data-language="en"] .siebridge-review-list article strong,
+html[data-language="en"] .siebridge-submissions article strong {
+  line-height: 1.35;
+}
+
+html[data-language="en"] .siebridge-choice-row {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+html[data-language="en"] .siebridge-choice-row strong {
+  flex: 0 0 100%;
+}
+
+html[data-language="en"] .siebridge-choice-row button,
+html[data-language="en"] .siebridge-review-tabs button {
+  white-space: normal;
+  line-height: 1.25;
+}
+
+html[data-language="en"] .siebridge-upload > div {
+  min-width: 0;
+}
+
+html[data-language="en"] .siebridge-upload strong,
+html[data-language="en"] .siebridge-upload p {
+  overflow-wrap: anywhere;
+}
+
+html[data-language="en"] .siebridge-panel footer,
+html[data-language="en"] .siebridge-review-list footer {
+  flex-wrap: wrap;
+}
+
+html[data-language="en"] .siebridge-review-list footer button,
+html[data-language="en"] .siebridge-review-files button {
+  white-space: nowrap;
+}
+
+@media (max-width: 980px) {
+  html[data-language="en"] .siebridge-searchbar {
+    grid-template-columns: 1fr;
+  }
+}
