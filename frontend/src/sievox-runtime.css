@@ -222,6 +222,29 @@ th,
   border: 1px solid var(--line);
 }
 
+.service-note {
+  min-height: 126px;
+}
+
+.service-note-meta {
+  display: block;
+  margin-top: 9px;
+  color: rgba(184, 197, 209, .72);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.mobile-greeting p {
+  display: grid;
+  gap: 3px;
+}
+
+.mobile-greeting p span {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.2;
+}
+
 .dialog-backdrop {
   position: fixed;
   z-index: 120;

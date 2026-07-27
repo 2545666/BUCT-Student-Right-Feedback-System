@@ -1139,6 +1139,53 @@ const getCurrentSemesterName = async () => {
   return current.value;
 };
 
+const createChinaBoundaryDate = (year, monthIndex, day = 1) => new Date(Date.UTC(year, monthIndex, day, -8));
+
+const getSemesterDateRange = (semesterName, now = new Date()) => {
+  const normalizedSemesterName = String(semesterName || '');
+  const yearMatch = normalizedSemesterName.match(/(\d{4})\D+(\d{4})/);
+  const termMatch = normalizedSemesterName.match(/(?:\u7b2c)?\s*([\u4e00\u4e8c12])\s*\u5b66\u671f/);
+  if (yearMatch && termMatch) {
+    const firstYear = Number(yearMatch[1]);
+    const secondYear = Number(yearMatch[2]);
+    const term = termMatch[1];
+    if (term === '\u4e00' || term === '1') {
+      return {
+        start: createChinaBoundaryDate(firstYear, 7),
+        end: createChinaBoundaryDate(secondYear, 1)
+      };
+    }
+    return {
+      start: createChinaBoundaryDate(secondYear, 1),
+      end: createChinaBoundaryDate(secondYear, 7)
+    };
+  }
+
+  const match = String(semesterName || '').match(/(\d{4})\s*[-—至]\s*(\d{4}).*第?([一二12])学期/);
+  if (match) {
+    const firstYear = Number(match[1]);
+    const secondYear = Number(match[2]);
+    const term = match[3];
+    if (term === '一' || term === '1') {
+      return {
+        start: createChinaBoundaryDate(firstYear, 7),
+        end: createChinaBoundaryDate(secondYear, 1)
+      };
+    }
+    return {
+      start: createChinaBoundaryDate(secondYear, 1),
+      end: createChinaBoundaryDate(secondYear, 7)
+    };
+  }
+
+  const chinaNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+  const year = chinaNow.getFullYear();
+  const month = chinaNow.getMonth();
+  return month >= 7
+    ? { start: createChinaBoundaryDate(year, 7), end: createChinaBoundaryDate(year + 1, 1) }
+    : { start: createChinaBoundaryDate(year, 1), end: createChinaBoundaryDate(year, 7) };
+};
+
 const getDepartmentPerformanceAccess = (user, assignment) => {
   const access = getPerformancePolicyModuleAccess(user, assignment);
   if (!access || !access.canEdit) return null;
@@ -2628,6 +2675,81 @@ app.get('/api/notifications', authenticate, async (req, res) => {
     res.json({ success: true, notifications });
   } catch (error) {
     res.status(500).json({ success: false });
+  }
+});
+
+app.get('/api/service-metrics', authenticate, async (req, res) => {
+  try {
+    const semester = await getCurrentSemesterName();
+    const { start, end } = getSemesterDateRange(semester);
+    const [result = {}] = await Feedback.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: start, $lt: end },
+          isRevoked: { $ne: true }
+        }
+      },
+      {
+        $facet: {
+          total: [{ $count: 'count' }],
+          firstResponses: [
+            { $unwind: '$responses' },
+            {
+              $match: {
+                'responses.senderType': { $in: ['admin', 'superadmin'] },
+                'responses.isRecalled': { $ne: true },
+                'responses.createdAt': { $type: 'date' }
+              }
+            },
+            {
+              $group: {
+                _id: '$_id',
+                createdAt: { $first: '$createdAt' },
+                firstResponseAt: { $min: '$responses.createdAt' }
+              }
+            },
+            {
+              $project: {
+                hours: {
+                  $divide: [{ $subtract: ['$firstResponseAt', '$createdAt'] }, 1000 * 60 * 60]
+                }
+              }
+            },
+            { $match: { hours: { $gte: 0 } } },
+            {
+              $group: {
+                _id: null,
+                averageHours: { $avg: '$hours' },
+                respondedFeedbackCount: { $sum: 1 }
+              }
+            }
+          ]
+        }
+      }
+    ]);
+
+    const total = result.total?.[0]?.count || 0;
+    const responseStats = result.firstResponses?.[0] || {};
+    const averageHours = Number.isFinite(responseStats.averageHours)
+      ? Math.round(responseStats.averageHours * 10) / 10
+      : null;
+
+    res.json({
+      success: true,
+      metrics: {
+        channelStatus: 'operational',
+        semester,
+        semesterStart: start,
+        semesterEnd: end,
+        averageFirstResponseHours: averageHours,
+        respondedFeedbackCount: responseStats.respondedFeedbackCount || 0,
+        feedbackCount: total,
+        measuredAt: new Date()
+      }
+    });
+  } catch (error) {
+    console.error('service metrics failed:', error);
+    res.status(500).json({ success: false, message: '服务指标获取失败' });
   }
 });
 

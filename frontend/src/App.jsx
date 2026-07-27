@@ -14,6 +14,7 @@ import siehubLogo from './assets/SIEHUB_LOGO.png';
 import collegeLogo from './assets/SIE_LOGO.svg';
 import buctLogo from './assets/BUCT_LOGO_blue.png';
 import { API_BASE } from './api';
+import { ServiceHealthNote, formatAverageFirstResponse, usePlatformClock, useServiceMetrics } from './platformStatus';
 import { SIEBridgeReviewWorkspace, SIEBridgeStudentPortal } from './SIEBridge';
 import {
   DepartmentIntroductionEditor,
@@ -1835,8 +1836,10 @@ const HubUserChip = ({ user }) => (
   </div>
 );
 
-const SIEHUBHome = ({ user, theme, onOpenModule, onLogout, languageSwitcher = null }) => {
+const SIEHUBHome = ({ user, token, theme, onOpenModule, onLogout, language = 'zh', languageSwitcher = null }) => {
   const modules = getAccessibleModules(user);
+  const clock = usePlatformClock(language);
+  const serviceMetrics = useServiceMetrics(token);
   const governanceModules = modules.filter(module => module.organization === 'hub');
   const youthLeague = modules.filter(module => module.organization === 'youth_league');
   const studentUnion = modules.filter(module => module.organization === 'student_union');
@@ -1866,6 +1869,12 @@ const SIEHUBHome = ({ user, theme, onOpenModule, onLogout, languageSwitcher = nu
       <section className="siehub-hero">
         <div className="siehub-hero-meta"><span>SIE / PLATFORM 01</span><b>{roleScope}</b></div>
         <div><p>北京化工大学国际教育学院</p><h1>一处入口，连接每一份学生工作。</h1></div>
+        <div className="siehub-live-greeting">
+          <span>{clock.greeting}，{user?.name}</span>
+          <strong>{clock.timeLabel}</strong>
+          <small>{clock.dateLabel} · {clock.timezoneLabel}</small>
+          <small>{language === 'en' ? 'SIEVOX first response' : 'SIEVOX 首次响应'}：{serviceMetrics.loading && !serviceMetrics.metrics ? (language === 'en' ? 'Syncing' : '同步中') : formatAverageFirstResponse(serviceMetrics.metrics, language)}</small>
+        </div>
         <div className="siehub-hero-orbit" aria-hidden="true"><span>HUB</span><i></i><i></i><i></i></div>
       </section>
       {user?.isUltimateAdmin && governanceModules.length > 0 && renderGroup('平台治理', '00', governanceModules)}
@@ -2150,7 +2159,7 @@ const HubInlineReturnButton = ({ onClick }) => (
   </button>
 );
 
-const Sidebar = ({ user, activePage, setActivePage, openCompose, onLogout, openSettings }) => (
+const Sidebar = ({ user, activePage, setActivePage, openCompose, onLogout, openSettings, serviceMetrics, language = 'zh' }) => (
   <aside className="sidebar" aria-label="主导航">
     <div className="brand-lockup"><img src={sieLogo} alt="SIEVOX" /><div><strong>SIEVOX</strong><span>学生权益反馈系统</span></div></div>
     <nav className="side-nav">
@@ -2160,7 +2169,7 @@ const Sidebar = ({ user, activePage, setActivePage, openCompose, onLogout, openS
       <button className={cls('nav-item', activePage === 'feedbacks' && 'is-active')} type="button" onClick={() => setActivePage('feedbacks')}><MessagesSquare /><span>我的反馈</span><span className="nav-count">●</span></button>
       <button className={cls('nav-item', activePage === 'guide' && 'is-active')} type="button" onClick={() => setActivePage('guide')}><BookOpen /><span>服务指南</span></button>
     </nav>
-    <div className="service-note"><div className="service-note-head"><span className="live-dot"></span><span>反馈通道正常</span></div><strong>3.2 小时</strong><p>本学期平均首次响应</p></div>
+    <ServiceHealthNote metrics={serviceMetrics.metrics} loading={serviceMetrics.loading} error={serviceMetrics.error} language={language} />
     <div className="sidebar-user">
       <span className="avatar">{firstChar(user?.name)}</span>
       <div><strong>{user?.name}</strong><span>{user?.studentId}</span></div>
@@ -2360,14 +2369,14 @@ const FeedbackDialog = ({ feedback, onClose, onReply, onRecall, onDelete }) => {
   );
 };
 
-const StudentDesktop = ({ user, stats, feedbacks, activePage, setActivePage, openCompose, onOpenFeedback }) => {
+const StudentDesktop = ({ user, stats, feedbacks, activePage, setActivePage, openCompose, onOpenFeedback, clock }) => {
   const latest = feedbacks[0];
   const activeCase = feedbacks.find(item => item.status === 'processing') || latest;
   return (
     <section id="student-desktop" className="role-view">
       <div className={cls('page-panel', activePage === 'dashboard' && 'is-active')}>
         <div className="page-heading">
-          <div><p className="eyebrow">MONDAY · 21 JULY</p><h1>晚上好，{user?.name}</h1><p>你有 {stats.processing || 0} 条反馈正在处理，最近一次更新于 {latest ? formatDate(latest.updatedAt || latest.createdAt) : '暂无'}。</p></div>
+          <div><p className="eyebrow">{clock.dateLabel} · {clock.timeLabel} {clock.timezoneLabel}</p><h1>{clock.greeting}，{user?.name}</h1><p>你有 {stats.processing || 0} 条反馈正在处理，最近一次更新于 {latest ? formatDate(latest.updatedAt || latest.createdAt) : '暂无'}。</p></div>
           <button className="primary-button" type="button" onClick={() => openCompose()}><Plus />发起新反馈</button>
         </div>
         <StatsStrip stats={stats} />
@@ -2398,7 +2407,7 @@ const StudentDesktop = ({ user, stats, feedbacks, activePage, setActivePage, ope
   );
 };
 
-const MobileShell = ({ user, feedbacks, stats, page, setPage, openCompose, onOpenFeedback, theme, languageSwitcher = null }) => {
+const MobileShell = ({ user, feedbacks, stats, page, setPage, openCompose, onOpenFeedback, theme, clock, languageSwitcher = null }) => {
   const latest = feedbacks.find(item => item.status === 'processing') || feedbacks[0];
   return (
     <div className="mobile-stage">
@@ -2409,7 +2418,7 @@ const MobileShell = ({ user, feedbacks, stats, page, setPage, openCompose, onOpe
         </header>
         <main className="mobile-main">
           <section className={cls('mobile-page', page === 'home' && 'is-active')}>
-            <div className="mobile-greeting"><p>晚上好，{user?.name}</p><h1>今天想反馈什么？</h1></div>
+            <div className="mobile-greeting"><p>{clock.greeting}，{user?.name}<span>{clock.timeLabel} {clock.timezoneLabel}</span></p><h1>今天想反馈什么？</h1></div>
             {latest && <button className="mobile-active-case" type="button" onClick={() => onOpenFeedback(latest)}><span className="case-state"><i></i>{STATUS_META[latest.status]?.label}</span><span className="case-code">#{latest._id?.slice(-6)?.toUpperCase()}</span><strong>{latest.title}</strong><p>{latest.responses?.length ? '已有部门回复' : '已进入处理队列'} · {formatDate(latest.updatedAt || latest.createdAt)}</p><span className="mobile-progress"><i></i></span><span className="progress-labels"><small>已提交</small><small>核实中</small><small>待完成</small></span></button>}
             <section className="mobile-section"><div className="mobile-section-head"><h2>快速反馈</h2><span>选择问题领域</span></div><div className="mobile-categories">{Object.entries(CATEGORIES_CONFIG).map(([key, cat]) => { const Icon = cat.icon; return <button key={key} type="button" onClick={() => openCompose(key, true)}><span className={cat.tileClass}><Icon /></span><small>{cat.short}</small></button>; })}</div></section>
             <section className="mobile-section recent-mobile"><div className="mobile-section-head"><h2>最近反馈</h2><button type="button" onClick={() => setPage('feedbacks')}>全部 {feedbacks.length} 条<ChevronRight /></button></div>{feedbacks.slice(0, 2).map(item => <button key={item._id} className="mobile-feedback" type="button" onClick={() => onOpenFeedback(item)}><CategoryIcon category={item.category} /><span><strong>{item.title}</strong><small>{formatDate(item.createdAt)} · {getCategory(item.category).label}</small></span><StatusPill status={item.status} /></button>)}</section>
@@ -2484,7 +2493,7 @@ const SettingsModal = ({ open, user, onClose, token, onLogout, onRefreshUser }) 
   );
 };
 
-const DashboardPage = ({ user, token, onLogout, onRefreshUser, theme, portalView = 'student', onPortalChange, onBackToHub, renderLanguageSwitcher }) => {
+const DashboardPage = ({ user, token, onLogout, onRefreshUser, theme, portalView = 'student', onPortalChange, onBackToHub, renderLanguageSwitcher, language = 'zh' }) => {
   const [feedbacks, setFeedbacks] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [activePage, setActivePage] = useState('dashboard');
@@ -2496,6 +2505,8 @@ const DashboardPage = ({ user, token, onLogout, onRefreshUser, theme, portalView
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [previewMobile, setPreviewMobile] = useState(false);
   const [loading, setLoading] = useState(false);
+  const clock = usePlatformClock(language);
+  const serviceMetrics = useServiceMetrics(token);
 
   const stats = useMemo(() => {
     const s = { total: feedbacks.length, pending: 0, processing: 0, resolved: 0, rejected: 0 };
@@ -2602,14 +2613,14 @@ const DashboardPage = ({ user, token, onLogout, onRefreshUser, theme, portalView
   return (
     <>
       <div className="desktop-shell">
-        <Sidebar user={user} activePage={activePage} setActivePage={setActivePage} openCompose={openCompose} onLogout={onLogout} openSettings={() => setSettingsOpen(true)} />
+        <Sidebar user={user} activePage={activePage} setActivePage={setActivePage} openCompose={openCompose} onLogout={onLogout} openSettings={() => setSettingsOpen(true)} serviceMetrics={serviceMetrics} language={language} />
         <main className="desktop-main">
           <Topbar pageTitle={pageTitle} theme={theme} openPreview={() => setPreviewMobile(true)} notifications={notifications} openSettings={() => setSettingsOpen(true)} user={user} portalView={portalView} onPortalChange={onPortalChange} onBackToHub={onBackToHub} languageSwitcher={renderLanguageSwitcher?.()} />
-          <StudentDesktop user={user} stats={stats} feedbacks={feedbacks} activePage={activePage} setActivePage={setActivePage} openCompose={openCompose} onOpenFeedback={setSelectedFeedback} />
+          <StudentDesktop user={user} stats={stats} feedbacks={feedbacks} activePage={activePage} setActivePage={setActivePage} openCompose={openCompose} onOpenFeedback={setSelectedFeedback} clock={clock} />
         </main>
       </div>
       {user?.isUltimateAdmin && <button className="preview-exit icon-button" type="button" onClick={() => setPreviewMobile(false)}><X /></button>}
-      <MobileShell user={user} feedbacks={feedbacks} stats={stats} page={mobilePage} setPage={setMobilePage} openCompose={openCompose} onOpenFeedback={setSelectedFeedback} theme={theme} languageSwitcher={renderLanguageSwitcher?.()} />
+      <MobileShell user={user} feedbacks={feedbacks} stats={stats} page={mobilePage} setPage={setMobilePage} openCompose={openCompose} onOpenFeedback={setSelectedFeedback} theme={theme} clock={clock} languageSwitcher={renderLanguageSwitcher?.()} />
       <div className={cls('drawer-backdrop', (composeOpen || mobileComposeOpen) && 'is-open')} onClick={() => { setComposeOpen(false); setMobileComposeOpen(false); }}></div>
       <ComposeDrawer open={composeOpen} category={composeCategory} setCategory={setComposeCategory} onClose={() => setComposeOpen(false)} onSubmit={submitFeedback} loading={loading} />
       <ComposeDrawer mobile open={mobileComposeOpen} category={composeCategory} setCategory={setComposeCategory} onClose={() => setMobileComposeOpen(false)} onSubmit={submitFeedback} loading={loading} />
@@ -2658,20 +2669,20 @@ export default function App() {
 
   let content;
   if (!user) content = <LoginPage onLogin={login} onRegister={register} theme={theme} language={languageTools.language} languageSwitcher={renderLanguageSwitcher()} />;
-  else if (appSurface === 'hub') content = <SIEHUBHome user={user} theme={theme} onOpenModule={openModule} onLogout={logout} languageSwitcher={renderLanguageSwitcher()} />;
+  else if (appSurface === 'hub') content = <SIEHUBHome user={user} token={token} theme={theme} onOpenModule={openModule} onLogout={logout} language={languageTools.language} languageSwitcher={renderLanguageSwitcher()} />;
   else if (appSurface === 'ultimateOrganization') content = <UltimateOrganizationWindow user={user} token={token} theme={theme} onBack={() => setAppSurface('hub')} onLogout={logout} languageSwitcher={renderLanguageSwitcher()} />;
   else if (appSurface === 'department') content = <DepartmentPlaceholder module={activeModule} user={user} token={token} theme={theme} onBack={() => setAppSurface('hub')} onOpenSIEVOX={() => { setActiveModule(SIEHUB_MODULES.find(module => module.key === 'student_rights')); setAppSurface('sievox'); }} onLogout={logout} languageSwitcher={renderLanguageSwitcher()} language={languageTools.language} />;
   else if (user.isUltimateAdmin && portalView === 'student') {
-    content = <DashboardPage user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} theme={theme} portalView={portalView} onPortalChange={setPortalView} onBackToHub={() => setAppSurface('hub')} renderLanguageSwitcher={renderLanguageSwitcher} />;
+    content = <DashboardPage user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} theme={theme} portalView={portalView} onPortalChange={setPortalView} onBackToHub={() => setAppSurface('hub')} renderLanguageSwitcher={renderLanguageSwitcher} language={languageTools.language} />;
   } else if (user.role === 'admin' || user.role === 'superadmin') {
     content = (
       <>
-        <AdminDashboard user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} themeTools={theme} portalView={user.isUltimateAdmin ? portalView : undefined} onPortalChange={setPortalView} onBackToHub={() => setAppSurface('hub')} languageSwitcher={renderLanguageSwitcher()} />
+        <AdminDashboard user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} themeTools={theme} portalView={user.isUltimateAdmin ? portalView : undefined} onPortalChange={setPortalView} onBackToHub={() => setAppSurface('hub')} language={languageTools.language} languageSwitcher={renderLanguageSwitcher()} />
         <ThemePanel theme={theme} />
       </>
     );
   } else {
-    content = <DashboardPage user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} theme={theme} onBackToHub={() => setAppSurface('hub')} renderLanguageSwitcher={renderLanguageSwitcher} />;
+    content = <DashboardPage user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} theme={theme} onBackToHub={() => setAppSurface('hub')} renderLanguageSwitcher={renderLanguageSwitcher} language={languageTools.language} />;
   }
 
   return content;

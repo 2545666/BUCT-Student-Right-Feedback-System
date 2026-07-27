@@ -4,6 +4,7 @@ import siehubLogo from './assets/SIEHUB_LOGO.png';
 import beian from './assets/beian.png';
 import collegeLogo from './assets/SIE_LOGO.svg';
 import { API_BASE } from './api';
+import { ServiceHealthNote, useServiceMetrics } from './platformStatus';
 
 
 // ===================== 全局配置字典 =====================
@@ -1258,7 +1259,7 @@ const BusinessFeedbackWorkspace = ({
 };
 
 // ===================== 主页面: AdminDashboard =====================
-export default function AdminDashboard({ user, token, onLogout, onRefreshUser, themeTools, portalView, onPortalChange, onBackToHub, languageSwitcher = null }) {
+export default function AdminDashboard({ user, token, onLogout, onRefreshUser, themeTools, portalView, onPortalChange, onBackToHub, language = 'zh', languageSwitcher = null }) {
   const [feedbacks, setFeedbacks] = useState([]);
   const [stats, setStats] = useState(null);
   const [selectedFeedback, setSelectedFeedback] = useState(null);
@@ -1276,6 +1277,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
   const [settingsTab, setSettingsTab] = useState('profile');
   const [pwdData, setPwdData] = useState({ current: '', new: '' });
   const [profileData, setProfileData] = useState({ name: '', studentId: '', email: '', phone: '' });
+  const serviceMetrics = useServiceMetrics(token);
   const isUltimateAdmin = Boolean(user?.isUltimateAdmin);
   const activePortal = isUltimateAdmin ? (portalView || 'superadmin') : (user?.role === 'admin' ? 'admin' : 'superadmin');
   const showUltimatePortal = isUltimateAdmin && activePortal === 'superadmin';
@@ -1737,14 +1739,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
           </button>
         </nav>
 
-        <div className="service-note">
-          <div className="service-note-head">
-            <span className="live-dot"></span>
-            <span>反馈通道正常</span>
-          </div>
-          <strong>3.2 小时</strong>
-          <p>本学期平均首次响应</p>
-        </div>
+        <ServiceHealthNote metrics={serviceMetrics.metrics} loading={serviceMetrics.loading} error={serviceMetrics.error} language={language} />
 
         <div className="sidebar-user">
           <span className="avatar">{(user?.name || '管').slice(0, 1)}</span>

@@ -45,6 +45,38 @@
 .siehub-hero-meta b { font-size: 10px; color: #fff; letter-spacing: 0; }
 .siehub-hero h1 { max-width: 680px; margin: 42px 0 22px; font-size: clamp(30px, 4vw, 54px); line-height: 1.15; letter-spacing: 0; color: #fff; }
 .siehub-hero p, .siehub-department-hero p { margin: 0; color: rgba(255,255,255,.7); font-size: 13px; font-weight: 800; }
+.siehub-live-greeting {
+  width: min(420px, 100%);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 16px;
+  align-items: end;
+  margin-top: 24px;
+  padding: 14px 0 0 18px;
+  border-left: 3px solid rgba(255,255,255,.72);
+  color: rgba(255,255,255,.9);
+}
+.siehub-live-greeting span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 16px;
+  font-weight: 900;
+}
+.siehub-live-greeting strong {
+  grid-row: span 2;
+  align-self: center;
+  color: #fff;
+  font-size: 28px;
+  line-height: 1;
+  letter-spacing: .02em;
+}
+.siehub-live-greeting small {
+  min-width: 0;
+  color: rgba(255,255,255,.68);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.45;
+}
 .siehub-hero-note { gap: 11px; color: rgba(255,255,255,.88); font-size: 12px; }
 .siehub-hero-note i { height: 16px; border-left: 1px solid rgba(255,255,255,.35); }
 .siehub-hero-orbit { position: absolute; right: 7%; bottom: -57px; width: 220px; height: 220px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.35); border-radius: 50%; color: rgba(255,255,255,.88); font-size: 20px; font-weight: 900; letter-spacing: .12em; }
@@ -1638,11 +1670,27 @@ html[data-theme="dark"] .siehub-performance-reason textarea {
 
 .organization-framework-panel .org-action-primary,
 .organization-framework-panel .org-action-save {
+  background-color: #6d28d9 !important;
+  background-image: linear-gradient(135deg, #7c3aed, #4f46e5) !important;
+  border-color: rgba(196, 181, 253, .62) !important;
+}
+
+.admin-demo-shell .organization-framework-panel button.org-action-primary.rounded-xl,
+.admin-demo-shell .organization-framework-panel button.org-action-save.rounded-xl {
   background: linear-gradient(135deg, #7c3aed, #4f46e5) !important;
+  border-color: rgba(196, 181, 253, .62) !important;
+  color: #fff !important;
+  box-shadow: 0 12px 26px rgba(88, 28, 135, .25) !important;
 }
 
 .organization-framework-panel .org-action-primary:hover,
 .organization-framework-panel .org-action-save:hover {
+  background-color: #7c3aed !important;
+  background-image: linear-gradient(135deg, #8b5cf6, #6366f1) !important;
+}
+
+.admin-demo-shell .organization-framework-panel button.org-action-primary.rounded-xl:hover,
+.admin-demo-shell .organization-framework-panel button.org-action-save.rounded-xl:hover {
   background: linear-gradient(135deg, #8b5cf6, #6366f1) !important;
 }
 
@@ -2304,6 +2352,14 @@ html[data-language="en"] .dept-intro-block-list b {
   overflow-wrap: anywhere;
 }
 
+html[data-language="en"] .siehub-live-greeting {
+  width: min(500px, 100%);
+}
+
+html[data-language="en"] .siehub-live-greeting strong {
+  font-size: 24px;
+}
+
 @media (max-width: 1120px) {
   .dept-intro-editor-grid {
     grid-template-columns: 220px minmax(0, 1fr);
@@ -2316,6 +2372,15 @@ html[data-language="en"] .dept-intro-block-list b {
 }
 
 @media (max-width: 760px) {
+  .siehub-live-greeting {
+    grid-template-columns: 1fr;
+  }
+
+  .siehub-live-greeting strong {
+    grid-row: auto;
+    font-size: 25px;
+  }
+
   .dept-intro-editor-topbar {
     align-items: stretch;
     flex-direction: column;
