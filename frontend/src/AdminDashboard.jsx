@@ -474,12 +474,12 @@ export const OrganizationFrameworkPanel = ({ token }) => {
             {cohorts.map(cohort => {
               const id = cohort.id || cohort._id;
               return (
-                <button key={id} onClick={() => setSelectedCohortId(id)} className={`w-full text-left rounded-xl border px-4 py-3 transition-all ${selectedCohortId === id ? 'border-purple-400 bg-purple-500/20' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}>
+                <button key={id} onClick={() => setSelectedCohortId(id)} className={`org-cohort-tab w-full text-left rounded-xl border px-4 py-3 transition-all ${selectedCohortId === id ? 'is-active' : ''}`}>
                   <div className="flex items-center justify-between gap-3">
-                    <span className="font-bold text-white">{cohort.name}</span>
-                    <span className="text-[10px] rounded-full border border-white/10 px-2 py-0.5 text-purple-100/70">{cohort.status}</span>
+                    <span className="org-cohort-name font-bold">{cohort.name}</span>
+                    <span className="org-cohort-status text-[10px] rounded-full border px-2 py-0.5">{cohort.status}</span>
                   </div>
-                  <div className="mt-1 text-xs text-purple-200/50">{(cohort.semesters || []).join('、') || '未绑定绩效学期'}</div>
+                  <div className="org-cohort-semesters mt-1 text-xs">{(cohort.semesters || []).join('、') || '未绑定绩效学期'}</div>
                 </button>
               );
             })}
@@ -487,8 +487,8 @@ export const OrganizationFrameworkPanel = ({ token }) => {
           </div>
           {selectedCohort && (
             <div className="org-delete-zone rounded-xl border border-red-300/25 bg-red-500/10 p-3">
-              <p className="text-xs leading-5 text-red-100/80">删除会移除当前届次及其成员归档记录，需输入完整届次名称和“确认删除”。</p>
-              <button type="button" onClick={handleDeleteCohort} disabled={busy} className="org-action-danger mt-3 w-full rounded-lg border border-red-300/40 bg-red-500/20 px-3 py-2 text-xs font-black text-red-50 hover:bg-red-500/35 disabled:opacity-50 transition-all">删除当前届次</button>
+              <p className="org-delete-warning text-xs leading-5">删除会移除当前届次及其成员归档记录，需输入完整届次名称和“确认删除”。</p>
+              <button type="button" onClick={handleDeleteCohort} disabled={busy} className="org-action-danger mt-3 w-full rounded-lg border px-3 py-2 text-xs font-black disabled:opacity-50 transition-all">删除当前届次</button>
             </div>
           )}
         </section>

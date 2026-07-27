@@ -31,6 +31,14 @@ const cleanText = (value, max = 160) => String(value || '').trim().replace(/<[^>
 const normalizeCourseCode = (value) => cleanText(value, 40).replace(/\s+/g, '').toUpperCase();
 const escapeRegex = (value) => cleanText(value, 80).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+const DELETE_CONFIRMATION_PHRASE = '确认删除';
+
+const isValidDeleteConfirmation = (resource, confirmation) => {
+  const value = cleanText(confirmation, 160);
+  const title = cleanText(resource?.title, 160);
+  return Boolean(value && (value === title || value === DELETE_CONFIRMATION_PHRASE));
+};
+
 const decodeOriginalName = (name = '') => {
   try {
     return Buffer.from(name, 'latin1').toString('utf8');
@@ -451,6 +459,9 @@ const installSieBridgeRoutes = ({ app, authenticate, logAction, Notification }) 
       const resource = await populateResource(SiebridgeResource.findById(req.params.id));
       if (!resource) return res.status(404).json({ success: false, message: '资料不存在' });
       if (resource.status !== 'approved') return res.status(400).json({ success: false, message: '仅可删除已通过审核的资料' });
+      if (!isValidDeleteConfirmation(resource, req.body?.confirmation)) {
+        return res.status(400).json({ success: false, message: '删除确认信息不匹配，请输入资料标题或“确认删除”' });
+      }
 
       const filePaths = [];
       for (const file of resource.files || []) {
@@ -516,5 +527,6 @@ module.exports = {
   SIEBRIDGE_MAJORS,
   SIEBRIDGE_SECTIONS,
   canReviewSieBridge,
+  isValidDeleteConfirmation,
   installSieBridgeRoutes
 };

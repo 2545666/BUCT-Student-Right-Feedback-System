@@ -204,6 +204,15 @@ npm run dev -- --port 3001
 | SMTP_USER | SMTP 登录账号 |
 | SMTP_PASS | SMTP 授权码或密码 |
 | SMTP_FROM | 发件人名称和地址 |
+| WECHAT_MP_ENABLED | 是否启用“国教空间”微信公众号自动同步 |
+| WECHAT_MP_APP_ID | 微信公众号 AppID，仅保存在后端环境变量 |
+| WECHAT_MP_APP_SECRET | 微信公众号 AppSecret，不提交仓库、不输出日志 |
+| WECHAT_MP_ACCOUNT_NAME | 首页展示的公众号名称，默认“国教空间” |
+| WECHAT_MP_ACCOUNT_URL | 首页公众号封面点击跳转地址 |
+| WECHAT_MP_COVER_IMAGE_URL | 首页公众号封面图 URL |
+| WECHAT_MP_QR_IMAGE_URL | 无封面/无跳转时展示的二维码 URL |
+| WECHAT_MP_SYNC_INTERVAL_MINUTES | 后续定时同步间隔配置，当前手动同步接口会读取同一配置 |
+| WECHAT_MP_NOTICE_ORGANIZATION / WECHAT_MP_NOTICE_DEPARTMENT | 微信文章同步到 DepartmentNotice 的目标部门 |
 
 ## 主要 API
 
@@ -224,6 +233,9 @@ npm run dev -- --port 3001
 | --- | --- | --- |
 | GET | /api/hub/me | 获取当前用户的 SIEHUB 模块权限 |
 | GET | /api/organization/meta | 获取组织、部门、身份元数据 |
+| GET | /api/hub/notices | 获取首页消息中心已发布部门通知，支持部门和时间筛选 |
+| GET | /api/hub/wechat-mp | 获取“国教空间”公众号首页入口公开配置 |
+| POST | /api/hub/wechat-mp/sync | 终极管理员手动触发公众号文章同步 |
 
 ### 部门介绍页
 
@@ -234,6 +246,9 @@ npm run dev -- --port 3001
 | PUT | /api/hub/departments/:organization/:department/introduction/draft | 保存部门介绍草稿 |
 | POST | /api/hub/departments/:organization/:department/introduction/publish | 发布部门介绍页 |
 | POST | /api/hub/departments/:organization/:department/introduction/media | 上传部门介绍页图片或视频 |
+| GET | /api/hub/departments/:organization/:department/notices | 获取部门通知列表，管理端可看草稿/已发布/归档 |
+| POST | /api/hub/departments/:organization/:department/notices | 新建部门通知 |
+| PATCH | /api/hub/departments/:organization/:department/notices/:id | 更新、发布、撤回或归档部门通知 |
 
 ### SIEBridge
 
@@ -242,9 +257,13 @@ npm run dev -- --port 3001
 | GET | /api/siebridge/meta | 获取专业、年级和资料分区元数据 |
 | GET | /api/siebridge/courses | 查询课程 |
 | POST | /api/siebridge/courses | 申请新增课程 |
-| POST | /api/siebridge/resources | 上传课程资料 |
-| GET | /api/siebridge/my-submissions | 查看我的提交审核状态 |
-| GET | /api/siebridge/review | 审核工作台 |
+| POST | /api/siebridge/courses/:courseId/resources | 上传课程资料 |
+| GET | /api/siebridge/submissions/mine | 查看我的提交审核状态 |
+| GET | /api/siebridge/reviews | 审核工作台 |
+| PATCH | /api/siebridge/reviews/:type/:id | 审核课程或资料 |
+| DELETE | /api/siebridge/resources/:id | 删除已审核通过资料，需提交标题或“确认删除” |
+| GET | /api/siebridge/resources/:id/preview | 预览 PDF 资料 |
+| GET | /api/siebridge/resources/:id/download | 下载资料 |
 
 ### SIEVOX 反馈
 

@@ -1033,6 +1033,188 @@ const serializeDepartmentNotice = (notice) => {
   };
 };
 
+const wechatMpSyncState = {
+  lastSyncAt: null,
+  lastSuccessAt: null,
+  lastError: '',
+  importedCount: 0,
+  updatedCount: 0
+};
+
+let wechatMpTokenCache = {
+  token: '',
+  expiresAt: 0
+};
+
+let wechatMpSyncInFlight = null;
+
+const fetchJsonWithTimeout = async (url, options = {}, timeoutMs = 12_000) => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    const data = await res.json();
+    return { res, data };
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
+const getWechatMpConfig = () => {
+  const assignment = {
+    organization: process.env.WECHAT_MP_NOTICE_ORGANIZATION || 'student_union',
+    department: process.env.WECHAT_MP_NOTICE_DEPARTMENT || 'new_media'
+  };
+  return {
+    enabled: String(process.env.WECHAT_MP_ENABLED || '').toLowerCase() === 'true',
+    appId: process.env.WECHAT_MP_APP_ID || '',
+    appSecret: process.env.WECHAT_MP_APP_SECRET || '',
+    accountName: process.env.WECHAT_MP_ACCOUNT_NAME || '国教空间',
+    accountUrl: process.env.WECHAT_MP_ACCOUNT_URL || '',
+    coverImageUrl: process.env.WECHAT_MP_COVER_IMAGE_URL || '',
+    qrImageUrl: process.env.WECHAT_MP_QR_IMAGE_URL || '',
+    fallbackDescription: process.env.WECHAT_MP_FALLBACK_DESCRIPTION || '关注“国教空间”微信公众号，查看学院资讯与学生工作动态。',
+    syncIntervalMinutes: Math.max(5, Number(process.env.WECHAT_MP_SYNC_INTERVAL_MINUTES || 60)),
+    assignment: isValidManagedDepartment(assignment) ? assignment : { organization: 'student_union', department: 'new_media' }
+  };
+};
+
+const isWechatMpSyncConfigured = (config = getWechatMpConfig()) =>
+  Boolean(config.enabled && config.appId && config.appSecret);
+
+const getWechatMpPublicConfig = (includeSync = false) => {
+  const config = getWechatMpConfig();
+  const publicConfig = {
+    enabled: config.enabled,
+    accountName: config.accountName,
+    accountUrl: config.accountUrl,
+    coverImageUrl: config.coverImageUrl,
+    qrImageUrl: config.qrImageUrl,
+    fallbackDescription: config.fallbackDescription,
+    syncAvailable: isWechatMpSyncConfigured(config),
+    noticeOrganization: config.assignment.organization,
+    noticeDepartment: config.assignment.department,
+    noticeDepartmentLabel: getDepartment(config.assignment.organization, config.assignment.department) || ''
+  };
+  if (includeSync) publicConfig.sync = wechatMpSyncState;
+  return publicConfig;
+};
+
+const fetchWechatMpAccessToken = async (config) => {
+  const now = Date.now();
+  if (wechatMpTokenCache.token && wechatMpTokenCache.expiresAt - 60_000 > now) {
+    return wechatMpTokenCache.token;
+  }
+
+  const params = new URLSearchParams({
+    grant_type: 'client_credential',
+    appid: config.appId,
+    secret: config.appSecret
+  });
+  const { res, data } = await fetchJsonWithTimeout(`https://api.weixin.qq.com/cgi-bin/token?${params.toString()}`);
+  if (!res.ok || !data.access_token) {
+    throw new Error(`wechat_token_failed_${data.errcode || res.status}`);
+  }
+  wechatMpTokenCache = {
+    token: data.access_token,
+    expiresAt: now + Math.max(300, Number(data.expires_in || 7200)) * 1000
+  };
+  return data.access_token;
+};
+
+const fetchWechatMpPublishedArticles = async (accessToken, offset = 0, count = 20) => {
+  const { res, data } = await fetchJsonWithTimeout(`https://api.weixin.qq.com/cgi-bin/freepublish/batchget?access_token=${encodeURIComponent(accessToken)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ offset, count, no_content: 0 })
+  });
+  if (!res.ok || data.errcode) {
+    throw new Error(`wechat_articles_failed_${data.errcode || res.status}`);
+  }
+  return {
+    items: Array.isArray(data.item) ? data.item : [],
+    totalCount: Number(data.total_count || 0)
+  };
+};
+
+const buildWechatNoticePayload = (article, newsItem, index, assignment) => {
+  const publishedAt = article.update_time ? new Date(Number(article.update_time) * 1000) : new Date();
+  return {
+    ...assignment,
+    title: { zh: cleanText(newsItem.title, 120), en: '' },
+    summary: { zh: cleanText(newsItem.digest || newsItem.author || '', 260), en: '' },
+    body: { zh: cleanText(newsItem.content || newsItem.digest || newsItem.title || '', 6000), en: '' },
+    coverImageUrl: cleanText(newsItem.thumb_url || '', 500),
+    sourceUrl: cleanText(newsItem.url || '', 500),
+    source: 'wechat_mp',
+    sourceExternalId: `${article.article_id || article.article_id_string || article.media_id || 'article'}:${article.update_time || 0}:${index}`,
+    status: 'published',
+    publishedAt
+  };
+};
+
+const runWechatMpArticleSync = async () => {
+  const config = getWechatMpConfig();
+  wechatMpSyncState.lastSyncAt = new Date();
+  wechatMpSyncState.lastError = '';
+  if (!isWechatMpSyncConfigured(config)) {
+    wechatMpSyncState.lastError = 'wechat_mp_not_configured';
+    return { configured: false, importedCount: 0, updatedCount: 0 };
+  }
+
+  const accessToken = await fetchWechatMpAccessToken(config);
+  const articles = [];
+  let offset = 0;
+  const count = 20;
+  while (true) {
+    const batch = await fetchWechatMpPublishedArticles(accessToken, offset, count);
+    articles.push(...batch.items);
+    offset += batch.items.length;
+    if (!batch.items.length || batch.items.length < count || (batch.totalCount && offset >= batch.totalCount)) break;
+  }
+  let importedCount = 0;
+  let updatedCount = 0;
+
+  for (const article of articles) {
+    const items = article.content?.news_item || [];
+    for (let index = 0; index < items.length; index += 1) {
+      const payload = buildWechatNoticePayload(article, items[index], index, config.assignment);
+      if (!payload.title.zh || !payload.sourceExternalId) continue;
+      const result = await DepartmentNotice.updateOne(
+        { source: 'wechat_mp', sourceExternalId: payload.sourceExternalId },
+        { $set: payload },
+        { upsert: true }
+      );
+      if (result.upsertedCount) importedCount += 1;
+      else if (result.modifiedCount) updatedCount += 1;
+    }
+  }
+
+  Object.assign(wechatMpSyncState, {
+    lastSuccessAt: new Date(),
+    importedCount,
+    updatedCount
+  });
+  return { configured: true, importedCount, updatedCount };
+};
+
+const syncWechatMpArticles = async () => {
+  if (wechatMpSyncInFlight) return wechatMpSyncInFlight;
+  wechatMpSyncInFlight = runWechatMpArticleSync().finally(() => {
+    wechatMpSyncInFlight = null;
+  });
+  return wechatMpSyncInFlight;
+};
+
+const normalizeDateToEndOfDay = (value) => {
+  const date = value ? new Date(value) : null;
+  if (!date || Number.isNaN(date.getTime())) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(value))) {
+    date.setHours(23, 59, 59, 999);
+  }
+  return date;
+};
+
 const createDefaultDepartmentIntroduction = (organization, department) => {
   const departmentLabel = getDepartment(organization, department) || '部门';
   const organizationLabel = ORGANIZATIONS[organization]?.label || '';
@@ -1582,6 +1764,20 @@ app.get('/api/hub/me', authenticate, (req, res) => {
   });
 });
 
+app.get('/api/hub/wechat-mp', authenticate, (req, res) => {
+  res.json({ success: true, wechatMp: getWechatMpPublicConfig(hasUltimateAccess(req.user)) });
+});
+
+app.post('/api/hub/wechat-mp/sync', authenticate, ultimateOnly, async (req, res) => {
+  try {
+    const result = await syncWechatMpArticles();
+    res.json({ success: true, result, wechatMp: getWechatMpPublicConfig(true) });
+  } catch (error) {
+    wechatMpSyncState.lastError = error.message || 'wechat_sync_failed';
+    res.status(502).json({ success: false, message: '微信公众号同步失败，请检查凭据、接口权限和服务器 IP 白名单', wechatMp: getWechatMpPublicConfig(true) });
+  }
+});
+
 app.get('/api/hub/notices', authenticate, async (req, res) => {
   const query = { status: 'published' };
   if (req.query.organization || req.query.department) {
@@ -1591,11 +1787,19 @@ app.get('/api/hub/notices', authenticate, async (req, res) => {
     query.department = assignment.department;
   }
   if (['manual', 'wechat_mp'].includes(req.query.source)) query.source = req.query.source;
+  if (req.query.dateFrom || req.query.dateTo) {
+    query.publishedAt = {};
+    const dateFrom = req.query.dateFrom ? new Date(req.query.dateFrom) : null;
+    const dateTo = normalizeDateToEndOfDay(req.query.dateTo);
+    if (dateFrom && !Number.isNaN(dateFrom.getTime())) query.publishedAt.$gte = dateFrom;
+    if (dateTo && !Number.isNaN(dateTo.getTime())) query.publishedAt.$lte = dateTo;
+    if (!Object.keys(query.publishedAt).length) delete query.publishedAt;
+  }
 
   try {
     const notices = await DepartmentNotice.find(query)
       .sort({ publishedAt: -1, updatedAt: -1 })
-      .limit(Math.min(Number(req.query.limit || 12), 50))
+      .limit(Math.min(Number(req.query.limit || 100), 200))
       .populate('createdBy updatedBy publishedBy', 'name studentId')
       .lean();
     res.json({ success: true, notices: notices.map(serializeDepartmentNotice) });
@@ -1612,6 +1816,15 @@ app.get('/api/hub/departments/:organization/:department/notices', authenticate, 
 
   const requestedStatus = ['draft', 'published', 'archived'].includes(req.query.status) ? req.query.status : 'published';
   const query = { ...assignment, status: access.canEdit ? requestedStatus : 'published' };
+  if (['manual', 'wechat_mp'].includes(req.query.source)) query.source = req.query.source;
+  if (req.query.dateFrom || req.query.dateTo) {
+    query.publishedAt = {};
+    const dateFrom = req.query.dateFrom ? new Date(req.query.dateFrom) : null;
+    const dateTo = normalizeDateToEndOfDay(req.query.dateTo);
+    if (dateFrom && !Number.isNaN(dateFrom.getTime())) query.publishedAt.$gte = dateFrom;
+    if (dateTo && !Number.isNaN(dateTo.getTime())) query.publishedAt.$lte = dateTo;
+    if (!Object.keys(query.publishedAt).length) delete query.publishedAt;
+  }
 
   try {
     const notices = await DepartmentNotice.find(query)
@@ -3976,6 +4189,23 @@ app.use((err, req, res, next) => {
 // ============================================
 // 数据库连接和服务器启动
 // ============================================
+let wechatMpSchedulerStarted = false;
+
+const startWechatMpSyncScheduler = () => {
+  if (wechatMpSchedulerStarted) return;
+  const config = getWechatMpConfig();
+  if (!isWechatMpSyncConfigured(config)) return;
+  wechatMpSchedulerStarted = true;
+  const run = () => {
+    syncWechatMpArticles().catch(error => {
+      wechatMpSyncState.lastError = error.message || 'wechat_sync_failed';
+    });
+  };
+  setTimeout(run, 10_000).unref?.();
+  const timer = setInterval(run, config.syncIntervalMinutes * 60 * 1000);
+  timer.unref?.();
+};
+
 const startServer = async () => {
   try {
     await mongoose.connect(config.mongoUri, {
@@ -4011,12 +4241,18 @@ const startServer = async () => {
       });
     }
 
+    startWechatMpSyncScheduler();
   } catch (error) {
     console.error('❌ 服务器启动失败:', error);
     process.exit(1);
   }
 };
 
-startServer();
+app.buildWechatNoticePayload = buildWechatNoticePayload;
+app.normalizeDateToEndOfDay = normalizeDateToEndOfDay;
+
+if (require.main === module) {
+  startServer();
+}
 
 module.exports = app;

@@ -1418,6 +1418,19 @@ const canManageDepartmentIntroduction = (user, module) => {
   return user?.role === 'superadmin' && ['department_head', 'youth_league_cadre', 'presidium_member', 'youth_league_deputy_secretary'].includes(user?.positionTitle);
 };
 
+const canManageDepartmentNotice = (user, module) => {
+  if (user?.isUltimateAdmin) return true;
+  const matchedAccess = getModuleAccess(user, module);
+  if (matchedAccess) return matchedAccess.capabilities?.includes('manage_department_notice');
+  return user?.role === 'superadmin' && ['department_head', 'youth_league_cadre', 'presidium_member', 'youth_league_deputy_secretary'].includes(user?.positionTitle);
+};
+
+const canReviewSIEBridgeContent = (user) => {
+  if (user?.isUltimateAdmin) return true;
+  const matchedAccess = getModuleAccess(user, { key: 'academic_technology', organization: 'student_union' });
+  return Boolean(matchedAccess?.capabilities?.includes('review_siebridge_content'));
+};
+
 const DepartmentModuleMark = ({ module, showLogo = true }) => {
   const Icon = module?.icon || Building2;
   if (showLogo && module?.logo) return <img className="siehub-module-logo" src={module.logo} alt={`${module.title || '部门'} logo`} />;
@@ -1847,34 +1860,326 @@ const formatNoticeDate = (value, language = 'zh') => {
   }).format(new Date(value));
 };
 
+const noticeDepartmentOptions = () => SIEHUB_MODULES
+  .filter(module => module.organization !== 'hub')
+  .map(module => ({
+    value: `${module.organization}:${module.key}`,
+    organization: module.organization,
+    department: module.key,
+    label: module.title
+  }));
+
+const emptyNoticeDraft = {
+  title: { zh: '', en: '' },
+  summary: { zh: '', en: '' },
+  body: { zh: '', en: '' },
+  coverImageUrl: '',
+  sourceUrl: '',
+  status: 'draft'
+};
+
+const cloneNoticeDraft = (notice = emptyNoticeDraft) => ({
+  title: { zh: notice.title?.zh || '', en: notice.title?.en || '' },
+  summary: { zh: notice.summary?.zh || '', en: notice.summary?.en || '' },
+  body: { zh: notice.body?.zh || '', en: notice.body?.en || '' },
+  coverImageUrl: notice.coverImageUrl || '',
+  sourceUrl: notice.sourceUrl || '',
+  status: notice.status || 'draft'
+});
+
+const localizedFieldPatch = (draft, field, languageKey, value) => ({
+  ...draft,
+  [field]: { ...(draft[field] || {}), [languageKey]: value }
+});
+
+const HubNoticeCenter = ({ token, language = 'zh', fixedModule = null }) => {
+  const [notices, setNotices] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [filters, setFilters] = useState({
+    departmentKey: fixedModule ? `${fixedModule.organization}:${fixedModule.key}` : '',
+    dateFrom: '',
+    dateTo: '',
+    latestOnly: false
+  });
+  const departments = useMemo(noticeDepartmentOptions, []);
+
+  useEffect(() => {
+    if (fixedModule) {
+      setFilters(current => ({ ...current, departmentKey: `${fixedModule.organization}:${fixedModule.key}` }));
+    }
+  }, [fixedModule?.organization, fixedModule?.key]);
+
+  useEffect(() => {
+    if (!token) return undefined;
+    const controller = new AbortController();
+    const params = new URLSearchParams();
+    if (filters.latestOnly) params.set('limit', '5');
+    const selected = departments.find(item => item.value === filters.departmentKey);
+    if (selected) {
+      params.set('organization', selected.organization);
+      params.set('department', selected.department);
+    }
+    if (filters.dateFrom) params.set('dateFrom', filters.dateFrom);
+    if (filters.dateTo) params.set('dateTo', filters.dateTo);
+
+    setLoading(true);
+    fetch(`${API_BASE}/hub/notices?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: controller.signal
+    })
+      .then(res => res.ok ? res.json() : Promise.reject(new Error('notice_fetch_failed')))
+      .then(data => setNotices(Array.isArray(data.notices) ? data.notices : []))
+      .catch(error => {
+        if (error.name !== 'AbortError') setNotices([]);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [token, filters, departments]);
+
+  return (
+    <section className="siehub-notice-center">
+      <div className="siehub-notice-head">
+        <span><Megaphone /></span>
+        <div><p>MESSAGE CENTER</p><h2>{language === 'en' ? 'Department Notices' : '部门消息中心'}</h2></div>
+        <b>{notices.length}</b>
+      </div>
+      <div className="siehub-notice-filters">
+        <select
+          value={filters.departmentKey}
+          disabled={Boolean(fixedModule)}
+          onChange={event => setFilters(current => ({ ...current, departmentKey: event.target.value }))}
+        >
+          <option value="">{language === 'en' ? 'All departments' : '全部部门'}</option>
+          {departments.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
+        </select>
+        <input type="date" value={filters.dateFrom} onChange={event => setFilters(current => ({ ...current, dateFrom: event.target.value }))} />
+        <input type="date" value={filters.dateTo} onChange={event => setFilters(current => ({ ...current, dateTo: event.target.value }))} />
+        <label>
+          <input type="checkbox" checked={filters.latestOnly} onChange={event => setFilters(current => ({ ...current, latestOnly: event.target.checked }))} />
+          <span>{language === 'en' ? 'Latest only' : '仅看最新'}</span>
+        </label>
+      </div>
+      <div className="siehub-notice-list">
+        {loading ? (
+          <p className="siehub-empty-text">{language === 'en' ? 'Loading notices...' : '正在同步通知...'}</p>
+        ) : notices.length ? notices.map(notice => (
+          <article key={notice.id || notice._id}>
+            {notice.coverImageUrl && <img className="siehub-notice-cover" src={notice.coverImageUrl} alt="" />}
+            <div>
+              <span>{notice.organizationLabel} · {notice.departmentLabel} · {notice.source === 'wechat_mp' ? 'WeChat MP' : 'Manual'}</span>
+              <strong>{pickLocalizedNoticeText(notice.title, language)}</strong>
+              <p>{pickLocalizedNoticeText(notice.summary, language)}</p>
+              {notice.sourceUrl && <a href={notice.sourceUrl} target="_blank" rel="noreferrer">{language === 'en' ? 'Original link' : '查看原文'}</a>}
+            </div>
+            <time>{formatNoticeDate(notice.publishedAt, language)}</time>
+          </article>
+        )) : (
+          <p className="siehub-empty-text">{language === 'en' ? 'No published department notices yet.' : '暂无已发布部门通知。'}</p>
+        )}
+      </div>
+    </section>
+  );
+};
+
+const DepartmentNoticeWorkspace = ({ module, token, language = 'zh', onClose }) => {
+  const [status, setStatus] = useState('draft');
+  const [notices, setNotices] = useState([]);
+  const [selectedNotice, setSelectedNotice] = useState(null);
+  const [draft, setDraft] = useState(emptyNoticeDraft);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const loadNotices = useCallback(async () => {
+    if (!module?.organization || !module?.key || !token) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/hub/departments/${module.organization}/${module.key}/notices?status=${status}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || '加载通知失败');
+      setNotices(data.notices || []);
+    } catch (error) {
+      setMessage(error.message || '加载通知失败');
+      setNotices([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [module?.organization, module?.key, status, token]);
+
+  useEffect(() => { loadNotices(); }, [loadNotices]);
+
+  const startCreate = () => {
+    setSelectedNotice(null);
+    setDraft(cloneNoticeDraft());
+    setMessage('');
+  };
+
+  const startEdit = (notice) => {
+    setSelectedNotice(notice);
+    setDraft(cloneNoticeDraft(notice));
+    setMessage('');
+  };
+
+  const saveNotice = async (nextStatus = draft.status) => {
+    const payload = { ...draft, status: nextStatus };
+    if (!payload.title.zh && !payload.title.en) {
+      setMessage('请填写通知标题');
+      return;
+    }
+    setSaving(true);
+    setMessage('');
+    try {
+      const id = selectedNotice?.id || selectedNotice?._id;
+      const res = await fetch(`${API_BASE}/hub/departments/${module.organization}/${module.key}/notices${id ? `/${id}` : ''}`, {
+        method: id ? 'PATCH' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || '保存通知失败');
+      setSelectedNotice(data.notice);
+      setDraft(cloneNoticeDraft(data.notice));
+      setStatus(nextStatus);
+      setMessage(nextStatus === 'published' ? '通知已发布' : nextStatus === 'archived' ? '通知已归档' : '草稿已保存');
+      await loadNotices();
+    } catch (error) {
+      setMessage(error.message || '保存通知失败');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <section className="siehub-notice-workspace">
+      <header>
+        <div><p>NOTICE DESK</p><h2>{module?.title}通知管理</h2></div>
+        <button className="text-button" type="button" onClick={onClose}><ChevronLeft />返回工作台</button>
+      </header>
+      <div className="siehub-notice-admin-layout">
+        <aside>
+          <div className="siehub-notice-tabs">
+            {['draft', 'published', 'archived'].map(item => (
+              <button key={item} type="button" className={status === item ? 'is-active' : ''} onClick={() => setStatus(item)}>
+                {item === 'draft' ? '草稿' : item === 'published' ? '已发布' : '已归档'}
+              </button>
+            ))}
+          </div>
+          <button className="primary-button siehub-wide-action" type="button" onClick={startCreate}><Plus />新建通知</button>
+          <div className="siehub-notice-admin-list">
+            {loading ? <p>加载中...</p> : notices.length ? notices.map(notice => (
+              <button key={notice.id || notice._id} type="button" className={(selectedNotice?.id || selectedNotice?._id) === (notice.id || notice._id) ? 'is-active' : ''} onClick={() => startEdit(notice)}>
+                <strong>{pickLocalizedNoticeText(notice.title, language) || '未命名通知'}</strong>
+                <span>{formatNoticeDate(notice.publishedAt, language)} · {notice.source === 'wechat_mp' ? 'WeChat MP' : 'Manual'}</span>
+              </button>
+            )) : <p>当前状态暂无通知</p>}
+          </div>
+        </aside>
+        <form className="siehub-notice-form" onSubmit={event => { event.preventDefault(); saveNotice(draft.status); }}>
+          <div className="siehub-notice-form-grid">
+            <label><span>中文标题</span><input value={draft.title.zh} onChange={event => setDraft(current => localizedFieldPatch(current, 'title', 'zh', event.target.value))} /></label>
+            <label><span>English Title</span><input value={draft.title.en} onChange={event => setDraft(current => localizedFieldPatch(current, 'title', 'en', event.target.value))} /></label>
+            <label><span>中文摘要</span><textarea value={draft.summary.zh} onChange={event => setDraft(current => localizedFieldPatch(current, 'summary', 'zh', event.target.value))} rows={3} /></label>
+            <label><span>English Summary</span><textarea value={draft.summary.en} onChange={event => setDraft(current => localizedFieldPatch(current, 'summary', 'en', event.target.value))} rows={3} /></label>
+            <label><span>封面图片 URL</span><input value={draft.coverImageUrl} onChange={event => setDraft(current => ({ ...current, coverImageUrl: event.target.value }))} placeholder="/api/department-intro-assets/cover.webp" /></label>
+            <label><span>原文链接</span><input value={draft.sourceUrl} onChange={event => setDraft(current => ({ ...current, sourceUrl: event.target.value }))} placeholder="https://..." /></label>
+          </div>
+          <label className="siehub-notice-body"><span>中文正文</span><textarea value={draft.body.zh} onChange={event => setDraft(current => localizedFieldPatch(current, 'body', 'zh', event.target.value))} rows={7} /></label>
+          <label className="siehub-notice-body"><span>English Body</span><textarea value={draft.body.en} onChange={event => setDraft(current => localizedFieldPatch(current, 'body', 'en', event.target.value))} rows={5} /></label>
+          {message && <p className="siehub-notice-message">{message}</p>}
+          <footer>
+            <button type="submit" disabled={saving}><SquarePen />保存草稿</button>
+            <button type="button" disabled={saving} onClick={() => saveNotice('published')}><Send />发布</button>
+            {selectedNotice && <button type="button" disabled={saving} onClick={() => saveNotice(selectedNotice.status === 'published' ? 'draft' : 'archived')}><Flag />{selectedNotice.status === 'published' ? '撤回为草稿' : '归档'}</button>}
+          </footer>
+        </form>
+      </div>
+    </section>
+  );
+};
+
+const WechatMpHeroEntry = ({ token, user, language = 'zh' }) => {
+  const [wechatMp, setWechatMp] = useState(null);
+  const [message, setMessage] = useState('');
+  const [syncing, setSyncing] = useState(false);
+
+  const loadConfig = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/hub/wechat-mp`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (data.success) setWechatMp(data.wechatMp || null);
+    } catch {
+      setWechatMp(null);
+    }
+  }, [token]);
+
+  useEffect(() => { loadConfig(); }, [loadConfig]);
+
+  const openAccount = () => {
+    if (wechatMp?.accountUrl) window.open(wechatMp.accountUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const syncArticles = async () => {
+    setSyncing(true);
+    setMessage('');
+    try {
+      const res = await fetch(`${API_BASE}/hub/wechat-mp/sync`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || '同步失败');
+      setWechatMp(data.wechatMp || null);
+      const imported = data.result?.importedCount || 0;
+      const updated = data.result?.updatedCount || 0;
+      setMessage(data.result?.configured === false ? '公众号凭据未配置，已保持降级展示。' : `同步完成：新增 ${imported} 条，更新 ${updated} 条。`);
+    } catch (error) {
+      setMessage(error.message || '同步失败');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const accountName = wechatMp?.accountName || '国教空间';
+  return (
+    <aside className="siehub-wechat-entry">
+      <button type="button" className="siehub-wechat-cover" onClick={openAccount} disabled={!wechatMp?.accountUrl}>
+        {wechatMp?.coverImageUrl ? <img src={wechatMp.coverImageUrl} alt={accountName} /> : (
+          <span>
+            {wechatMp?.qrImageUrl ? <img src={wechatMp.qrImageUrl} alt={`${accountName} QR`} /> : <Smartphone />}
+            <strong>{accountName}</strong>
+          </span>
+        )}
+      </button>
+      <div>
+        <p>WECHAT MP</p>
+        <h2>{accountName}</h2>
+        <span>{wechatMp?.fallbackDescription || '关注“国教空间”微信公众号，查看学院资讯与学生工作动态。'}</span>
+        <div className="siehub-wechat-actions">
+          {wechatMp?.accountUrl && <button type="button" onClick={openAccount}>打开主页 <ArrowUpRight /></button>}
+          {user?.isUltimateAdmin && <button type="button" onClick={syncArticles} disabled={syncing}>{syncing ? '同步中' : '同步文章'}</button>}
+        </div>
+        {message && <small>{message}</small>}
+      </div>
+    </aside>
+  );
+};
+
 const SIEHUBHome = ({ user, token, theme, onOpenModule, onLogout, language = 'zh', languageSwitcher = null }) => {
   const modules = getAccessibleModules(user);
   const clock = usePlatformClock(language);
   const serviceMetrics = useServiceMetrics(token);
-  const [departmentNotices, setDepartmentNotices] = useState([]);
-  const [noticesLoading, setNoticesLoading] = useState(false);
   const governanceModules = modules.filter(module => module.organization === 'hub');
   const youthLeague = modules.filter(module => module.organization === 'youth_league');
   const studentUnion = modules.filter(module => module.organization === 'student_union');
   const roleScope = user?.isUltimateAdmin ? '全平台治理范围' : `${user?.organizationLabel || '学生服务'} / ${user?.departmentLabel || '可访问模块'}`;
-
-  useEffect(() => {
-    if (!token) return;
-    let alive = true;
-    setNoticesLoading(true);
-    fetch(`${API_BASE}/hub/notices?limit=5`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(res => res.ok ? res.json() : Promise.reject(new Error('notice_fetch_failed')))
-      .then(data => {
-        if (alive) setDepartmentNotices(Array.isArray(data.notices) ? data.notices : []);
-      })
-      .catch(() => {
-        if (alive) setDepartmentNotices([]);
-      })
-      .finally(() => {
-        if (alive) setNoticesLoading(false);
-      });
-    return () => { alive = false; };
-  }, [token]);
 
   const renderGroup = (title, marker, items) => (
     <section className="siehub-module-group">
@@ -1898,39 +2203,17 @@ const SIEHUBHome = ({ user, token, theme, onOpenModule, onLogout, language = 'zh
     </header>
     <div className="siehub-content">
       <section className="siehub-hero">
-        <div className="siehub-hero-meta"><span>SIE / PLATFORM 01</span><b>{roleScope}</b></div>
-        <div><p>北京化工大学国际教育学院</p><h1>一处入口，连接每一份学生工作。</h1></div>
+        <div className="siehub-hero-meta"><span>WECHAT MP / 国教空间</span><b>{roleScope}</b></div>
+        <div><p>北京化工大学国际教育学院</p><h1>国教空间</h1><span className="siehub-hero-subcopy">学院资讯、部门通知与学生工作动态在这里汇合。</span></div>
         <div className="siehub-live-greeting">
           <span>{clock.greeting}，{user?.name}</span>
           <strong>{clock.timeLabel}</strong>
           <small>{clock.dateLabel} · {clock.timezoneLabel}</small>
           <small>{language === 'en' ? 'SIEVOX first response' : 'SIEVOX 首次响应'}：{serviceMetrics.loading && !serviceMetrics.metrics ? (language === 'en' ? 'Syncing' : '同步中') : formatAverageFirstResponse(serviceMetrics.metrics, language)}</small>
         </div>
-        <div className="siehub-hero-orbit" aria-hidden="true"><span>HUB</span><i></i><i></i><i></i></div>
+        <WechatMpHeroEntry token={token} user={user} language={language} />
       </section>
-      <section className="siehub-notice-center">
-        <div className="siehub-notice-head">
-          <span><Megaphone /></span>
-          <div><p>MESSAGE CENTER</p><h2>{language === 'en' ? 'Department Notices' : '部门消息中心'}</h2></div>
-          <b>{departmentNotices.length}</b>
-        </div>
-        <div className="siehub-notice-list">
-          {noticesLoading ? (
-            <p className="siehub-empty-text">{language === 'en' ? 'Loading notices...' : '正在同步通知...'}</p>
-          ) : departmentNotices.length ? departmentNotices.map(notice => (
-            <article key={notice.id || notice._id}>
-              <div>
-                <span>{notice.organizationLabel} · {notice.departmentLabel}</span>
-                <strong>{pickLocalizedNoticeText(notice.title, language)}</strong>
-                <p>{pickLocalizedNoticeText(notice.summary, language)}</p>
-              </div>
-              <time>{formatNoticeDate(notice.publishedAt, language)}</time>
-            </article>
-          )) : (
-            <p className="siehub-empty-text">{language === 'en' ? 'No published department notices yet.' : '暂无已发布部门通知。'}</p>
-          )}
-        </div>
-      </section>
+      <HubNoticeCenter token={token} language={language} />
       {user?.isUltimateAdmin && governanceModules.length > 0 && renderGroup('平台治理', '00', governanceModules)}
       {renderGroup('团委', '01', youthLeague)}
       {renderGroup('学生会', '02', studentUnion)}
@@ -1942,6 +2225,7 @@ const SIEHUBHome = ({ user, token, theme, onOpenModule, onLogout, language = 'zh
 
 const DepartmentStudentPortal = ({ module, onOpenSIEVOX, onOpenSIEBridge, token, user, language = 'zh' }) => {
   const [introductionOpen, setIntroductionOpen] = useState(false);
+  const [noticesOpen, setNoticesOpen] = useState(false);
   const isSIEVOX = module?.key === 'student_rights';
   const isSIEBridge = module?.key === 'academic_technology';
 
@@ -1953,6 +2237,18 @@ const DepartmentStudentPortal = ({ module, onOpenSIEVOX, onOpenSIEBridge, token,
           返回学生服务入口
         </button>
         <DepartmentIntroductionViewer module={module} token={token} language={language} />
+      </>
+    );
+  }
+
+  if (noticesOpen) {
+    return (
+      <>
+        <button className="siehub-back" type="button" onClick={() => setNoticesOpen(false)}>
+          <ChevronLeft />
+          返回学生服务入口
+        </button>
+        <HubNoticeCenter token={token} language={language} fixedModule={module} />
       </>
     );
   }
@@ -1986,7 +2282,13 @@ const DepartmentStudentPortal = ({ module, onOpenSIEVOX, onOpenSIEBridge, token,
           ) : (
             <article><span>02</span><strong>学生服务入口</strong><p>该部门学生侧服务后续将在 SIEHUB 内逐步上线。</p></article>
           )}
-          <article><span>03</span><strong>通知与活动</strong><p>面向学生的通知、报名、活动材料与服务进度将集中展示。</p></article>
+          <button className="siehub-student-service-entry" type="button" onClick={() => setNoticesOpen(true)}>
+            <span>03</span>
+            <Megaphone />
+            <strong>通知与活动</strong>
+            <p>面向学生的通知、报名、活动材料与服务进度将集中展示。</p>
+            <b>查看通知 <ChevronRight /></b>
+          </button>
         </div>
       </section>
     </>
@@ -2004,6 +2306,7 @@ const DepartmentPlaceholder = ({ module, user, token, theme, onBack, onOpenSIEVO
   const [manageWorkspace, setManageWorkspace] = useState('overview');
   const fallbackCanManagePerformance = canManageVolunteerPolicy(user, module);
   const canManageIntroduction = canManageDepartmentIntroduction(user, module);
+  const canManageNotice = canManageDepartmentNotice(user, module);
   const canManagePerformance = policyAccess?.canEdit ?? fallbackCanManagePerformance;
   const canEnterSIEVOX = module?.key === 'student_rights' || user?.isUltimateAdmin;
   const isSIEBridge = module?.key === 'academic_technology';
@@ -2117,10 +2420,17 @@ const DepartmentPlaceholder = ({ module, user, token, theme, onBack, onOpenSIEVO
           language={language}
           onClose={() => setManageWorkspace('overview')}
         />
+      ) : manageWorkspace === 'notice' ? (
+        <DepartmentNoticeWorkspace
+          module={module}
+          token={token}
+          language={language}
+          onClose={() => setManageWorkspace('overview')}
+        />
       ) : (
         <>
           <div className="siehub-framework-grid">
-            <section><span>01</span><h2>部门工作台</h2><p>项目、通知、成员协作和日常事项将在该入口逐步接入。</p><button type="button" disabled>规划中</button></section>
+            <section><span>01</span><h2>通知管理</h2><p>发布面向学生的部门通知、活动信息和公众号文章链接，首页消息中心会自动汇总展示。</p><button type="button" disabled={!canManageNotice} onClick={() => setManageWorkspace('notice')}>{canManageNotice ? '进入编辑' : '只读说明'}</button></section>
             {canManageIntroduction && <DepartmentIntroductionManageCard onOpen={() => setManageWorkspace('introduction')} />}
             {isSIEBridge ? (
               <section><span>03</span><h2>SIEBridge 审核</h2><p>课程新增与资料上传申请在此集中审核，通过后展示到学生端。</p><button type="button" disabled>已接入</button></section>
@@ -2130,7 +2440,11 @@ const DepartmentPlaceholder = ({ module, user, token, theme, onBack, onOpenSIEVO
             <section><span>04</span><h2>成员与归档</h2><p>届次成员、身份标签、分管关系与绩效档案将归入统一组织框架。</p><button type="button" disabled>规划中</button></section>
           </div>
           {isSIEBridge ? (
-            <SIEBridgeReviewWorkspace token={token} />
+            <section className="siehub-bridge-card">
+              <BookOpen />
+              <div><strong>SIEBridge 已作为独立业务页面运行</strong><span>课程检索、资料上传、提交记录和审核管理统一进入 SIEBridge 页面完成。</span></div>
+              <button className="primary-button" type="button" onClick={onOpenSIEBridge}>进入 SIEBridge <ArrowUpRight /></button>
+            </section>
           ) : (
             <>
               <DepartmentPerformancePolicyCard
@@ -2193,27 +2507,38 @@ const UltimateOrganizationWindow = ({ user, token, theme, onBack, onLogout, lang
   </main>;
 };
 
-const SIEBridgeWindow = ({ user, token, theme, onBack, onLogout, languageSwitcher = null }) => (
-  <main className="siehub-shell siebridge-window">
-    <header className="siehub-topbar">
-      <div className="siehub-brand"><span className="siehub-brand-mark"><img src={siehubLogo} alt="SIEHUB" /><i></i></span><div><strong>SIEBridge</strong><small>COURSE RESOURCE PLATFORM</small></div></div>
-      <div className="siehub-topbar-actions"><ThemeModeButtons theme={theme} compact /><button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)} title="外观设置"><Palette /></button><HubUserChip user={user} /><button className="icon-button" type="button" onClick={onLogout} title="退出登录"><LogOut /></button>{languageSwitcher}</div>
-    </header>
-    <div className="siehub-content">
-      <button className="siehub-back" type="button" onClick={onBack}><ChevronLeft />返回 SIEHUB</button>
-      <section className="siehub-ultimate-hero">
-        <span className="siehub-module-icon tone-blue"><BookOpen /></span>
-        <div>
-          <p>SIEHUB / SIEBRIDGE</p>
-          <h1>SIEBridge 课程资源共享平台</h1>
-          <span>面向学生开放课程资料检索、上传与审核进度查询，审核后的资源会在这里集中展示。</span>
-        </div>
-      </section>
-      <SIEBridgeStudentPortal token={token} user={user} />
-    </div>
-    <ThemePanel theme={theme} />
-  </main>
-);
+const SIEBridgeWindow = ({ user, token, theme, onBack, onLogout, languageSwitcher = null }) => {
+  const canReview = canReviewSIEBridgeContent(user);
+  const [workspace, setWorkspace] = useState('student');
+
+  return (
+    <main className="siehub-shell siebridge-window">
+      <header className="siehub-topbar">
+        <div className="siehub-brand"><span className="siehub-brand-mark"><img src={siehubLogo} alt="SIEHUB" /><i></i></span><div><strong>SIEBridge</strong><small>COURSE RESOURCE PLATFORM</small></div></div>
+        <div className="siehub-topbar-actions"><ThemeModeButtons theme={theme} compact /><button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)} title="外观设置"><Palette /></button><HubUserChip user={user} /><button className="icon-button" type="button" onClick={onLogout} title="退出登录"><LogOut /></button>{languageSwitcher}</div>
+      </header>
+      <div className="siehub-content">
+        <button className="siehub-back" type="button" onClick={onBack}><ChevronLeft />返回 SIEHUB</button>
+        <section className="siehub-ultimate-hero">
+          <span className="siehub-module-icon tone-blue"><BookOpen /></span>
+          <div>
+            <p>SIEHUB / SIEBRIDGE</p>
+            <h1>SIEBridge 课程资源共享平台</h1>
+            <span>面向学生开放课程资料检索、上传与审核进度查询，审核后的资源会在这里集中展示。</span>
+          </div>
+        </section>
+        {canReview && (
+          <div className="siehub-portal-switch siebridge-mode-switch" aria-label="SIEBridge 工作区切换">
+            <button type="button" className={workspace === 'student' ? 'is-active' : ''} onClick={() => setWorkspace('student')}>学生端</button>
+            <button type="button" className={workspace === 'review' ? 'is-active' : ''} onClick={() => setWorkspace('review')}>审核管理</button>
+          </div>
+        )}
+        {workspace === 'review' && canReview ? <SIEBridgeReviewWorkspace token={token} /> : <SIEBridgeStudentPortal token={token} user={user} />}
+      </div>
+      <ThemePanel theme={theme} />
+    </main>
+  );
+};
 
 const HubInlineReturnButton = ({ onClick }) => (
   <button className="hub-inline-return" type="button" onClick={onClick} title="返回 SIEHUB 模块总览">

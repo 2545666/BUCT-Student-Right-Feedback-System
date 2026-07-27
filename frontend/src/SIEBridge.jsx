@@ -28,6 +28,7 @@ const formatFileSize = (size = 0) => {
 const joinLabels = (items = []) => items.length ? items.join(' / ') : '未分类';
 
 const fileUrl = (path) => path?.startsWith('/api') ? path : `${API_BASE}${path || ''}`;
+const getEntityId = (item) => String(item?.id || item?._id || '');
 
 const apiJson = async (path, token, options = {}) => {
   const headers = {
@@ -156,6 +157,7 @@ const ResourceForm = ({ course, meta, onClose, onSubmit, submitting }) => {
 export const SIEBridgeStudentPortal = ({ token }) => {
   const [meta, setMeta] = useState({ majors: [], gradeLevels: [], sections: DEFAULT_SECTIONS });
   const [courses, setCourses] = useState([]);
+  const [selectedCourseId, setSelectedCourseId] = useState('');
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [resources, setResources] = useState([]);
   const [submissions, setSubmissions] = useState({ courses: [], resources: [] });
@@ -163,6 +165,7 @@ export const SIEBridgeStudentPortal = ({ token }) => {
   const [courseFormOpen, setCourseFormOpen] = useState(false);
   const [resourceFormCourse, setResourceFormCourse] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [preview, setPreview] = useState(null);
   const [message, setMessage] = useState('');
   const detailRequestRef = useRef(0);
@@ -187,20 +190,41 @@ export const SIEBridgeStudentPortal = ({ token }) => {
   }, [token]);
 
   const loadCourseDetail = useCallback(async (course) => {
-    if (!course) return;
+    const courseId = typeof course === 'string' ? course : getEntityId(course);
+    if (!courseId) return;
     const requestId = detailRequestRef.current + 1;
     detailRequestRef.current = requestId;
-    setSelectedCourse(course);
+    const summary = typeof course === 'string'
+      ? courses.find(item => getEntityId(item) === courseId)
+      : course;
+    setSelectedCourseId(courseId);
+    setSelectedCourse(summary || null);
     setResources([]);
-    const data = await apiJson(`/siebridge/courses/${course.id || course._id}`, token);
-    if (detailRequestRef.current !== requestId) return;
-    setSelectedCourse(data.course || course);
-    setResources(data.resources || []);
-  }, [token]);
+    setDetailLoading(true);
+    try {
+      const data = await apiJson(`/siebridge/courses/${courseId}`, token);
+      if (detailRequestRef.current !== requestId) return;
+      setSelectedCourseId(getEntityId(data.course) || courseId);
+      setSelectedCourse(data.course || summary || null);
+      setResources(data.resources || []);
+    } catch (error) {
+      if (detailRequestRef.current === requestId) setMessage(error.message);
+    } finally {
+      if (detailRequestRef.current === requestId) setDetailLoading(false);
+    }
+  }, [courses, token]);
 
   useEffect(() => { loadMeta().catch(error => setMessage(error.message)); }, [loadMeta]);
   useEffect(() => { loadCourses().catch(error => setMessage(error.message)); }, [loadCourses]);
   useEffect(() => { loadSubmissions().catch(() => {}); }, [loadSubmissions]);
+  useEffect(() => {
+    if (!selectedCourseId) return;
+    if (courses.length && courses.every(course => getEntityId(course) !== selectedCourseId)) {
+      setSelectedCourseId('');
+      setSelectedCourse(null);
+      setResources([]);
+    }
+  }, [courses, selectedCourseId]);
 
   const groupedResources = useMemo(() => {
     const groups = Object.fromEntries((meta.sections || DEFAULT_SECTIONS).map(item => [item.key, []]));
@@ -236,7 +260,7 @@ export const SIEBridgeStudentPortal = ({ token }) => {
       await apiJson(`/siebridge/courses/${courseId}/resources`, token, { method: 'POST', body });
       setResourceFormCourse(null);
       setMessage('资料已提交审核');
-      await Promise.all([loadCourseDetail(selectedCourse), loadSubmissions()]);
+      await Promise.all([loadCourseDetail(courseId), loadSubmissions()]);
     } catch (error) {
       setMessage(error.message);
     } finally {
@@ -295,7 +319,7 @@ export const SIEBridgeStudentPortal = ({ token }) => {
       <div className="siebridge-layout">
         <div className="siebridge-course-list">
           {courses.length ? courses.map(course => (
-            <button key={course.id || course._id} className={(selectedCourse?.id || selectedCourse?._id) === (course.id || course._id) ? 'is-active' : ''} type="button" onClick={() => loadCourseDetail(course)}>
+            <button key={getEntityId(course)} className={selectedCourseId === getEntityId(course) ? 'is-active' : ''} type="button" onClick={() => loadCourseDetail(course)}>
               <span>{course.code}</span>
               <strong>{course.name}</strong>
               <small>{course.courseNature} · {joinLabels(course.majors)} · {joinLabels(course.gradeLevels)}</small>
@@ -309,6 +333,7 @@ export const SIEBridgeStudentPortal = ({ token }) => {
                 <div><span>{selectedCourse.code}</span><h3>{selectedCourse.name}</h3><p>{selectedCourse.courseNature} · {joinLabels(selectedCourse.majors)} · {joinLabels(selectedCourse.gradeLevels)}</p></div>
                 <button className="outline-button" type="button" onClick={() => setResourceFormCourse(selectedCourse)}><Upload />上传资料</button>
               </header>
+              {detailLoading && <p className="siebridge-muted">正在加载课程资料...</p>}
               {(meta.sections || DEFAULT_SECTIONS).map(section => (
                 <section key={section.key} className="siebridge-resource-section">
                   <h4>{section.label}</h4>
@@ -412,11 +437,14 @@ export const SIEBridgeReviewWorkspace = ({ token }) => {
 
   const deleteApprovedResource = async (resource) => {
     const resourceId = resource.id || resource._id;
-    const ok = window.confirm(`确认删除资料「${resource.title}」吗？此操作会同时移除后台文件。`);
-    if (!ok) return;
+    const confirmation = window.prompt(`危险操作：删除资料会同时移除后台文件，且不可恢复。\n\n请输入资料标题或“确认删除”以继续：\n${resource.title}`);
+    if (!confirmation) return;
     setDeletingResourceId(resourceId);
     try {
-      await apiJson(`/siebridge/resources/${resourceId}`, token, { method: 'DELETE' });
+      await apiJson(`/siebridge/resources/${resourceId}`, token, {
+        method: 'DELETE',
+        body: JSON.stringify({ confirmation: confirmation.trim() })
+      });
       setMessage('资料已删除');
       await loadReviews();
     } catch (error) {
