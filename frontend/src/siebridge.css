@@ -557,6 +557,17 @@
   cursor: pointer;
 }
 
+.siebridge-review-files button.danger {
+  border-color: #fecdd3;
+  background: #fff1f2;
+  color: #be123c;
+}
+
+.siebridge-review-files button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
 .siebridge-review-list footer {
   grid-column: 1 / -1;
   display: flex;

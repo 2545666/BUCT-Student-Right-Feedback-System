@@ -241,8 +241,9 @@ const getHubModuleAccess = (user = {}) => {
         'switch_portal',
         'manage_module',
         'manage_department_introduction',
+        'manage_department_notice',
         'manage_volunteer_performance_policy',
-        ...(isSiebridgeDepartment(organization, department) ? ['review_siebridge_content'] : [])
+        ...(isSiebridgeDepartment(organization, department) ? ['review_siebridge_content', 'delete_siebridge_approved_resource'] : [])
       ]);
     });
     return Array.from(accessByModuleId.values());
@@ -256,6 +257,7 @@ const getHubModuleAccess = (user = {}) => {
       'switch_portal',
       'manage_module',
       'manage_department_introduction',
+      'manage_department_notice',
       'manage_volunteer_performance_policy'
     ]);
     return Array.from(accessByModuleId.values());
@@ -270,8 +272,9 @@ const getHubModuleAccess = (user = {}) => {
         'switch_portal',
         'manage_module',
         'manage_department_introduction',
+        'manage_department_notice',
         'manage_volunteer_performance_policy',
-        ...(isSiebridgeDepartment(organization, department) ? ['review_siebridge_content'] : [])
+        ...(isSiebridgeDepartment(organization, department) ? ['review_siebridge_content', 'delete_siebridge_approved_resource'] : [])
       ]);
     });
     return Array.from(accessByModuleId.values());

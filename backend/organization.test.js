@@ -118,6 +118,7 @@ test('SIEHUB student portals are open while management stays department-scoped',
   const leaderManaged = leaderAccess.find(item => item.moduleId === 'department:student_union:new_media');
   assert.equal(leaderManaged.accessLevel, 'manage');
   assert.ok(leaderManaged.capabilities.includes('switch_portal'));
+  assert.ok(leaderManaged.capabilities.includes('manage_department_notice'));
   assert.equal(leaderAccess.filter(item => item.accessLevel === 'manage').length, 1);
 
   const presidiumAccess = getHubModuleAccess({
@@ -139,6 +140,7 @@ test('SIEBridge review capability is limited to ultimate and assigned presidium'
   const ultimateAccess = getHubModuleAccess({ isUltimateAdmin: true });
   const ultimateBridge = ultimateAccess.find(item => item.moduleId === 'siebridge');
   assert.ok(ultimateBridge.capabilities.includes('review_siebridge_content'));
+  assert.ok(ultimateBridge.capabilities.includes('delete_siebridge_approved_resource'));
 
   const assignedPresidiumAccess = getHubModuleAccess({
     role: 'superadmin',
@@ -147,6 +149,7 @@ test('SIEBridge review capability is limited to ultimate and assigned presidium'
   });
   const assignedBridge = assignedPresidiumAccess.find(item => item.moduleId === 'siebridge');
   assert.ok(assignedBridge.capabilities.includes('review_siebridge_content'));
+  assert.ok(assignedBridge.capabilities.includes('delete_siebridge_approved_resource'));
 
   const departmentHeadAccess = getHubModuleAccess({
     role: 'superadmin',
@@ -156,6 +159,7 @@ test('SIEBridge review capability is limited to ultimate and assigned presidium'
   });
   const departmentHeadBridge = departmentHeadAccess.find(item => item.moduleId === 'siebridge');
   assert.ok(!departmentHeadBridge.capabilities.includes('review_siebridge_content'));
+  assert.ok(!departmentHeadBridge.capabilities.includes('delete_siebridge_approved_resource'));
 });
 
 test('all SIEHUB departments inherit the SIEVOX volunteer performance policy', () => {

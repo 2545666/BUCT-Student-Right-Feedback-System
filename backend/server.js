@@ -536,6 +536,34 @@ const departmentIntroductionMediaSchema = new mongoose.Schema({
 departmentIntroductionMediaSchema.index({ organization: 1, department: 1, createdAt: -1 });
 const DepartmentIntroductionMedia = mongoose.model('DepartmentIntroductionMedia', departmentIntroductionMediaSchema);
 
+const localizedTextSchema = new mongoose.Schema({
+  zh: { type: String, default: '' },
+  en: { type: String, default: '' }
+}, { _id: false });
+
+const departmentNoticeSchema = new mongoose.Schema({
+  organization: { type: String, enum: Object.keys(ORGANIZATIONS), required: true },
+  department: { type: String, required: true },
+  title: { type: localizedTextSchema, required: true },
+  summary: { type: localizedTextSchema, default: () => ({}) },
+  body: { type: localizedTextSchema, default: () => ({}) },
+  coverImageUrl: { type: String, default: '' },
+  sourceUrl: { type: String, default: '' },
+  source: { type: String, enum: ['manual', 'wechat_mp'], default: 'manual', index: true },
+  sourceExternalId: { type: String, default: undefined },
+  status: { type: String, enum: ['draft', 'published', 'archived'], default: 'draft', index: true },
+  publishedAt: Date,
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  publishedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+}, { timestamps: true });
+departmentNoticeSchema.index({ organization: 1, department: 1, status: 1, publishedAt: -1 });
+departmentNoticeSchema.index(
+  { source: 1, sourceExternalId: 1 },
+  { unique: true, partialFilterExpression: { sourceExternalId: { $type: 'string' } } }
+);
+const DepartmentNotice = mongoose.model('DepartmentNotice', departmentNoticeSchema);
+
 // [新增] 系统配置模型 (用于存储当前运行的学期)
 const systemConfigSchema = new mongoose.Schema({
   key: { type: String, required: true, unique: true },
@@ -922,6 +950,23 @@ const getDepartmentIntroductionAccess = (user, assignment) => {
   };
 };
 
+const getDepartmentNoticeAccess = (user, assignment) => {
+  const moduleAccess = getHubModuleAccess(user).find(item =>
+    item.organization === assignment.organization &&
+    item.department === assignment.department
+  );
+  if (!moduleAccess) return null;
+  const canManage = moduleAccess.capabilities?.includes('manage_department_notice') || false;
+  return {
+    moduleId: moduleAccess.moduleId,
+    accessLevel: moduleAccess.accessLevel,
+    capabilities: moduleAccess.capabilities || [],
+    canCreate: canManage,
+    canEdit: canManage,
+    canPublish: canManage
+  };
+};
+
 const cleanText = (value, maxLength = 500) => {
   const clean = sanitizeInput(value || '');
   return typeof clean === 'string' ? clean.slice(0, maxLength) : '';
@@ -931,6 +976,62 @@ const cleanLocalizedText = (value = {}, fallback = {}, maxLength = 500) => ({
   zh: cleanText(value.zh ?? fallback.zh ?? '', maxLength),
   en: cleanText(value.en ?? fallback.en ?? '', maxLength)
 });
+
+const normalizeNoticePayload = (payload = {}, existing = null) => {
+  const source = ['manual', 'wechat_mp'].includes(payload.source) ? payload.source : existing?.source || 'manual';
+  const status = ['draft', 'published', 'archived'].includes(payload.status) ? payload.status : existing?.status || 'draft';
+  const publishedAt = status === 'published'
+    ? new Date(payload.publishedAt || existing?.publishedAt || Date.now())
+    : existing?.publishedAt || null;
+  const title = cleanLocalizedText(payload.title, existing?.title || {}, 120);
+  const summary = cleanLocalizedText(payload.summary, existing?.summary || {}, 260);
+  const body = cleanLocalizedText(payload.body, existing?.body || {}, 6000);
+
+  return {
+    title,
+    summary,
+    body,
+    coverImageUrl: cleanText(payload.coverImageUrl ?? existing?.coverImageUrl ?? '', 500),
+    sourceUrl: cleanText(payload.sourceUrl ?? existing?.sourceUrl ?? '', 500),
+    source,
+    sourceExternalId: cleanText(payload.sourceExternalId ?? existing?.sourceExternalId ?? '', 160) || undefined,
+    status,
+    publishedAt
+  };
+};
+
+const serializeNoticeUserBrief = (user) => user ? ({
+  id: user._id || user.id,
+  name: user.name || '',
+  studentId: user.studentId || ''
+}) : null;
+
+const serializeDepartmentNotice = (notice) => {
+  const item = notice?.toObject ? notice.toObject() : notice;
+  if (!item) return null;
+  return {
+    id: item._id,
+    _id: item._id,
+    organization: item.organization,
+    organizationLabel: ORGANIZATIONS[item.organization]?.label || '',
+    department: item.department,
+    departmentLabel: getDepartment(item.organization, item.department) || '',
+    title: item.title || { zh: '', en: '' },
+    summary: item.summary || { zh: '', en: '' },
+    body: item.body || { zh: '', en: '' },
+    coverImageUrl: item.coverImageUrl || '',
+    sourceUrl: item.sourceUrl || '',
+    source: item.source || 'manual',
+    sourceExternalId: item.sourceExternalId || '',
+    status: item.status,
+    publishedAt: item.publishedAt || null,
+    createdBy: serializeNoticeUserBrief(item.createdBy),
+    updatedBy: serializeNoticeUserBrief(item.updatedBy),
+    publishedBy: serializeNoticeUserBrief(item.publishedBy),
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt
+  };
+};
 
 const createDefaultDepartmentIntroduction = (organization, department) => {
   const departmentLabel = getDepartment(organization, department) || '部门';
@@ -968,6 +1069,12 @@ const createDefaultDepartmentIntroduction = (organization, department) => {
 const normalizeIntroductionBlock = (block = {}, index = 0) => {
   const allowedTypes = new Set(['hero', 'text', 'image', 'video', 'duties', 'contact']);
   const type = allowedTypes.has(block.type) ? block.type : 'text';
+  const normalizeOverlayOpacity = (value, fallback) => {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return fallback;
+    return Math.max(0, Math.min(0.9, number));
+  };
+  const normalizeTextTone = (value, fallback) => ['light', 'dark'].includes(value) ? value : fallback;
   const base = {
     id: cleanText(block.id, 48) || crypto.randomUUID(),
     type,
@@ -978,9 +1085,15 @@ const normalizeIntroductionBlock = (block = {}, index = 0) => {
   if (type === 'hero') {
     base.data.title = cleanLocalizedText(block.data?.title, { zh: '部门介绍', en: 'Department Introduction' }, 80);
     base.data.subtitle = cleanLocalizedText(block.data?.subtitle, {}, 240);
+    base.data.backgroundImageUrl = cleanText(block.data?.backgroundImageUrl, 300);
+    base.data.overlayOpacity = normalizeOverlayOpacity(block.data?.overlayOpacity, 0.45);
+    base.data.textTone = normalizeTextTone(block.data?.textTone, 'light');
   } else if (type === 'text') {
     base.data.title = cleanLocalizedText(block.data?.title, { zh: `正文 ${index + 1}`, en: `Section ${index + 1}` }, 80);
     base.data.body = cleanLocalizedText(block.data?.body, {}, 1600);
+    base.data.backgroundImageUrl = cleanText(block.data?.backgroundImageUrl, 300);
+    base.data.overlayOpacity = normalizeOverlayOpacity(block.data?.overlayOpacity, 0.18);
+    base.data.textTone = normalizeTextTone(block.data?.textTone, 'dark');
   } else if (type === 'image' || type === 'video') {
     base.data.title = cleanLocalizedText(block.data?.title, { zh: type === 'image' ? '图片展示' : '视频展示', en: type === 'image' ? 'Image' : 'Video' }, 80);
     base.data.caption = cleanLocalizedText(block.data?.caption, {}, 240);
@@ -1467,6 +1580,115 @@ app.get('/api/hub/me', authenticate, (req, res) => {
     windows: listHubWindows(),
     accessibleModules: getHubModuleAccess(req.user)
   });
+});
+
+app.get('/api/hub/notices', authenticate, async (req, res) => {
+  const query = { status: 'published' };
+  if (req.query.organization || req.query.department) {
+    const assignment = { organization: req.query.organization, department: req.query.department };
+    if (!isValidManagedDepartment(assignment)) return res.status(404).json({ success: false, message: '部门模块不存在' });
+    query.organization = assignment.organization;
+    query.department = assignment.department;
+  }
+  if (['manual', 'wechat_mp'].includes(req.query.source)) query.source = req.query.source;
+
+  try {
+    const notices = await DepartmentNotice.find(query)
+      .sort({ publishedAt: -1, updatedAt: -1 })
+      .limit(Math.min(Number(req.query.limit || 12), 50))
+      .populate('createdBy updatedBy publishedBy', 'name studentId')
+      .lean();
+    res.json({ success: true, notices: notices.map(serializeDepartmentNotice) });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '获取部门通知失败' });
+  }
+});
+
+app.get('/api/hub/departments/:organization/:department/notices', authenticate, async (req, res) => {
+  const assignment = { organization: req.params.organization, department: req.params.department };
+  if (!isValidManagedDepartment(assignment)) return res.status(404).json({ success: false, message: '部门模块不存在' });
+  const access = getDepartmentNoticeAccess(req.user, assignment);
+  if (!access) return res.status(403).json({ success: false, message: '无权访问该部门通知' });
+
+  const requestedStatus = ['draft', 'published', 'archived'].includes(req.query.status) ? req.query.status : 'published';
+  const query = { ...assignment, status: access.canEdit ? requestedStatus : 'published' };
+
+  try {
+    const notices = await DepartmentNotice.find(query)
+      .sort({ publishedAt: -1, updatedAt: -1 })
+      .limit(Math.min(Number(req.query.limit || 30), 100))
+      .populate('createdBy updatedBy publishedBy', 'name studentId')
+      .lean();
+    res.json({ success: true, access, notices: notices.map(serializeDepartmentNotice) });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '获取部门通知失败' });
+  }
+});
+
+app.get('/api/hub/departments/:organization/:department/notices/:id', authenticate, async (req, res) => {
+  const assignment = { organization: req.params.organization, department: req.params.department };
+  if (!isValidManagedDepartment(assignment)) return res.status(404).json({ success: false, message: '部门模块不存在' });
+  const access = getDepartmentNoticeAccess(req.user, assignment);
+  if (!access) return res.status(403).json({ success: false, message: '无权访问该部门通知' });
+
+  try {
+    const notice = await DepartmentNotice.findOne({ _id: req.params.id, ...assignment })
+      .populate('createdBy updatedBy publishedBy', 'name studentId');
+    if (!notice || (!access.canEdit && notice.status !== 'published')) {
+      return res.status(404).json({ success: false, message: '部门通知不存在' });
+    }
+    res.json({ success: true, access, notice: serializeDepartmentNotice(notice) });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '获取部门通知失败' });
+  }
+});
+
+app.post('/api/hub/departments/:organization/:department/notices', authenticate, async (req, res) => {
+  const assignment = { organization: req.params.organization, department: req.params.department };
+  if (!isValidManagedDepartment(assignment)) return res.status(404).json({ success: false, message: '部门模块不存在' });
+  const access = getDepartmentNoticeAccess(req.user, assignment);
+  if (!access?.canCreate) return res.status(403).json({ success: false, message: '当前身份不能创建该部门通知' });
+
+  const payload = normalizeNoticePayload(req.body || {});
+  if (!payload.title.zh && !payload.title.en) return res.status(400).json({ success: false, message: '请填写通知标题' });
+  if (payload.status === 'published' && !payload.publishedAt) payload.publishedAt = new Date();
+
+  try {
+    const notice = await DepartmentNotice.create({
+      ...assignment,
+      ...payload,
+      createdBy: req.user._id,
+      updatedBy: req.user._id,
+      publishedBy: payload.status === 'published' ? req.user._id : undefined
+    });
+    await logAction(req.user._id, 'create_department_notice', 'departmentNotice', notice._id, { ...assignment, status: notice.status, source: notice.source }, req);
+    res.status(201).json({ success: true, notice: serializeDepartmentNotice(notice), access });
+  } catch (error) {
+    res.status(error?.code === 11000 ? 409 : 500).json({ success: false, message: error?.code === 11000 ? '该外部文章已同步' : '创建部门通知失败' });
+  }
+});
+
+app.patch('/api/hub/departments/:organization/:department/notices/:id', authenticate, async (req, res) => {
+  const assignment = { organization: req.params.organization, department: req.params.department };
+  if (!isValidManagedDepartment(assignment)) return res.status(404).json({ success: false, message: '部门模块不存在' });
+  const access = getDepartmentNoticeAccess(req.user, assignment);
+  if (!access?.canEdit) return res.status(403).json({ success: false, message: '当前身份不能编辑该部门通知' });
+
+  try {
+    const existing = await DepartmentNotice.findOne({ _id: req.params.id, ...assignment });
+    if (!existing) return res.status(404).json({ success: false, message: '部门通知不存在' });
+    const payload = normalizeNoticePayload(req.body || {}, existing);
+    if (!payload.title.zh && !payload.title.en) return res.status(400).json({ success: false, message: '请填写通知标题' });
+
+    Object.assign(existing, payload, { updatedBy: req.user._id });
+    if (payload.status === 'published' && existing.isModified('status')) existing.publishedBy = req.user._id;
+    await existing.save();
+    await existing.populate('createdBy updatedBy publishedBy', 'name studentId');
+    await logAction(req.user._id, 'update_department_notice', 'departmentNotice', existing._id, { ...assignment, status: existing.status, source: existing.source }, req);
+    res.json({ success: true, notice: serializeDepartmentNotice(existing), access });
+  } catch (error) {
+    res.status(error?.code === 11000 ? 409 : 500).json({ success: false, message: error?.code === 11000 ? '该外部文章已同步' : '更新部门通知失败' });
+  }
 });
 
 app.get('/api/hub/departments/:organization/:department/introduction', authenticate, async (req, res) => {

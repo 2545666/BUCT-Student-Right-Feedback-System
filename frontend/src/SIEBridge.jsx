@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ArrowUpRight, BookOpen, Check, Clock3, Download, Eye, FileText,
-  Filter, Plus, Search, Send, Upload, X
+  Filter, Plus, Search, Send, Trash2, Upload, X
 } from 'lucide-react';
 import { API_BASE } from './api';
 import './siebridge.css';
@@ -342,6 +342,7 @@ export const SIEBridgeReviewWorkspace = ({ token }) => {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState(null);
+  const [deletingResourceId, setDeletingResourceId] = useState('');
 
   const loadReviews = useCallback(async () => {
     setLoading(true);
@@ -403,6 +404,22 @@ export const SIEBridgeReviewWorkspace = ({ token }) => {
     }
   };
 
+  const deleteApprovedResource = async (resource) => {
+    const resourceId = resource.id || resource._id;
+    const ok = window.confirm(`确认删除资料「${resource.title}」吗？此操作会同时移除后台文件。`);
+    if (!ok) return;
+    setDeletingResourceId(resourceId);
+    try {
+      await apiJson(`/siebridge/resources/${resourceId}`, token, { method: 'DELETE' });
+      setMessage('资料已删除');
+      await loadReviews();
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setDeletingResourceId('');
+    }
+  };
+
   const reviewItems = [
     ...courses.map(item => ({ ...item, type: 'course', kind: '课程申请' })),
     ...resources.map(item => ({ ...item, type: 'resource', kind: '资料申请', courseName: item.course?.name }))
@@ -423,7 +440,7 @@ export const SIEBridgeReviewWorkspace = ({ token }) => {
             <div><span>{item.kind}</span><strong>{item.name || item.title}</strong><small>{item.courseName || item.code || ''} · {item.submittedBy?.name || '未知上传者'}</small></div>
             <StatusBadge status={item.status} />
             {item.reviewComment && <p>{item.reviewComment}</p>}
-            {item.type === 'resource' && <div className="siebridge-review-files"><button type="button" onClick={() => openPreview(item)}><Eye />预览</button><button type="button" onClick={() => downloadResource(item)}><Download />下载</button></div>}
+            {item.type === 'resource' && <div className="siebridge-review-files"><button type="button" onClick={() => openPreview(item)}><Eye />预览</button><button type="button" onClick={() => downloadResource(item)}><Download />下载</button>{status === 'approved' && <button type="button" className="danger" disabled={deletingResourceId === (item.id || item._id)} onClick={() => deleteApprovedResource(item)}><Trash2 />{deletingResourceId === (item.id || item._id) ? '删除中' : '删除'}</button>}</div>}
             {status === 'pending' && <footer><button type="button" onClick={() => review(item.type, item.id || item._id, 'approved')}><Check />通过</button><button type="button" className="danger" onClick={() => review(item.type, item.id || item._id, 'rejected')}><X />驳回</button></footer>}
           </article>
         )) : <div className="siebridge-empty"><Clock3 /><strong>暂无记录</strong><span>当前筛选下没有需要显示的审核项。</span></div>}

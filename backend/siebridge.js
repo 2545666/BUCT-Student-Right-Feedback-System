@@ -207,6 +207,15 @@ const cleanupFiles = (files = []) => {
   });
 };
 
+const resolveStoredResourcePath = (uploadDir, storedName = '') => {
+  if (!storedName || path.basename(storedName) !== storedName) return null;
+  const uploadRoot = path.resolve(uploadDir);
+  const absolutePath = path.resolve(uploadRoot, storedName);
+  const relativePath = path.relative(uploadRoot, absolutePath);
+  if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) return null;
+  return absolutePath;
+};
+
 const toStoredFiles = async (files = []) => Promise.all(files.map(async (file) => {
   const buffer = await fs.promises.readFile(file.path);
   return {
@@ -436,14 +445,47 @@ const installSieBridgeRoutes = ({ app, authenticate, logAction, Notification }) 
     }
   });
 
+  app.delete('/api/siebridge/resources/:id', authenticate, async (req, res) => {
+    if (!canReviewSieBridge(req.user)) return res.status(403).json({ success: false, message: '无权删除 SIEBridge 资料' });
+    try {
+      const resource = await populateResource(SiebridgeResource.findById(req.params.id));
+      if (!resource) return res.status(404).json({ success: false, message: '资料不存在' });
+      if (resource.status !== 'approved') return res.status(400).json({ success: false, message: '仅可删除已通过审核的资料' });
+
+      const filePaths = [];
+      for (const file of resource.files || []) {
+        const absolutePath = resolveStoredResourcePath(privateUploadDir, file.storedName);
+        if (!absolutePath) return res.status(409).json({ success: false, message: '资料文件路径异常，已阻止删除' });
+        filePaths.push(absolutePath);
+      }
+
+      for (const absolutePath of filePaths) {
+        try {
+          await fs.promises.unlink(absolutePath);
+        } catch (error) {
+          if (error.code !== 'ENOENT') throw error;
+        }
+      }
+
+      await logAction(req.user._id, 'delete_siebridge_approved_resource', 'siebridgeResource', resource._id, {
+        title: resource.title,
+        course: resource.course?._id || resource.course
+      }, req);
+      await resource.deleteOne();
+      return res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ success: false, message: '删除资料失败' });
+    }
+  });
+
   app.get('/api/siebridge/resources/:id/preview', authenticate, async (req, res) => {
     try {
       const resource = await populateResource(SiebridgeResource.findById(req.params.id));
       if (!resource || !await canReadPrivateResource(req.user, resource)) return res.status(404).json({ success: false, message: '资料不存在' });
       const file = resource.files?.[0];
       if (!file || file.extension !== '.pdf') return res.status(400).json({ success: false, message: '仅 PDF 支持在线预览' });
-      const absolutePath = path.join(privateUploadDir, file.storedName);
-      if (!fs.existsSync(absolutePath)) return res.status(404).json({ success: false, message: '文件不存在' });
+      const absolutePath = resolveStoredResourcePath(privateUploadDir, file.storedName);
+      if (!absolutePath || !fs.existsSync(absolutePath)) return res.status(404).json({ success: false, message: '文件不存在' });
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(file.originalName)}"`);
       return res.sendFile(absolutePath);
@@ -457,8 +499,8 @@ const installSieBridgeRoutes = ({ app, authenticate, logAction, Notification }) 
       const resource = await populateResource(SiebridgeResource.findById(req.params.id));
       if (!resource || !await canReadPrivateResource(req.user, resource)) return res.status(404).json({ success: false, message: '资料不存在' });
       const file = resource.files?.[0];
-      const absolutePath = file ? path.join(privateUploadDir, file.storedName) : '';
-      if (!file || !fs.existsSync(absolutePath)) return res.status(404).json({ success: false, message: '文件不存在' });
+      const absolutePath = file ? resolveStoredResourcePath(privateUploadDir, file.storedName) : '';
+      if (!file || !absolutePath || !fs.existsSync(absolutePath)) return res.status(404).json({ success: false, message: '文件不存在' });
       resource.downloadCount += 1;
       await resource.save();
       return res.download(absolutePath, file.originalName);

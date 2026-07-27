@@ -1836,14 +1836,45 @@ const HubUserChip = ({ user }) => (
   </div>
 );
 
+const pickLocalizedNoticeText = (value = {}, language = 'zh') =>
+  (language === 'en' ? value.en || value.zh : value.zh || value.en) || '';
+
+const formatNoticeDate = (value, language = 'zh') => {
+  if (!value) return language === 'en' ? 'Unpublished' : '未发布';
+  return new Intl.DateTimeFormat(language === 'en' ? 'en-US' : 'zh-CN', {
+    month: 'short',
+    day: 'numeric'
+  }).format(new Date(value));
+};
+
 const SIEHUBHome = ({ user, token, theme, onOpenModule, onLogout, language = 'zh', languageSwitcher = null }) => {
   const modules = getAccessibleModules(user);
   const clock = usePlatformClock(language);
   const serviceMetrics = useServiceMetrics(token);
+  const [departmentNotices, setDepartmentNotices] = useState([]);
+  const [noticesLoading, setNoticesLoading] = useState(false);
   const governanceModules = modules.filter(module => module.organization === 'hub');
   const youthLeague = modules.filter(module => module.organization === 'youth_league');
   const studentUnion = modules.filter(module => module.organization === 'student_union');
   const roleScope = user?.isUltimateAdmin ? '全平台治理范围' : `${user?.organizationLabel || '学生服务'} / ${user?.departmentLabel || '可访问模块'}`;
+
+  useEffect(() => {
+    if (!token) return;
+    let alive = true;
+    setNoticesLoading(true);
+    fetch(`${API_BASE}/hub/notices?limit=5`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => res.ok ? res.json() : Promise.reject(new Error('notice_fetch_failed')))
+      .then(data => {
+        if (alive) setDepartmentNotices(Array.isArray(data.notices) ? data.notices : []);
+      })
+      .catch(() => {
+        if (alive) setDepartmentNotices([]);
+      })
+      .finally(() => {
+        if (alive) setNoticesLoading(false);
+      });
+    return () => { alive = false; };
+  }, [token]);
 
   const renderGroup = (title, marker, items) => (
     <section className="siehub-module-group">
@@ -1877,6 +1908,29 @@ const SIEHUBHome = ({ user, token, theme, onOpenModule, onLogout, language = 'zh
         </div>
         <div className="siehub-hero-orbit" aria-hidden="true"><span>HUB</span><i></i><i></i><i></i></div>
       </section>
+      <section className="siehub-notice-center">
+        <div className="siehub-notice-head">
+          <span><Megaphone /></span>
+          <div><p>MESSAGE CENTER</p><h2>{language === 'en' ? 'Department Notices' : '部门消息中心'}</h2></div>
+          <b>{departmentNotices.length}</b>
+        </div>
+        <div className="siehub-notice-list">
+          {noticesLoading ? (
+            <p className="siehub-empty-text">{language === 'en' ? 'Loading notices...' : '正在同步通知...'}</p>
+          ) : departmentNotices.length ? departmentNotices.map(notice => (
+            <article key={notice.id || notice._id}>
+              <div>
+                <span>{notice.organizationLabel} · {notice.departmentLabel}</span>
+                <strong>{pickLocalizedNoticeText(notice.title, language)}</strong>
+                <p>{pickLocalizedNoticeText(notice.summary, language)}</p>
+              </div>
+              <time>{formatNoticeDate(notice.publishedAt, language)}</time>
+            </article>
+          )) : (
+            <p className="siehub-empty-text">{language === 'en' ? 'No published department notices yet.' : '暂无已发布部门通知。'}</p>
+          )}
+        </div>
+      </section>
       {user?.isUltimateAdmin && governanceModules.length > 0 && renderGroup('平台治理', '00', governanceModules)}
       {renderGroup('团委', '01', youthLeague)}
       {renderGroup('学生会', '02', studentUnion)}
@@ -1886,8 +1940,7 @@ const SIEHUBHome = ({ user, token, theme, onOpenModule, onLogout, language = 'zh
   </main>;
 };
 
-const DepartmentStudentPortal = ({ module, onOpenSIEVOX, token, user, language = 'zh' }) => {
-  const [sieBridgeOpen, setSieBridgeOpen] = useState(false);
+const DepartmentStudentPortal = ({ module, onOpenSIEVOX, onOpenSIEBridge, token, user, language = 'zh' }) => {
   const [introductionOpen, setIntroductionOpen] = useState(false);
   const isSIEVOX = module?.key === 'student_rights';
   const isSIEBridge = module?.key === 'academic_technology';
@@ -1900,18 +1953,6 @@ const DepartmentStudentPortal = ({ module, onOpenSIEVOX, token, user, language =
           返回学生服务入口
         </button>
         <DepartmentIntroductionViewer module={module} token={token} language={language} />
-      </>
-    );
-  }
-
-  if (isSIEBridge && sieBridgeOpen) {
-    return (
-      <>
-        <button className="siehub-back siebridge-student-back" type="button" onClick={() => setSieBridgeOpen(false)}>
-          <ChevronLeft />
-          返回学生服务入口
-        </button>
-        <SIEBridgeStudentPortal token={token} user={user} />
       </>
     );
   }
@@ -1935,7 +1976,7 @@ const DepartmentStudentPortal = ({ module, onOpenSIEVOX, token, user, language =
               <b>立即进入 <ArrowUpRight /></b>
             </button>
           ) : isSIEBridge ? (
-            <button className="siehub-student-service-entry siebridge-entry" type="button" onClick={() => setSieBridgeOpen(true)}>
+            <button className="siehub-student-service-entry siebridge-entry" type="button" onClick={onOpenSIEBridge}>
               <span>02</span>
               <BookOpen />
               <strong>SIEBridge 课程资源共享平台</strong>
@@ -1952,7 +1993,7 @@ const DepartmentStudentPortal = ({ module, onOpenSIEVOX, token, user, language =
   );
 };
 
-const DepartmentPlaceholder = ({ module, user, token, theme, onBack, onOpenSIEVOX, onLogout, languageSwitcher = null, language = 'zh' }) => {
+const DepartmentPlaceholder = ({ module, user, token, theme, onBack, onOpenSIEVOX, onOpenSIEBridge, onLogout, languageSwitcher = null, language = 'zh' }) => {
   const [performancePolicy, setPerformancePolicy] = useState(null);
   const [policyAccess, setPolicyAccess] = useState(null);
   const [policyLoading, setPolicyLoading] = useState(false);
@@ -2112,7 +2153,7 @@ const DepartmentPlaceholder = ({ module, user, token, theme, onBack, onOpenSIEVO
           ))}
         </>
       )) : (
-        <DepartmentStudentPortal module={module} onOpenSIEVOX={onOpenSIEVOX} token={token} user={user} language={language} />
+        <DepartmentStudentPortal module={module} onOpenSIEVOX={onOpenSIEVOX} onOpenSIEBridge={onOpenSIEBridge} token={token} user={user} language={language} />
       )}
     </div>
     <ThemePanel theme={theme} />
@@ -2151,6 +2192,28 @@ const UltimateOrganizationWindow = ({ user, token, theme, onBack, onLogout, lang
     <ThemePanel theme={theme} />
   </main>;
 };
+
+const SIEBridgeWindow = ({ user, token, theme, onBack, onLogout, languageSwitcher = null }) => (
+  <main className="siehub-shell siebridge-window">
+    <header className="siehub-topbar">
+      <div className="siehub-brand"><span className="siehub-brand-mark"><img src={siehubLogo} alt="SIEHUB" /><i></i></span><div><strong>SIEBridge</strong><small>COURSE RESOURCE PLATFORM</small></div></div>
+      <div className="siehub-topbar-actions"><ThemeModeButtons theme={theme} compact /><button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)} title="外观设置"><Palette /></button><HubUserChip user={user} /><button className="icon-button" type="button" onClick={onLogout} title="退出登录"><LogOut /></button>{languageSwitcher}</div>
+    </header>
+    <div className="siehub-content">
+      <button className="siehub-back" type="button" onClick={onBack}><ChevronLeft />返回 SIEHUB</button>
+      <section className="siehub-ultimate-hero">
+        <span className="siehub-module-icon tone-blue"><BookOpen /></span>
+        <div>
+          <p>SIEHUB / SIEBRIDGE</p>
+          <h1>SIEBridge 课程资源共享平台</h1>
+          <span>面向学生开放课程资料检索、上传与审核进度查询，审核后的资源会在这里集中展示。</span>
+        </div>
+      </section>
+      <SIEBridgeStudentPortal token={token} user={user} />
+    </div>
+    <ThemePanel theme={theme} />
+  </main>
+);
 
 const HubInlineReturnButton = ({ onClick }) => (
   <button className="hub-inline-return" type="button" onClick={onClick} title="返回 SIEHUB 模块总览">
@@ -2671,7 +2734,8 @@ export default function App() {
   if (!user) content = <LoginPage onLogin={login} onRegister={register} theme={theme} language={languageTools.language} languageSwitcher={renderLanguageSwitcher()} />;
   else if (appSurface === 'hub') content = <SIEHUBHome user={user} token={token} theme={theme} onOpenModule={openModule} onLogout={logout} language={languageTools.language} languageSwitcher={renderLanguageSwitcher()} />;
   else if (appSurface === 'ultimateOrganization') content = <UltimateOrganizationWindow user={user} token={token} theme={theme} onBack={() => setAppSurface('hub')} onLogout={logout} languageSwitcher={renderLanguageSwitcher()} />;
-  else if (appSurface === 'department') content = <DepartmentPlaceholder module={activeModule} user={user} token={token} theme={theme} onBack={() => setAppSurface('hub')} onOpenSIEVOX={() => { setActiveModule(SIEHUB_MODULES.find(module => module.key === 'student_rights')); setAppSurface('sievox'); }} onLogout={logout} languageSwitcher={renderLanguageSwitcher()} language={languageTools.language} />;
+  else if (appSurface === 'department') content = <DepartmentPlaceholder module={activeModule} user={user} token={token} theme={theme} onBack={() => setAppSurface('hub')} onOpenSIEVOX={() => { setActiveModule(SIEHUB_MODULES.find(module => module.key === 'student_rights')); setAppSurface('sievox'); }} onOpenSIEBridge={() => { setActiveModule(SIEHUB_MODULES.find(module => module.key === 'academic_technology')); setAppSurface('siebridge'); }} onLogout={logout} languageSwitcher={renderLanguageSwitcher()} language={languageTools.language} />;
+  else if (appSurface === 'siebridge') content = <SIEBridgeWindow user={user} token={token} theme={theme} onBack={() => setAppSurface('hub')} onLogout={logout} languageSwitcher={renderLanguageSwitcher()} />;
   else if (user.isUltimateAdmin && portalView === 'student') {
     content = <DashboardPage user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} theme={theme} portalView={portalView} onPortalChange={setPortalView} onBackToHub={() => setAppSurface('hub')} renderLanguageSwitcher={renderLanguageSwitcher} language={languageTools.language} />;
   } else if (user.role === 'admin' || user.role === 'superadmin') {

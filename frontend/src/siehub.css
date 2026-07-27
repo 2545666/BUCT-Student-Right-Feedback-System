@@ -17,6 +17,7 @@
 
 .siehub-brand, .siehub-topbar-actions, .siehub-user-chip, .siehub-hero-meta,
 .siehub-hero-note, .siehub-group-heading, .siehub-governance-note, .siehub-back,
+.siehub-notice-head,
 .siehub-department-hero, .siehub-bridge-card { display: flex; align-items: center; }
 
 .siehub-brand { gap: 11px; min-width: 180px; }
@@ -82,6 +83,43 @@
 .siehub-hero-orbit { position: absolute; right: 7%; bottom: -57px; width: 220px; height: 220px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.35); border-radius: 50%; color: rgba(255,255,255,.88); font-size: 20px; font-weight: 900; letter-spacing: .12em; }
 .siehub-hero-orbit::before, .siehub-hero-orbit::after, .siehub-hero-orbit i { content: ''; position: absolute; border: 1px solid rgba(255,255,255,.22); border-radius: 50%; }
 .siehub-hero-orbit::before { inset: 19px; }.siehub-hero-orbit::after { inset: 48px; }.siehub-hero-orbit i:nth-of-type(1) { width: 10px; height: 10px; top: 15px; background: #fff; }.siehub-hero-orbit i:nth-of-type(2) { width: 7px; height: 7px; left: 11px; top: 93px; background: #fff; }.siehub-hero-orbit i:nth-of-type(3) { width: 6px; height: 6px; right: 34px; bottom: 29px; background: #fff; }
+
+.siehub-notice-center {
+  margin-top: 22px;
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 18%, var(--line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--paper) 88%, var(--theme-container));
+}
+.siehub-notice-head { gap: 11px; margin-bottom: 12px; }
+.siehub-notice-head > span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--theme-primary);
+  background: color-mix(in srgb, var(--theme-container) 75%, transparent);
+}
+.siehub-notice-head svg { width: 17px; height: 17px; }
+.siehub-notice-head p { margin: 0 0 2px; color: var(--muted); font-size: 9px; letter-spacing: .12em; font-weight: 800; }
+.siehub-notice-head h2 { margin: 0; font-size: 19px; letter-spacing: 0; }
+.siehub-notice-head b { margin-left: auto; color: var(--theme-primary); font-size: 12px; }
+.siehub-notice-list { display: grid; gap: 8px; }
+.siehub-notice-list article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+.siehub-notice-list article:first-child { border-top: 0; }
+.siehub-notice-list article div { min-width: 0; display: grid; gap: 3px; }
+.siehub-notice-list article span { color: var(--theme-primary); font-size: 10px; font-weight: 900; }
+.siehub-notice-list article strong { overflow-wrap: anywhere; font-size: 14px; }
+.siehub-notice-list article p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.siehub-notice-list article time { color: var(--muted); font-size: 11px; font-weight: 800; white-space: nowrap; }
 
 .siehub-module-group { margin-top: 42px; }
 .siehub-group-heading { min-height: 42px; gap: 10px; margin-bottom: 14px; }
@@ -1986,11 +2024,29 @@ html[data-language="en"] .organization-framework-panel button {
   line-height: 1.7;
 }
 
+.dept-intro-page-hero.tone-dark {
+  color: #0f172a;
+}
+
+.dept-intro-page-hero.tone-dark p,
+.dept-intro-page-hero.tone-dark span {
+  color: rgba(15, 23, 42, .72);
+}
+
 .dept-intro-page-section {
   display: grid;
   gap: 12px;
   padding: 24px 0;
   border-bottom: 1px solid var(--line);
+}
+
+.dept-intro-page-section.has-background {
+  min-height: 220px;
+  align-content: end;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .dept-intro-page-section h2 {
@@ -2007,6 +2063,22 @@ html[data-language="en"] .organization-framework-panel button {
   font-size: 14px;
   line-height: 1.8;
   white-space: pre-wrap;
+}
+
+.dept-intro-page-section.tone-light h2 {
+  color: #fff;
+}
+
+.dept-intro-page-section.tone-light p {
+  color: rgba(255,255,255,.86);
+}
+
+.dept-intro-page-section.tone-dark h2 {
+  color: #0f172a;
+}
+
+.dept-intro-page-section.tone-dark p {
+  color: rgba(15, 23, 42, .76);
 }
 
 .dept-intro-page-section.media img,
@@ -2298,6 +2370,50 @@ html[data-language="en"] .organization-framework-panel button {
   line-height: 1.55;
   padding: 10px;
   resize: vertical;
+}
+
+.dept-intro-field input[type="range"] {
+  padding: 0;
+  accent-color: var(--theme-primary);
+}
+
+.dept-intro-background-editor {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--theme-container) 14%, var(--paper));
+}
+
+.dept-intro-tone-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.dept-intro-tone-toggle span {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.dept-intro-tone-toggle button {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--canvas);
+  color: var(--ink);
+  padding: 9px 10px;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.dept-intro-tone-toggle button.is-active {
+  border-color: color-mix(in srgb, var(--theme-primary) 42%, var(--line));
+  background: var(--theme-primary);
+  color: var(--theme-on-primary);
 }
 
 .dept-intro-upload-button {

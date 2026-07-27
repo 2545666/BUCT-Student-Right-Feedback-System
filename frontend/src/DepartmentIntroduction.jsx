@@ -22,19 +22,19 @@ const getText = (value, language = 'zh') => {
 };
 
 const DEPARTMENT_TITLE_EN = {
-  组织部: 'Organization Department',
-  宣传部: 'Publicity Department',
-  实践部: 'Practice Department',
-  志愿者工作部: 'Volunteer Service Department',
-  综合办公室: 'General Office',
-  学生权益部: 'Student Rights Department',
-  文体艺术部: 'Culture, Sports and Arts Department',
-  学术科技部: 'Academic Technology Department',
-  新媒体工作部: 'New Media Department'
+  organization: 'Organization Department',
+  publicity: 'Publicity Department',
+  practice: 'Practice Department',
+  volunteer_service: 'Volunteer Service Department',
+  general_office: 'General Office',
+  student_rights: 'Student Rights Department',
+  culture_sports_arts: 'Culture, Sports and Arts Department',
+  academic_technology: 'Academic Technology Department',
+  new_media: 'New Media Department'
 };
 
 const getModuleTitle = (module, language = 'zh') => {
-  if (language === 'en') return DEPARTMENT_TITLE_EN[module?.title] || module?.title || 'Department';
+  if (language === 'en') return DEPARTMENT_TITLE_EN[module?.key] || module?.title || 'Department';
   return module?.title || '部门';
 };
 
@@ -46,12 +46,18 @@ const createBlock = (type) => {
   if (type === 'hero') {
     base.data = {
       title: makeLocalized('部门介绍', 'Department Introduction'),
-      subtitle: makeLocalized('在这里展示部门职责、成员风采与学生服务。', 'Show responsibilities, team profile and student services here.')
+      subtitle: makeLocalized('在这里展示部门职责、成员风采与学生服务。', 'Show responsibilities, team profile and student services here.'),
+      backgroundImageUrl: '',
+      overlayOpacity: 0.45,
+      textTone: 'light'
     };
   } else if (type === 'text') {
     base.data = {
       title: makeLocalized('正文标题', 'Section Title'),
-      body: makeLocalized('请输入介绍内容。', 'Enter introduction content.')
+      body: makeLocalized('请输入介绍内容。', 'Enter introduction content.'),
+      backgroundImageUrl: '',
+      overlayOpacity: 0.18,
+      textTone: 'dark'
     };
   } else if (type === 'image') {
     base.data = {
@@ -89,7 +95,10 @@ const defaultContent = (module) => ({
       visible: true,
       data: {
         title: makeLocalized(module?.title || '部门介绍', getModuleTitle(module, 'en')),
-        subtitle: makeLocalized(module?.summary || '部门介绍页面正在建设中。', 'This department introduction page is being prepared.')
+        subtitle: makeLocalized(module?.summary || '部门介绍页面正在建设中。', 'This department introduction page is being prepared.'),
+        backgroundImageUrl: '',
+        overlayOpacity: 0.45,
+        textTone: 'light'
       }
     },
     createBlock('text')
@@ -107,12 +116,29 @@ const FieldPair = ({ label, value = {}, onChange, textarea = false, language = '
   );
 };
 
+const getBackgroundBlockProps = (block, defaultTone) => {
+  const url = block.data?.backgroundImageUrl || '';
+  const textTone = ['light', 'dark'].includes(block.data?.textTone) ? block.data.textTone : defaultTone;
+  const opacity = Number.isFinite(Number(block.data?.overlayOpacity)) ? Math.max(0, Math.min(0.9, Number(block.data.overlayOpacity))) : 0;
+  if (!url) return { className: `tone-${textTone}`, style: undefined };
+  const overlayColor = textTone === 'dark' ? '255, 255, 255' : '15, 23, 42';
+  return {
+    className: `has-background tone-${textTone}`,
+    style: {
+      backgroundImage: `linear-gradient(rgba(${overlayColor}, ${opacity}), rgba(${overlayColor}, ${opacity})), url("${url}")`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center'
+    }
+  };
+};
+
 const BlockPreview = ({ block, language = 'zh' }) => {
   if (!block?.visible) return null;
   const title = getText(block.data?.title, language);
   if (block.type === 'hero') {
+    const backgroundProps = getBackgroundBlockProps(block, 'light');
     return (
-      <section className="dept-intro-page-hero">
+      <section className={`dept-intro-page-hero ${backgroundProps.className}`} style={backgroundProps.style}>
         <p>SIEHUB / DEPARTMENT</p>
         <h1>{title}</h1>
         <span>{getText(block.data?.subtitle, language)}</span>
@@ -120,8 +146,9 @@ const BlockPreview = ({ block, language = 'zh' }) => {
     );
   }
   if (block.type === 'text') {
+    const backgroundProps = getBackgroundBlockProps(block, 'dark');
     return (
-      <section className="dept-intro-page-section">
+      <section className={`dept-intro-page-section ${backgroundProps.className}`} style={backgroundProps.style}>
         <h2>{title}</h2>
         <p>{getText(block.data?.body, language)}</p>
       </section>
@@ -332,7 +359,7 @@ export const DepartmentIntroductionEditor = ({ module, token, language = 'zh', o
     }
   };
 
-  const uploadMedia = async (block, file) => {
+  const uploadMedia = async (block, file, targetField = 'url') => {
     if (!file) return;
     setUploadingBlockId(block.id);
     setMessage('');
@@ -346,7 +373,7 @@ export const DepartmentIntroductionEditor = ({ module, token, language = 'zh', o
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.message || '上传失败');
-      updateBlock(block.id, current => ({ ...current, data: { ...current.data, url: data.media.url } }));
+      updateBlock(block.id, current => ({ ...current, data: { ...current.data, [targetField]: data.media.url } }));
       setMessage(isEnglish ? 'Media uploaded. Remember to save the draft.' : '媒体已上传，记得保存草稿。');
     } catch (error) {
       setMessage(error.message || '上传失败');
@@ -359,6 +386,28 @@ export const DepartmentIntroductionEditor = ({ module, token, language = 'zh', o
     if (!selectedBlock) return <div className="dept-intro-editor-empty">{isEnglish ? 'Select a block to edit.' : '选择一个区块后编辑内容。'}</div>;
     const block = selectedBlock;
     const patchData = (patch) => updateBlock(block.id, current => ({ ...current, data: { ...current.data, ...patch } }));
+    const renderBackgroundControls = () => (
+      <div className="dept-intro-background-editor">
+        <label className="dept-intro-field">
+          <span>Background image URL</span>
+          <input value={block.data.backgroundImageUrl || ''} onChange={event => patchData({ backgroundImageUrl: event.target.value })} placeholder="/uploads/department-intros/image.webp" />
+        </label>
+        <label className="dept-intro-upload-button">
+          <UploadCloud />
+          {uploadingBlockId === block.id ? 'Uploading...' : 'Upload background'}
+          <input type="file" accept="image/jpeg,image/png,image/webp" onChange={event => uploadMedia(block, event.target.files?.[0], 'backgroundImageUrl')} />
+        </label>
+        <label className="dept-intro-field">
+          <span>Overlay opacity</span>
+          <input type="range" min="0" max="0.9" step="0.05" value={block.data.overlayOpacity ?? (block.type === 'hero' ? 0.45 : 0.18)} onChange={event => patchData({ overlayOpacity: Number(event.target.value) })} />
+        </label>
+        <div className="dept-intro-tone-toggle">
+          <span>Text tone</span>
+          <button type="button" className={(block.data.textTone || (block.type === 'hero' ? 'light' : 'dark')) === 'light' ? 'is-active' : ''} onClick={() => patchData({ textTone: 'light' })}>Light</button>
+          <button type="button" className={(block.data.textTone || (block.type === 'hero' ? 'light' : 'dark')) === 'dark' ? 'is-active' : ''} onClick={() => patchData({ textTone: 'dark' })}>Dark</button>
+        </div>
+      </div>
+    );
     return (
       <div className="dept-intro-inspector">
         <div className="dept-intro-inspector-head">
@@ -372,6 +421,7 @@ export const DepartmentIntroductionEditor = ({ module, token, language = 'zh', o
         )}
         {block.type === 'hero' && <FieldPair label={isEnglish ? 'Subtitle' : '副标题'} value={block.data.subtitle} onChange={value => patchData({ subtitle: value })} textarea language={language} />}
         {block.type === 'text' && <FieldPair label={isEnglish ? 'Body' : '正文'} value={block.data.body} onChange={value => patchData({ body: value })} textarea language={language} />}
+        {(block.type === 'hero' || block.type === 'text') && renderBackgroundControls()}
         {(block.type === 'image' || block.type === 'video') && (
           <>
             <label className="dept-intro-upload-button">
