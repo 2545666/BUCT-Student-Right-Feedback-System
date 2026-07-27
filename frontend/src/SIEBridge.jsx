@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowUpRight, BookOpen, Check, Clock3, Download, Eye, FileText,
   Filter, Plus, Search, Send, Trash2, Upload, X
@@ -165,6 +165,7 @@ export const SIEBridgeStudentPortal = ({ token }) => {
   const [submitting, setSubmitting] = useState(false);
   const [preview, setPreview] = useState(null);
   const [message, setMessage] = useState('');
+  const detailRequestRef = useRef(0);
 
   const loadMeta = useCallback(async () => {
     const data = await apiJson('/siebridge/meta', token);
@@ -187,8 +188,13 @@ export const SIEBridgeStudentPortal = ({ token }) => {
 
   const loadCourseDetail = useCallback(async (course) => {
     if (!course) return;
+    const requestId = detailRequestRef.current + 1;
+    detailRequestRef.current = requestId;
+    setSelectedCourse(course);
+    setResources([]);
     const data = await apiJson(`/siebridge/courses/${course.id || course._id}`, token);
-    setSelectedCourse(data.course);
+    if (detailRequestRef.current !== requestId) return;
+    setSelectedCourse(data.course || course);
     setResources(data.resources || []);
   }, [token]);
 
@@ -289,7 +295,7 @@ export const SIEBridgeStudentPortal = ({ token }) => {
       <div className="siebridge-layout">
         <div className="siebridge-course-list">
           {courses.length ? courses.map(course => (
-            <button key={course.id || course._id} className={selectedCourse?.id === course.id ? 'is-active' : ''} type="button" onClick={() => loadCourseDetail(course)}>
+            <button key={course.id || course._id} className={(selectedCourse?.id || selectedCourse?._id) === (course.id || course._id) ? 'is-active' : ''} type="button" onClick={() => loadCourseDetail(course)}>
               <span>{course.code}</span>
               <strong>{course.name}</strong>
               <small>{course.courseNature} · {joinLabels(course.majors)} · {joinLabels(course.gradeLevels)}</small>
