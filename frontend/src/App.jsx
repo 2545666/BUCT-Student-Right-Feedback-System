@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import sieLogo from './assets/LOGO_1.png';
 import siehubLogo from './assets/SIEHUB_LOGO.png';
+import siebridgeLogo from './assets/SIEBridge_LOGO.png';
 import collegeLogo from './assets/SIE_LOGO.svg';
 import buctLogo from './assets/BUCT_LOGO_blue.png';
 import { API_BASE } from './api';
@@ -93,6 +94,39 @@ const AUTH_TOKEN_KEY = 'siehub_auth_token_v2';
 const LEGACY_AUTH_TOKEN_KEY = 'token';
 const PRIVACY_NOTICE_KEY = 'siehub_privacy_notice_v1';
 const LANGUAGE_KEY = 'siehub_language_v1';
+const SIEVOX_URL = import.meta.env.VITE_SIEVOX_URL || '';
+const SIEBRIDGE_URL = import.meta.env.VITE_SIEBRIDGE_URL || '';
+const SIEVOX_HOST = (() => {
+  try {
+    return SIEVOX_URL ? new URL(SIEVOX_URL).host.toLowerCase() : '';
+  } catch {
+    return '';
+  }
+})();
+const SIEBRIDGE_HOST = (() => {
+  try {
+    return SIEBRIDGE_URL ? new URL(SIEBRIDGE_URL).host.toLowerCase() : '';
+  } catch {
+    return '';
+  }
+})();
+const currentHost = typeof window !== 'undefined' ? window.location.host.toLowerCase() : '';
+const isCurrentHost = (targetHost) => Boolean(targetHost && currentHost === targetHost);
+const SIEHUB_NAMED_PATHS = {
+  sievox: '/rights',
+  siebridge: '/siebridge'
+};
+const getSurfaceFromPath = (pathname = '') => {
+  const normalized = String(pathname || '').replace(/\/+$/, '').toLowerCase() || '/';
+  if (normalized === '/rights') return 'sievox';
+  if (normalized === '/siebridge') return 'siebridge';
+  return '';
+};
+const getPathForSurface = (surface = '') => SIEHUB_NAMED_PATHS[surface] || '/';
+const getCurrentPathSurface = () => {
+  if (typeof window === 'undefined') return '';
+  return getSurfaceFromPath(window.location.pathname);
+};
 
 const EN_TRANSLATIONS = {
   'SIEBridge 课程资源共享平台': 'SIEBridge Course Resource Sharing Platform',
@@ -951,7 +985,7 @@ const useAuth = () => {
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ studentId, password })
+      body: JSON.stringify({ studentId, password, remember })
     });
     const data = await res.json();
     if (data.success) {
@@ -1054,7 +1088,11 @@ const ThemePanel = ({ theme }) => (
 const LoginPage = ({ onLogin, onRegister, theme, language = 'zh', languageSwitcher = null }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
-  const [remember, setRemember] = useState(false);
+  const isMobileClient = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 768px)').matches || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  }, []);
+  const [remember, setRemember] = useState(isMobileClient);
   const [privacyAccepted, setPrivacyAccepted] = useState(() => localStorage.getItem(PRIVACY_NOTICE_KEY) === 'accepted');
   const [privacyOpen, setPrivacyOpen] = useState(() => localStorage.getItem(PRIVACY_NOTICE_KEY) !== 'accepted');
   const [form, setForm] = useState({ studentId: '', password: '', confirmPassword: '', name: '', email: '', phone: '', emailCode: '' });
@@ -1197,7 +1235,7 @@ const LoginPage = ({ onLogin, onRegister, theme, language = 'zh', languageSwitch
     if (!isLogin && !/^\d{6}$/.test(form.emailCode.trim())) return setError('请输入6位邮箱验证码。');
     setLoading(true);
     try {
-      const data = isLogin ? await onLogin(form.studentId, form.password, remember) : await onRegister(form);
+      const data = isLogin ? await onLogin(form.studentId, form.password, remember || isMobileClient) : await onRegister(form);
       if (!data.success) setError(data.message || (isLogin ? '登录失败' : '注册失败'));
       else if (!isLogin) {
         setIsLogin(true);
@@ -1381,11 +1419,38 @@ const SIEHUB_MODULES = [
   { key: 'practice', organization: 'youth_league', title: '实践部', summary: '社会实践、项目协作与成长记录', icon: Flag, tone: 'green' },
   { key: 'volunteer_service', organization: 'youth_league', title: '志愿者工作部', summary: '志愿服务、时长管理与项目调度', icon: HeartHandshake, tone: 'red' },
   { key: 'general_office', organization: 'student_union', title: '综合办公室', summary: '组织运转、会议事项与综合协调', icon: Building2, tone: 'slate' },
-  { key: 'student_rights', organization: 'student_union', title: '学生权益部', summary: '学生权益反馈、诉求跟进与服务闭环', icon: Scale, tone: 'blue', logo: sieLogo },
+  { key: 'student_rights', organization: 'student_union', title: '学生权益部', summary: '学生权益反馈、诉求跟进与服务闭环', icon: Scale, tone: 'blue', logo: sieLogo, entryLabel: 'SIEVOX学生权益反馈系统' },
   { key: 'culture_sports_arts', organization: 'student_union', title: '文体艺术部', summary: '文体活动、艺术项目与赛事组织', icon: Trophy, tone: 'purple' },
-  { key: 'academic_technology', organization: 'student_union', title: '学术科技部', summary: '学术活动、科技竞赛与创新服务', icon: Wrench, tone: 'teal' },
+  { key: 'academic_technology', organization: 'student_union', title: '学术科技部', summary: '学术活动、科技竞赛与创新服务', icon: Wrench, tone: 'teal', logo: siebridgeLogo, entryLabel: 'SIEBridge课程资源共享平台' },
   { key: 'new_media', organization: 'student_union', title: '新媒体工作部', summary: '内容矩阵、平台运营与视觉创作', icon: Paintbrush, tone: 'pink' }
 ];
+
+const CULTURE_SPORTS_ARTS_INTRO_URL = '/culture-sports-arts/';
+
+const SIEHUB_HISTORY_MARKER = 'siehub-navigation-v1';
+const SIEHUB_APP_SURFACES = new Set(['hub', 'ultimateOrganization', 'department', 'sievox', 'siebridge', 'my']);
+const SIEHUB_PORTAL_VIEWS = new Set(['student', 'admin', 'superadmin']);
+
+const createSIEHUBHistoryState = (appSurface = 'hub', activeModule = null, portalView = 'superadmin') => ({
+  marker: SIEHUB_HISTORY_MARKER,
+  appSurface: SIEHUB_APP_SURFACES.has(appSurface) ? appSurface : 'hub',
+  activeModuleKey: activeModule?.key || null,
+  portalView: SIEHUB_PORTAL_VIEWS.has(portalView) ? portalView : 'superadmin'
+});
+
+const isSIEHUBHistoryState = (state) => state?.marker === SIEHUB_HISTORY_MARKER;
+const findSIEHUBModuleByKey = (key) => SIEHUB_MODULES.find(module => module.key === key) || null;
+const openExternalOrFallback = (url, fallback) => {
+  if (url) {
+    window.location.assign(url);
+    return true;
+  }
+  if (typeof fallback === 'function') {
+    fallback();
+    return true;
+  }
+  return false;
+};
 
 const DEFAULT_VOLUNTEER_PERFORMANCE_POLICY = {
   sourceProduct: 'SIEVOX',
@@ -1425,10 +1490,57 @@ const canManageDepartmentNotice = (user, module) => {
   return user?.role === 'superadmin' && ['department_head', 'youth_league_cadre', 'presidium_member', 'youth_league_deputy_secretary'].includes(user?.positionTitle);
 };
 
+const canManageDepartmentMembers = (user, module) => {
+  if (user?.isUltimateAdmin) return true;
+  const matchedAccess = getModuleAccess(user, module);
+  if (matchedAccess) return matchedAccess.capabilities?.includes('manage_department_members');
+  return user?.role === 'superadmin' && ['department_head', 'youth_league_cadre', 'presidium_member', 'youth_league_deputy_secretary'].includes(user?.positionTitle);
+};
+
+const canManageDepartmentAccounts = (user, module) => {
+  if (user?.isUltimateAdmin) return true;
+  const matchedAccess = getModuleAccess(user, module);
+  if (matchedAccess) return matchedAccess.capabilities?.includes('manage_department_accounts');
+  return user?.role === 'superadmin' && ['department_head', 'youth_league_cadre', 'presidium_member', 'youth_league_deputy_secretary'].includes(user?.positionTitle);
+};
+
 const canReviewSIEBridgeContent = (user) => {
   if (user?.isUltimateAdmin) return true;
   const matchedAccess = getModuleAccess(user, { key: 'academic_technology', organization: 'student_union' });
   return Boolean(matchedAccess?.capabilities?.includes('review_siebridge_content'));
+};
+
+const canManageSIEVOXContent = (user) => {
+  if (user?.isUltimateAdmin) return true;
+  const matchedAccess = getModuleAccess(user, { key: 'student_rights', organization: 'student_union' });
+  return Boolean(
+    matchedAccess?.accessLevel === 'manage' ||
+    matchedAccess?.capabilities?.some(capability => [
+      'enter_manage_portal',
+      'manage_module',
+      'manage_department_members',
+      'manage_department_accounts',
+      'manage_department_performance',
+      'manage_volunteer_performance_policy'
+    ].includes(capability))
+  );
+};
+
+const isSIEVOXSuperAdminRole = (user) => {
+  if (user?.isUltimateAdmin) return true;
+  const matchedAccess = getModuleAccess(user, { key: 'student_rights', organization: 'student_union' });
+  const hasStudentRightsScope = Boolean(matchedAccess?.accessLevel === 'manage');
+  return hasStudentRightsScope && [
+    'department_head',
+    'presidium_member',
+    'youth_league_deputy_secretary'
+  ].includes(user?.positionTitle);
+};
+
+const getDefaultSIEVOXPortalView = (user) => {
+  if (isSIEVOXSuperAdminRole(user)) return 'superadmin';
+  if (canManageSIEVOXContent(user)) return 'admin';
+  return 'student';
 };
 
 const DepartmentModuleMark = ({ module, showLogo = true }) => {
@@ -1538,7 +1650,7 @@ const DepartmentPerformancePolicyCard = ({ module, policy, canEdit, loading, sav
     {message && <div className="siehub-policy-message">{message}</div>}
     {editing && (
       <div className="siehub-policy-editor">
-        <label>
+        <label className="siehub-latest-filter">
           <span>制度标题</span>
           <input value={draft.title} onChange={event => setDraft(current => ({ ...current, title: event.target.value }))} />
         </label>
@@ -1826,6 +1938,174 @@ const DepartmentPerformanceWorkbench = ({ module, token, canManage }) => {
   );
 };
 
+const DepartmentAccountWorkspace = ({ module, token, canManage, language = 'zh' }) => {
+  const [accounts, setAccounts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const refreshAccounts = useCallback(async () => {
+    if (!module?.organization || !module?.key || !token || !canManage) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/hub/departments/${module.organization}/${module.key}/accounts`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || '获取部门账号失败');
+      setAccounts(Array.isArray(data.users) ? data.users : []);
+    } catch (error) {
+      setMessage(error.message || '获取部门账号失败');
+      setAccounts([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [module?.organization, module?.key, token, canManage]);
+
+  useEffect(() => { refreshAccounts(); }, [refreshAccounts]);
+
+  const toggleActive = async (account) => {
+    try {
+      const res = await fetch(`${API_BASE}/hub/departments/${module.organization}/${module.key}/accounts/${account._id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ isActive: !account.isActive })
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || '更新账号状态失败');
+      await refreshAccounts();
+    } catch (error) {
+      setMessage(error.message || '更新账号状态失败');
+    }
+  };
+
+  if (!canManage) return null;
+
+  return (
+    <section className="siehub-module-workspace">
+      <div className="siehub-module-workspace-head">
+        <div>
+          <p>DEPARTMENT ACCOUNTS</p>
+          <h2>账号管理</h2>
+          <span>仅显示本部门账号，可在此启停账号。</span>
+        </div>
+        <button type="button" onClick={refreshAccounts} disabled={loading}>{loading ? '同步中' : '刷新'}</button>
+      </div>
+      {message && <div className="siehub-policy-message">{message}</div>}
+      <div className="siehub-account-list">
+        {accounts.map(account => (
+          <article key={account._id}>
+            <span className="siehub-avatar">{account.avatarUrl ? <img src={account.avatarUrl} alt="" /> : firstChar(account.name)}</span>
+            <div>
+              <strong>{account.name}</strong>
+              <small>{account.studentId} · {account.identityLabel || '-'}</small>
+              <small>{account.departmentLabel || '-'} · {account.isActive ? '启用' : '停用'}</small>
+            </div>
+            <div className="siehub-account-actions">
+              <button type="button" className="outline-button" onClick={() => toggleActive(account)}>{account.isActive ? '停用' : '启用'}</button>
+            </div>
+          </article>
+        ))}
+        {accounts.length === 0 && <p className="siehub-empty-text">暂无部门账号。</p>}
+      </div>
+    </section>
+  );
+};
+
+const DepartmentMemberWorkspace = ({ module, token, canManage, language = 'zh' }) => {
+  const [currentMembers, setCurrentMembers] = useState([]);
+  const [cohorts, setCohorts] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const refreshMembers = useCallback(async () => {
+    if (!module?.organization || !module?.key || !token || !canManage) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/hub/departments/${module.organization}/${module.key}/members`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || '获取部门成员失败');
+      setCurrentMembers(Array.isArray(data.current) ? data.current : []);
+      setCohorts(Array.isArray(data.cohorts) ? data.cohorts : []);
+    } catch {
+      setCurrentMembers([]);
+      setCohorts([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [module?.organization, module?.key, token, canManage]);
+
+  useEffect(() => { refreshMembers(); }, [refreshMembers]);
+
+  if (!canManage) return null;
+
+  return (
+    <section className="siehub-module-workspace">
+      <div className="siehub-module-workspace-head">
+        <div>
+          <p>DEPARTMENT MEMBERS</p>
+          <h2>成员管理</h2>
+          <span>仅展示本部门成员与历届归档信息；届次归档操作只保留在终极管理员端。</span>
+        </div>
+        <button type="button" onClick={refreshMembers} disabled={loading}>{loading ? '同步中' : '刷新'}</button>
+      </div>
+      <section className="siehub-member-section">
+        <div className="siehub-member-section-head">
+          <strong>当前成员</strong>
+          <span>{currentMembers.length} 人</span>
+        </div>
+        <div className="siehub-member-grid">
+          {currentMembers.map(member => (
+            <article key={member.id || member.userId}>
+              <span className="siehub-avatar">{member.avatarUrl ? <img src={member.avatarUrl} alt="" /> : firstChar(member.name)}</span>
+              <div>
+                <strong>{member.name}</strong>
+                <small>{member.studentId}</small>
+                <small>{member.identityLabel || member.memberRoleLabel || '-'}</small>
+                {member.showPerformance && <small>绩效总成绩：{member.performanceSnapshot?.total ?? 0}</small>}
+              </div>
+            </article>
+          ))}
+          {currentMembers.length === 0 && <p className="siehub-empty-text">暂无当前成员。</p>}
+        </div>
+      </section>
+      <section className="siehub-member-section">
+        <div className="siehub-member-section-head">
+          <strong>历届成员归档</strong>
+          <span>{cohorts.reduce((total, group) => total + (group.members?.length || 0), 0)} 人</span>
+        </div>
+        <div className="siehub-cohort-list">
+          {cohorts.map(group => (
+            <article key={group.cohort?.id || group.cohort?.name} className="siehub-cohort-card">
+              <header>
+                <div>
+                  <strong>{group.cohort?.name || '未命名届次'}</strong>
+                  <small>{group.cohort?.semesters?.length ? group.cohort.semesters.join(' / ') : '未绑定绩效学期'}</small>
+                </div>
+                <span>{group.members?.length || 0} 人</span>
+              </header>
+              <div className="siehub-member-grid compact">
+                {(group.members || []).map(member => (
+                  <article key={member.id || `${group.cohort?.id}-${member.studentId}`}>
+                    <span className="siehub-avatar">{member.avatarUrl ? <img src={member.avatarUrl} alt="" /> : firstChar(member.name)}</span>
+                    <div>
+                      <strong>{member.name}</strong>
+                      <small>{member.studentId}</small>
+                      <small>{member.identityLabel || member.memberRoleLabel || '-'}</small>
+                      {member.showPerformance && <small>绩效总成绩：{member.performanceSnapshot?.total ?? 0}</small>}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </article>
+          ))}
+          {cohorts.length === 0 && <p className="siehub-empty-text">暂无历届归档成员。</p>}
+        </div>
+      </section>
+    </section>
+  );
+};
+
 const getAccessibleModules = (user) => {
   if (user?.isUltimateAdmin) return SIEHUB_MODULES;
 
@@ -1843,11 +2123,206 @@ const getAccessibleModules = (user) => {
 
 const HubUserChip = ({ user }) => (
   <div className="siehub-user-chip" aria-label="当前登录身份">
-    <span className="siehub-avatar">{firstChar(user?.name)}</span>
+    <span className="siehub-avatar">{user?.avatarUrl ? <img src={user.avatarUrl} alt="" /> : firstChar(user?.name)}</span>
     <span><strong>{user?.name}</strong><small>{user?.studentId}</small></span>
     <RoleTag user={user} />
   </div>
 );
+
+const canViewMySecurityTools = (user = {}) =>
+  Boolean(
+    user?.isUltimateAdmin ||
+    (user?.role === 'superadmin' && (!user?.positionTitle || user?.positionTitle === 'student')) ||
+    ['presidium_member', 'youth_league_deputy_secretary'].includes(user?.positionTitle)
+  );
+
+const SIEHUBMobileDock = ({ active = 'home', onHome, onMy }) => (
+  <nav className="siehub-mobile-dock" aria-label="SIEHUB mobile navigation">
+    <button type="button" className={active === 'home' ? 'is-active' : ''} onClick={onHome}><House /><span>首页</span></button>
+    <button type="button" className={active === 'my' ? 'is-active' : ''} onClick={onMy}><UserRound /><span>账号设置</span></button>
+  </nav>
+);
+
+const MyProfileWindow = ({ user, token, theme, onBack, onOpenMy = () => {}, onLogout, onRefreshUser, languageSwitcher = null }) => {
+  const [profile, setProfile] = useState({ name: user?.name || '', studentId: user?.studentId || '', email: user?.email || '', phone: user?.phone || '' });
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [resetForm, setResetForm] = useState({ studentId: '', newPassword: '', confirmPassword: '' });
+  const [logs, setLogs] = useState([]);
+  const [message, setMessage] = useState('');
+  const [saving, setSaving] = useState(false);
+  const showSecurity = canViewMySecurityTools(user);
+
+  useEffect(() => {
+    setProfile({ name: user?.name || '', studentId: user?.studentId || '', email: user?.email || '', phone: user?.phone || '' });
+  }, [user?.name, user?.studentId, user?.email, user?.phone]);
+
+  const refreshLogs = useCallback(async () => {
+    if (!showSecurity || !token) return;
+    try {
+      const res = await fetch(`${API_BASE}/my/login-logs`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (data.success) setLogs(data.logs || []);
+    } catch {
+      setLogs([]);
+    }
+  }, [showSecurity, token]);
+
+  useEffect(() => { refreshLogs(); }, [refreshLogs]);
+
+  const saveProfile = async (event) => {
+    event.preventDefault();
+    setSaving(true);
+    setMessage('');
+    try {
+      const res = await fetch(`${API_BASE}/auth/profile`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(profile)
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || '资料保存失败');
+      await onRefreshUser?.();
+      setMessage('资料已更新');
+    } catch (error) {
+      setMessage(error.message || '资料保存失败');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const changePassword = async (event) => {
+    event.preventDefault();
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setMessage('两次输入的新密码不一致');
+      return;
+    }
+    setSaving(true);
+    setMessage('');
+    try {
+      const res = await fetch(`${API_BASE}/auth/password`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ currentPassword: passwordForm.currentPassword, newPassword: passwordForm.newPassword })
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || '密码修改失败');
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setMessage('密码已更新');
+    } catch (error) {
+      setMessage(error.message || '密码修改失败');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const uploadAvatar = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setSaving(true);
+    setMessage('');
+    try {
+      const formData = new FormData();
+      formData.append('avatar', file);
+      const res = await fetch(`${API_BASE}/auth/avatar`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || '头像上传失败');
+      await onRefreshUser?.();
+      setMessage('头像已更新');
+    } catch (error) {
+      setMessage(error.message || '头像上传失败');
+    } finally {
+      setSaving(false);
+      event.target.value = '';
+    }
+  };
+
+  const resetUserPassword = async (event) => {
+    event.preventDefault();
+    if (!resetForm.studentId.trim()) return setMessage('请输入需要重置密码的学号');
+    if (resetForm.newPassword !== resetForm.confirmPassword) return setMessage('两次输入的新密码不一致');
+    if (resetForm.newPassword.length < 6) return setMessage('新密码至少需要6位');
+    setSaving(true);
+    setMessage('');
+    try {
+      const res = await fetch(`${API_BASE}/admin/users/${encodeURIComponent(resetForm.studentId.trim())}/reset-password`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ newPassword: resetForm.newPassword })
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || '密码重置失败');
+      setResetForm({ studentId: '', newPassword: '', confirmPassword: '' });
+      setMessage(data.message || '密码已重置');
+    } catch (error) {
+      setMessage(error.message || '密码重置失败');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return <main className="siehub-shell siehub-my-shell">
+    <header className="siehub-topbar">
+      <div className="siehub-brand"><span className="siehub-brand-mark"><img src={siehubLogo} alt="SIEHUB" /><i></i></span><div><strong>SIEHUB</strong><small>ACCOUNT SETTINGS</small></div></div>
+      <div className="siehub-topbar-actions"><ThemeModeButtons theme={theme} compact /><button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)}><Palette /></button><HubUserChip user={user} /><button className="icon-button" type="button" onClick={onOpenMy} title="账号设置"><UserRound /></button><button className="icon-button" type="button" onClick={onLogout} title="退出登录"><LogOut /></button>{languageSwitcher}</div>
+    </header>
+    <div className="siehub-content">
+      <button className="siehub-back" type="button" onClick={onBack}><ChevronLeft />返回 SIEHUB</button>
+      <section className="siehub-my-hero">
+        <span className="siehub-avatar siehub-my-avatar">{user?.avatarUrl ? <img src={user.avatarUrl} alt="" /> : firstChar(user?.name)}</span>
+        <div><p>ACCOUNT SETTINGS</p><h1>账号设置</h1><span>{user?.identityLabel || '学生账号'} · {user?.studentId}</span></div>
+        <label className="siehub-avatar-upload"><ImagePlus /><span>更换头像</span><input type="file" accept="image/png,image/jpeg,image/webp" onChange={uploadAvatar} /></label>
+      </section>
+      {message && <div className="siehub-policy-message">{message}</div>}
+      <div className="siehub-my-grid">
+        <form className="siehub-my-card" onSubmit={saveProfile}>
+          <div className="siehub-my-card-head"><IdCard /><div><h2>账号信息</h2><p>更新姓名、邮箱、手机号等基础信息。</p></div></div>
+          <label><span>姓名</span><input value={profile.name} onChange={event => setProfile({ ...profile, name: event.target.value })} required /></label>
+          <label><span>学号</span><input value={profile.studentId} onChange={event => setProfile({ ...profile, studentId: event.target.value })} required /></label>
+          <label><span>邮箱</span><input type="email" value={profile.email} onChange={event => setProfile({ ...profile, email: event.target.value })} required /></label>
+          <label><span>手机号</span><input value={profile.phone} onChange={event => setProfile({ ...profile, phone: event.target.value })} /></label>
+          <button className="primary-button" type="submit" disabled={saving}>保存信息</button>
+        </form>
+        <form className="siehub-my-card" onSubmit={changePassword}>
+          <div className="siehub-my-card-head"><KeyRound /><div><h2>密码修改</h2><p>使用当前密码校验后设置新密码。</p></div></div>
+          <label><span>当前密码</span><input type="password" value={passwordForm.currentPassword} onChange={event => setPasswordForm({ ...passwordForm, currentPassword: event.target.value })} required /></label>
+          <label><span>新密码</span><input type="password" value={passwordForm.newPassword} onChange={event => setPasswordForm({ ...passwordForm, newPassword: event.target.value })} required /></label>
+          <label><span>确认新密码</span><input type="password" value={passwordForm.confirmPassword} onChange={event => setPasswordForm({ ...passwordForm, confirmPassword: event.target.value })} required /></label>
+          <button className="primary-button" type="submit" disabled={saving}>修改密码</button>
+        </form>
+        {showSecurity && (
+          <>
+            <form className="siehub-my-card" onSubmit={resetUserPassword}>
+              <div className="siehub-my-card-head"><ShieldCheck /><div><h2>密码重置</h2><p>仅超级管理员、主席/团副与终极管理员可使用。</p></div></div>
+              <label><span>目标学号</span><input value={resetForm.studentId} onChange={event => setResetForm({ ...resetForm, studentId: event.target.value })} required /></label>
+              <label><span>新密码</span><input type="password" value={resetForm.newPassword} onChange={event => setResetForm({ ...resetForm, newPassword: event.target.value })} required /></label>
+              <label><span>确认新密码</span><input type="password" value={resetForm.confirmPassword} onChange={event => setResetForm({ ...resetForm, confirmPassword: event.target.value })} required /></label>
+              <button className="primary-button" type="submit" disabled={saving}>重置密码</button>
+            </form>
+            <section className="siehub-my-card siehub-login-log-card">
+              <div className="siehub-my-card-head"><Clock3 /><div><h2>登录日志</h2><p>仅超级管理员、主席/团副与终极管理员可查看。</p></div></div>
+              <button className="outline-button" type="button" onClick={refreshLogs}>刷新日志</button>
+              <div className="siehub-login-log-list">
+                {logs.length === 0 ? <p className="siehub-empty-text">暂无登录日志。</p> : logs.map(item => (
+                  <article key={item.id}>
+                    <b className={item.success ? 'success' : 'danger'}>{item.success ? '成功' : '失败'}</b>
+                    <span>{new Date(item.createdAt).toLocaleString()}</span>
+                    <small>{item.ip || 'unknown'} · {item.reason || '-'}</small>
+                  </article>
+                ))}
+              </div>
+            </section>
+          </>
+        )}
+      </div>
+    </div>
+    <SIEHUBMobileDock active="my" onHome={onBack} onMy={() => {}} />
+    <ThemePanel theme={theme} />
+  </main>;
+};
 
 const pickLocalizedNoticeText = (value = {}, language = 'zh') =>
   (language === 'en' ? value.en || value.zh : value.zh || value.en) || '';
@@ -1858,6 +2333,43 @@ const formatNoticeDate = (value, language = 'zh') => {
     month: 'short',
     day: 'numeric'
   }).format(new Date(value));
+};
+
+const formatNoticeFilterDate = (value) => value || '';
+
+const NoticeDateField = ({ value, onChange, language = 'zh', kind = 'start' }) => {
+  const inputRef = useRef(null);
+  const isStart = kind === 'start';
+  const label = language === 'en'
+    ? (isStart ? 'Start date' : 'End date')
+    : (isStart ? '选择起始日期' : '选择终止日期');
+
+  const openDatePicker = (event) => {
+    event.preventDefault();
+    const input = inputRef.current;
+    if (!input) return;
+    if (typeof input.showPicker === 'function') {
+      try {
+        input.showPicker();
+        return;
+      } catch (error) {
+        // Some mobile browsers expose showPicker but reject it; fall back below.
+      }
+    }
+    input.focus();
+    input.click();
+  };
+
+  return (
+    <label className="siehub-date-field" role="button" tabIndex={0} onClick={openDatePicker} onKeyDown={event => {
+      if (event.key === 'Enter' || event.key === ' ') openDatePicker(event);
+    }}>
+      <span className={cls('siehub-date-field-display', !value && 'is-placeholder')}>
+        {value ? formatNoticeFilterDate(value) : label}
+      </span>
+      <input ref={inputRef} type="date" value={value} onClick={event => event.stopPropagation()} onChange={event => onChange(event.target.value)} aria-label={label} />
+    </label>
+  );
 };
 
 const noticeDepartmentOptions = () => SIEHUB_MODULES
@@ -1892,9 +2404,239 @@ const localizedFieldPatch = (draft, field, languageKey, value) => ({
   [field]: { ...(draft[field] || {}), [languageKey]: value }
 });
 
+const noticeIdentity = (notice) => String(notice?.id || notice?._id || notice?.sourceExternalId || '');
+const noticeReadStorageKey = (user, fixedModule = null) => {
+  const userKey = user?.id || user?._id || user?.studentId || 'guest';
+  const moduleKey = fixedModule ? `${fixedModule.organization}:${fixedModule.key}` : 'hub';
+  return `siehub_notice_reads_v1:${userKey}:${moduleKey}`;
+};
+
+const readNoticeReadIds = (key) => {
+  try {
+    const raw = localStorage.getItem(key);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeNoticeReadIds = (key, ids) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(Array.from(ids)));
+  } catch {
+    // Ignore storage errors so the notice center still works in private mode.
+  }
+};
+
+const NoticeDetailPage = ({ notice, language = 'zh', onBack }) => {
+  const title = pickLocalizedNoticeText(notice?.title, language) || (language === 'en' ? 'Untitled notice' : '未命名通知');
+  const summary = pickLocalizedNoticeText(notice?.summary, language);
+  const body = pickLocalizedNoticeText(notice?.body, language);
+
+  return (
+    <section className="siehub-notice-detail-page">
+      <button className="siehub-back" type="button" onClick={onBack}><ChevronLeft />{language === 'en' ? 'Back to notices' : '返回通知公告'}</button>
+      <article className="siehub-notice-detail-card">
+        {notice?.coverImageUrl && <img className="siehub-notice-detail-cover" src={notice.coverImageUrl} alt="" />}
+        <header>
+          <p>{notice?.organizationLabel} · {notice?.departmentLabel} · {formatNoticeDate(notice?.publishedAt, language)}</p>
+          <h2>{title}</h2>
+          {summary && <span>{summary}</span>}
+        </header>
+        <div className="siehub-notice-detail-body">
+          {body ? body.split(/\r?\n/).filter(Boolean).map((paragraph, index) => (
+            <p key={`${noticeIdentity(notice)}-${index}`}>{paragraph}</p>
+          )) : (
+            <p className="siehub-empty-text">{language === 'en' ? 'No body content has been added for this notice.' : '该通知暂未填写正文。'}</p>
+          )}
+        </div>
+        {notice?.sourceUrl && (
+          <footer>
+            <a href={notice.sourceUrl} target="_blank" rel="noreferrer">
+              {language === 'en' ? 'Open attached link' : '打开附加链接'}
+              <ArrowUpRight />
+            </a>
+          </footer>
+        )}
+      </article>
+    </section>
+  );
+};
+
+const SIEHUBNoticePortal = ({ token, language = 'zh', fixedModule = null, user = null }) => {
+  const [news, setNews] = useState([]);
+  const [notices, setNotices] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedNotice, setSelectedNotice] = useState(null);
+  const [filters, setFilters] = useState({
+    departmentKey: fixedModule ? `${fixedModule.organization}:${fixedModule.key}` : '',
+    dateFrom: '',
+    dateTo: '',
+    latestOnly: false
+  });
+  const departments = useMemo(noticeDepartmentOptions, []);
+  const readStorageKey = useMemo(() => noticeReadStorageKey(user, fixedModule), [user?.id, user?._id, user?.studentId, fixedModule?.organization, fixedModule?.key]);
+  const [readNoticeIds, setReadNoticeIds] = useState(() => new Set(readNoticeReadIds(readStorageKey)));
+
+  useEffect(() => {
+    setReadNoticeIds(new Set(readNoticeReadIds(readStorageKey)));
+  }, [readStorageKey]);
+
+  useEffect(() => {
+    if (fixedModule) {
+      setFilters(current => ({ ...current, departmentKey: `${fixedModule.organization}:${fixedModule.key}` }));
+    }
+  }, [fixedModule?.organization, fixedModule?.key]);
+
+  useEffect(() => {
+    if (!token) return undefined;
+    const controller = new AbortController();
+    const selected = departments.find(item => item.value === filters.departmentKey);
+    const noticeParams = new URLSearchParams({ source: 'manual' });
+    const newsParams = new URLSearchParams({ source: 'wechat_mp', limit: '6' });
+    if (filters.latestOnly) noticeParams.set('limit', '8');
+    if (selected) {
+      noticeParams.set('organization', selected.organization);
+      noticeParams.set('department', selected.department);
+    }
+    if (filters.dateFrom) noticeParams.set('dateFrom', filters.dateFrom);
+    if (filters.dateTo) noticeParams.set('dateTo', filters.dateTo);
+
+    setLoading(true);
+    Promise.all([
+      fetch(`${API_BASE}/hub/notices?${newsParams.toString()}`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }).then(res => res.ok ? res.json() : Promise.reject(new Error('news_fetch_failed'))),
+      fetch(`${API_BASE}/hub/notices?${noticeParams.toString()}`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }).then(res => res.ok ? res.json() : Promise.reject(new Error('notice_fetch_failed')))
+    ])
+      .then(([newsData, noticeData]) => {
+        setNews(Array.isArray(newsData.notices) ? newsData.notices : []);
+        setNotices(Array.isArray(noticeData.notices) ? noticeData.notices : []);
+      })
+      .catch(error => {
+        if (error.name !== 'AbortError') {
+          setNews([]);
+          setNotices([]);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [token, filters, departments]);
+
+  const unreadNoticeCount = notices.reduce((count, notice) => {
+    const id = noticeIdentity(notice);
+    return id && !readNoticeIds.has(id) ? count + 1 : count;
+  }, 0);
+
+  const markNoticeRead = (notice) => {
+    const id = noticeIdentity(notice);
+    if (!id || readNoticeIds.has(id)) return;
+    setReadNoticeIds(current => {
+      const next = new Set(current);
+      next.add(id);
+      writeNoticeReadIds(readStorageKey, next);
+      return next;
+    });
+  };
+
+  const openNotice = (notice) => {
+    markNoticeRead(notice);
+    setSelectedNotice(notice);
+  };
+
+  const featureNews = news[0];
+  const secondaryNews = news.slice(1, 6);
+
+  if (selectedNotice) {
+    return (
+      <section className="siehub-school-notice-center">
+        <NoticeDetailPage notice={selectedNotice} language={language} onBack={() => setSelectedNotice(null)} />
+      </section>
+    );
+  }
+
+  return (
+    <section className="siehub-school-notice-center">
+      <header className="siehub-school-notice-head">
+        <div>
+          <p>{language === 'en' ? 'SIEHUB MESSAGE CENTER' : 'SIEHUB 消息中心'}</p>
+          <h2>{language === 'en' ? 'News & Notices' : '新闻动态 · 通知公告'}</h2>
+        </div>
+        {unreadNoticeCount > 0 && <span className="siehub-unread-badge" aria-label={`未读消息 ${unreadNoticeCount}`}>{unreadNoticeCount > 99 ? '99+' : unreadNoticeCount}</span>}
+      </header>
+      <div className="siehub-notice-filters siehub-school-notice-filters">
+        <select
+          value={filters.departmentKey}
+          disabled={Boolean(fixedModule)}
+          onChange={event => setFilters(current => ({ ...current, departmentKey: event.target.value }))}
+        >
+          <option value="">{language === 'en' ? 'All departments' : '全部部门'}</option>
+          {departments.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
+        </select>
+        <NoticeDateField value={filters.dateFrom} language={language} kind="start" onChange={dateFrom => setFilters(current => ({ ...current, dateFrom }))} />
+        <NoticeDateField value={filters.dateTo} language={language} kind="end" onChange={dateTo => setFilters(current => ({ ...current, dateTo }))} />
+        <label className="siehub-latest-filter">
+          <input type="checkbox" checked={filters.latestOnly} onChange={event => setFilters(current => ({ ...current, latestOnly: event.target.checked }))} />
+          <span>{language === 'en' ? 'Latest only' : '仅看最新'}</span>
+        </label>
+      </div>
+      <div className="siehub-school-notice-grid">
+        <section className="siehub-school-news-panel">
+          <div className="siehub-school-panel-title"><span>NEWS</span><h3>{language === 'en' ? 'News' : '新闻动态'}</h3></div>
+          {loading ? (
+            <p className="siehub-empty-text">{language === 'en' ? 'Loading news...' : '正在同步新闻...'}</p>
+          ) : featureNews ? (
+            <>
+              <button className="siehub-school-feature-news" type="button" onClick={() => featureNews.sourceUrl && window.open(featureNews.sourceUrl, '_blank', 'noopener,noreferrer')}>
+                {featureNews.coverImageUrl ? <img src={featureNews.coverImageUrl} alt="" /> : <span className="siehub-news-cover-fallback">SIE</span>}
+                <strong>{pickLocalizedNoticeText(featureNews.title, language)}</strong>
+                <small>{formatNoticeDate(featureNews.publishedAt, language)}</small>
+              </button>
+              <div className="siehub-school-news-list">
+                {secondaryNews.map(item => (
+                  <button key={noticeIdentity(item)} type="button" onClick={() => item.sourceUrl && window.open(item.sourceUrl, '_blank', 'noopener,noreferrer')}>
+                    <span>{formatNoticeDate(item.publishedAt, language)}</span>
+                    <strong>{pickLocalizedNoticeText(item.title, language)}</strong>
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <p className="siehub-empty-text">{language === 'en' ? 'No WeChat posts yet.' : '暂无国教空间公众号推送。'}</p>
+          )}
+        </section>
+        <section className="siehub-school-announcement-panel">
+          <div className="siehub-school-panel-title"><span>NOTICE</span><h3>{language === 'en' ? 'Notices' : '通知公告'}</h3></div>
+          <div className="siehub-school-announcement-list">
+            {loading ? (
+              <p className="siehub-empty-text">{language === 'en' ? 'Loading notices...' : '正在加载通知...'}</p>
+            ) : notices.length ? notices.map(notice => {
+              const id = noticeIdentity(notice);
+              const unread = id && !readNoticeIds.has(id);
+              return (
+                <article key={id} className={cls(unread && 'is-unread')}>
+                  <time>{formatNoticeDate(notice.publishedAt, language)}</time>
+                  <button type="button" onClick={() => openNotice(notice)}>
+                    <span>{notice.organizationLabel} · {notice.departmentLabel}</span>
+                    <strong>{pickLocalizedNoticeText(notice.title, language)}</strong>
+                  </button>
+                </article>
+              );
+            }) : (
+              <p className="siehub-empty-text">{language === 'en' ? 'No department notices yet.' : '暂无部门通知公告。'}</p>
+            )}
+          </div>
+        </section>
+      </div>
+    </section>
+  );
+};
+
 const HubNoticeCenter = ({ token, language = 'zh', fixedModule = null }) => {
   const [notices, setNotices] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [selectedNotice, setSelectedNotice] = useState(null);
   const [filters, setFilters] = useState({
     departmentKey: fixedModule ? `${fixedModule.organization}:${fixedModule.key}` : '',
     dateFrom: '',
@@ -1938,6 +2680,14 @@ const HubNoticeCenter = ({ token, language = 'zh', fixedModule = null }) => {
     return () => controller.abort();
   }, [token, filters, departments]);
 
+  if (selectedNotice) {
+    return (
+      <section className="siehub-notice-center">
+        <NoticeDetailPage notice={selectedNotice} language={language} onBack={() => setSelectedNotice(null)} />
+      </section>
+    );
+  }
+
   return (
     <section className="siehub-notice-center">
       <div className="siehub-notice-head">
@@ -1954,9 +2704,9 @@ const HubNoticeCenter = ({ token, language = 'zh', fixedModule = null }) => {
           <option value="">{language === 'en' ? 'All departments' : '全部部门'}</option>
           {departments.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
         </select>
-        <input type="date" value={filters.dateFrom} onChange={event => setFilters(current => ({ ...current, dateFrom: event.target.value }))} />
-        <input type="date" value={filters.dateTo} onChange={event => setFilters(current => ({ ...current, dateTo: event.target.value }))} />
-        <label>
+        <NoticeDateField value={filters.dateFrom} language={language} kind="start" onChange={dateFrom => setFilters(current => ({ ...current, dateFrom }))} />
+        <NoticeDateField value={filters.dateTo} language={language} kind="end" onChange={dateTo => setFilters(current => ({ ...current, dateTo }))} />
+        <label className="siehub-latest-filter">
           <input type="checkbox" checked={filters.latestOnly} onChange={event => setFilters(current => ({ ...current, latestOnly: event.target.checked }))} />
           <span>{language === 'en' ? 'Latest only' : '仅看最新'}</span>
         </label>
@@ -1969,9 +2719,11 @@ const HubNoticeCenter = ({ token, language = 'zh', fixedModule = null }) => {
             {notice.coverImageUrl && <img className="siehub-notice-cover" src={notice.coverImageUrl} alt="" />}
             <div>
               <span>{notice.organizationLabel} · {notice.departmentLabel} · {notice.source === 'wechat_mp' ? 'WeChat MP' : 'Manual'}</span>
-              <strong>{pickLocalizedNoticeText(notice.title, language)}</strong>
+              <button className="siehub-notice-title-button" type="button" onClick={() => setSelectedNotice(notice)}>
+                <strong>{pickLocalizedNoticeText(notice.title, language)}</strong>
+              </button>
               <p>{pickLocalizedNoticeText(notice.summary, language)}</p>
-              {notice.sourceUrl && <a href={notice.sourceUrl} target="_blank" rel="noreferrer">{language === 'en' ? 'Original link' : '查看原文'}</a>}
+              {notice.sourceUrl && <small>{language === 'en' ? 'Attached link available in detail page' : '正文页底部附有链接'}</small>}
             </div>
             <time>{formatNoticeDate(notice.publishedAt, language)}</time>
           </article>
@@ -1990,6 +2742,7 @@ const DepartmentNoticeWorkspace = ({ module, token, language = 'zh', onClose }) 
   const [draft, setDraft] = useState(emptyNoticeDraft);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [coverUploading, setCoverUploading] = useState(false);
   const [message, setMessage] = useState('');
 
   const loadNotices = useCallback(async () => {
@@ -2015,13 +2768,46 @@ const DepartmentNoticeWorkspace = ({ module, token, language = 'zh', onClose }) 
   const startCreate = () => {
     setSelectedNotice(null);
     setDraft(cloneNoticeDraft());
+    setCoverUploading(false);
     setMessage('');
   };
 
   const startEdit = (notice) => {
     setSelectedNotice(notice);
     setDraft(cloneNoticeDraft(notice));
+    setCoverUploading(false);
     setMessage('');
+  };
+
+  const uploadNoticeCover = async (file) => {
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setMessage('请选择图片文件');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setMessage('封面图片不能超过 10MB');
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', file);
+    setCoverUploading(true);
+    setMessage('');
+    try {
+      const res = await fetch(`${API_BASE}/hub/departments/${module.organization}/${module.key}/notices/cover`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || '封面图片上传失败');
+      setDraft(current => ({ ...current, coverImageUrl: data.media?.url || data.image?.url || '' }));
+      setMessage('封面图片已上传，保存草稿或发布后生效');
+    } catch (error) {
+      setMessage(error.message || '封面图片上传失败');
+    } finally {
+      setCoverUploading(false);
+    }
   };
 
   const saveNotice = async (nextStatus = draft.status) => {
@@ -2087,7 +2873,33 @@ const DepartmentNoticeWorkspace = ({ module, token, language = 'zh', onClose }) 
             <label><span>English Title</span><input value={draft.title.en} onChange={event => setDraft(current => localizedFieldPatch(current, 'title', 'en', event.target.value))} /></label>
             <label><span>中文摘要</span><textarea value={draft.summary.zh} onChange={event => setDraft(current => localizedFieldPatch(current, 'summary', 'zh', event.target.value))} rows={3} /></label>
             <label><span>English Summary</span><textarea value={draft.summary.en} onChange={event => setDraft(current => localizedFieldPatch(current, 'summary', 'en', event.target.value))} rows={3} /></label>
-            <label><span>封面图片 URL</span><input value={draft.coverImageUrl} onChange={event => setDraft(current => ({ ...current, coverImageUrl: event.target.value }))} placeholder="/api/department-intro-assets/cover.webp" /></label>
+            <div className="siehub-notice-cover-field">
+              <span>封面图片</span>
+              <div className="siehub-notice-cover-picker">
+                {draft.coverImageUrl ? (
+                  <img src={draft.coverImageUrl} alt="" />
+                ) : (
+                  <div className="siehub-notice-cover-empty"><ImagePlus /><strong>从本地上传图片</strong><small>支持 JPG、PNG、WEBP，单张不超过 10MB</small></div>
+                )}
+                <div className="siehub-notice-cover-actions">
+                  <label>
+                    <ImagePlus />
+                    <span>{coverUploading ? '上传中...' : draft.coverImageUrl ? '更换图片' : '选择图片'}</span>
+                    <input
+                      hidden
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      disabled={coverUploading}
+                      onChange={event => {
+                        uploadNoticeCover(event.target.files?.[0]);
+                        event.target.value = '';
+                      }}
+                    />
+                  </label>
+                  {draft.coverImageUrl && <button type="button" disabled={coverUploading} onClick={() => setDraft(current => ({ ...current, coverImageUrl: '' }))}>移除封面</button>}
+                </div>
+              </div>
+            </div>
             <label><span>原文链接</span><input value={draft.sourceUrl} onChange={event => setDraft(current => ({ ...current, sourceUrl: event.target.value }))} placeholder="https://..." /></label>
           </div>
           <label className="siehub-notice-body"><span>中文正文</span><textarea value={draft.body.zh} onChange={event => setDraft(current => localizedFieldPatch(current, 'body', 'zh', event.target.value))} rows={7} /></label>
@@ -2172,7 +2984,69 @@ const WechatMpHeroEntry = ({ token, user, language = 'zh' }) => {
   );
 };
 
-const SIEHUBHome = ({ user, token, theme, onOpenModule, onLogout, language = 'zh', languageSwitcher = null }) => {
+const SIEHUBHomeNotificationCenter = ({ token, onOpenSIEVOX }) => {
+  const [notifications, setNotifications] = useState([]);
+  const [open, setOpen] = useState(false);
+  const unreadCount = useMemo(() => notifications.filter(item => !item.isRead).length, [notifications]);
+
+  const fetchNotifications = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/notifications`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (data.success) setNotifications(data.notifications || []);
+    } catch {}
+  }, [token]);
+
+  const markNotificationsRead = useCallback(async (ids = []) => {
+    try {
+      const res = await fetch(`${API_BASE}/notifications/read`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(ids.length ? { ids } : {})
+      });
+      const data = await res.json();
+      if (data.success) {
+        setNotifications(current => current.map(item => (
+          ids.length === 0 || ids.includes(item._id)
+            ? { ...item, isRead: true }
+            : item
+        )));
+      }
+    } catch {}
+  }, [token]);
+
+  useEffect(() => {
+    fetchNotifications();
+    const timer = setInterval(fetchNotifications, 12000);
+    return () => clearInterval(timer);
+  }, [fetchNotifications]);
+
+  const openNotification = (notification) => {
+    markNotificationsRead([notification._id]);
+    setOpen(false);
+    onOpenSIEVOX?.();
+  };
+
+  return (
+    <>
+      <button className="icon-button" type="button" title="消息通知" onClick={() => setOpen(current => !current)}>
+        <Bell />{unreadCount > 0 && <span className="notification-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>}
+      </button>
+      <NotificationDrawer
+        open={open}
+        notifications={notifications}
+        unreadCount={unreadCount}
+        onClose={() => setOpen(false)}
+        onMarkReadAll={() => markNotificationsRead()}
+        onMarkReadOne={item => markNotificationsRead([item._id])}
+        onOpenNotification={openNotification}
+      />
+    </>
+  );
+};
+
+const SIEHUBHome = ({ user, token, theme, onOpenModule, onOpenSIEVOX, onOpenSIEBridge, onOpenMy, onLogout, language = 'zh', languageSwitcher = null }) => {
   const modules = getAccessibleModules(user);
   const clock = usePlatformClock(language);
   const serviceMetrics = useServiceMetrics(token);
@@ -2180,6 +3054,30 @@ const SIEHUBHome = ({ user, token, theme, onOpenModule, onLogout, language = 'zh
   const youthLeague = modules.filter(module => module.organization === 'youth_league');
   const studentUnion = modules.filter(module => module.organization === 'student_union');
   const roleScope = user?.isUltimateAdmin ? '全平台治理范围' : `${user?.organizationLabel || '学生服务'} / ${user?.departmentLabel || '可访问模块'}`;
+  const sievoxModule = SIEHUB_MODULES.find(module => module.key === 'student_rights');
+  const siebridgeModule = SIEHUB_MODULES.find(module => module.key === 'academic_technology');
+  const productWindows = [
+    {
+      key: 'siebridge',
+      marker: '01',
+      label: 'SIEBridge课程资源共享平台',
+      title: '课程资源共享',
+      summary: '课程资料、真题课件与学习笔记的共享、上传和审核。',
+      className: 'siebridge-window',
+      icon: <img src={siebridgeLogo} alt="SIEBridge" />,
+      action: () => onOpenSIEBridge ? onOpenSIEBridge() : onOpenModule(siebridgeModule)
+    },
+    {
+      key: 'sievox',
+      marker: '02',
+      label: 'SIEVOX学生权益反馈系统',
+      title: '学生权益反馈',
+      summary: '学生诉求提交、办理进度追踪与服务响应闭环。',
+      className: 'sievox-window',
+      icon: <img src={sieLogo} alt="SIEVOX" />,
+      action: () => onOpenSIEVOX ? onOpenSIEVOX() : onOpenModule(sievoxModule)
+    }
+  ];
 
   const renderGroup = (title, marker, items) => (
     <section className="siehub-module-group">
@@ -2188,7 +3086,7 @@ const SIEHUBHome = ({ user, token, theme, onOpenModule, onLogout, language = 'zh
         {items.map(module => {
           return <button key={module.key} className={`siehub-module-card tone-${module.tone}`} type="button" onClick={() => onOpenModule(module)}>
             <span className="siehub-module-icon"><DepartmentModuleMark module={module} /></span>
-            <span className="siehub-module-copy"><small>SIEHUB MODULE</small><strong>{module.title}</strong><em>{module.summary}</em></span>
+            <span className="siehub-module-copy"><small className="siehub-module-entry-label">{module.entryLabel || 'SIEHUB MODULE'}</small><strong>{module.title}</strong><em>{module.summary}</em></span>
             <span className="siehub-module-action"><ChevronRight /></span>
           </button>;
         })}
@@ -2199,7 +3097,7 @@ const SIEHUBHome = ({ user, token, theme, onOpenModule, onLogout, language = 'zh
   return <main className="siehub-shell">
     <header className="siehub-topbar">
       <div className="siehub-brand"><span className="siehub-brand-mark"><img src={siehubLogo} alt="SIEHUB" /><i></i></span><div><strong>SIEHUB</strong><small>SIE LIFE PLATFORM</small></div></div>
-      <div className="siehub-topbar-actions"><ThemeModeButtons theme={theme} compact /><button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)} title="外观设置"><Palette /></button><HubUserChip user={user} /><button className="icon-button" type="button" onClick={onLogout} title="退出登录"><LogOut /></button>{languageSwitcher}</div>
+      <div className="siehub-topbar-actions"><ThemeModeButtons theme={theme} compact /><button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)} title="外观设置"><Palette /></button><HubUserChip user={user} /><SIEHUBHomeNotificationCenter token={token} onOpenSIEVOX={onOpenSIEVOX} /><button className="icon-button" type="button" onClick={onOpenMy} title="账号设置"><UserRound /></button><button className="icon-button" type="button" onClick={onLogout} title="退出登录"><LogOut /></button>{languageSwitcher}</div>
     </header>
     <div className="siehub-content">
       <section className="siehub-hero">
@@ -2213,12 +3111,30 @@ const SIEHUBHome = ({ user, token, theme, onOpenModule, onLogout, language = 'zh
         </div>
         <WechatMpHeroEntry token={token} user={user} language={language} />
       </section>
-      <HubNoticeCenter token={token} language={language} />
+      <SIEHUBNoticePortal token={token} language={language} user={user} />
+      <section className="siehub-product-windows" aria-label="SIEHUB 平台入口">
+        <div className="siehub-group-heading"><span>ENTRY</span><div><p>PLATFORM WINDOWS</p><h2>核心平台入口</h2></div><b>{productWindows.length}</b></div>
+        <div className="siehub-product-window-grid">
+          {productWindows.map(window => (
+            <button key={window.key} className={`siehub-product-window ${window.className}`} type="button" onClick={window.action}>
+              <span className="siehub-product-window-index">{window.marker}</span>
+              <span className="siehub-product-window-mark">{window.icon}</span>
+              <span className="siehub-product-window-copy">
+                <small>{window.label}</small>
+                <strong>{window.title}</strong>
+                <em>{window.summary}</em>
+              </span>
+              <span className="siehub-product-window-action">进入 <ArrowUpRight /></span>
+            </button>
+          ))}
+        </div>
+      </section>
       {user?.isUltimateAdmin && governanceModules.length > 0 && renderGroup('平台治理', '00', governanceModules)}
       {renderGroup('团委', '01', youthLeague)}
       {renderGroup('学生会', '02', studentUnion)}
       <section className="siehub-governance-note"><UsersRound /><div><strong>{user?.isUltimateAdmin ? '终极管理员已获得全部模块访问权限' : '部门工作台会按照当前身份与分管范围开放'}</strong><span>部门负责人及以上成员可在所属模块中维护志愿者绩效考核制度；具体业务能力将随模块逐步上线。</span></div></section>
     </div>
+    <SIEHUBMobileDock active="home" onHome={() => {}} onMy={onOpenMy} />
     <ThemePanel theme={theme} />
   </main>;
 };
@@ -2228,6 +3144,7 @@ const DepartmentStudentPortal = ({ module, onOpenSIEVOX, onOpenSIEBridge, token,
   const [noticesOpen, setNoticesOpen] = useState(false);
   const isSIEVOX = module?.key === 'student_rights';
   const isSIEBridge = module?.key === 'academic_technology';
+  const isCultureSportsArts = module?.key === 'culture_sports_arts';
 
   if (introductionOpen) {
     return (
@@ -2248,7 +3165,7 @@ const DepartmentStudentPortal = ({ module, onOpenSIEVOX, onOpenSIEBridge, token,
           <ChevronLeft />
           返回学生服务入口
         </button>
-        <HubNoticeCenter token={token} language={language} fixedModule={module} />
+        <SIEHUBNoticePortal token={token} language={language} fixedModule={module} user={user} />
       </>
     );
   }
@@ -2262,20 +3179,30 @@ const DepartmentStudentPortal = ({ module, onOpenSIEVOX, onOpenSIEBridge, token,
           <span>这里面向所有学生开放，用于查看部门服务说明、活动入口和后续上线的学生侧功能。</span>
         </div>
         <div className="siehub-student-service-grid">
-          <DepartmentIntroductionEntryCard module={module} onOpen={() => setIntroductionOpen(true)} />
+          {isCultureSportsArts ? (
+            <a className="siehub-student-service-entry dept-intro-entry" href={CULTURE_SPORTS_ARTS_INTRO_URL} target="_blank" rel="noreferrer">
+              <span>01</span>
+              <ArrowUpRight />
+              <strong>文体艺术部展示平台</strong>
+              <p>部门介绍已迁移到独立展示站，点击后直接打开最新外观页面。</p>
+              <b>打开展示站 <ArrowUpRight /></b>
+            </a>
+          ) : (
+            <DepartmentIntroductionEntryCard module={module} onOpen={() => setIntroductionOpen(true)} />
+          )}
           {isSIEVOX ? (
             <button className="siehub-student-service-entry sievox-entry" type="button" onClick={onOpenSIEVOX}>
               <span>02</span>
               <img src={sieLogo} alt="SIEVOX" />
-              <strong>进入 SIEVOX 系统</strong>
+              <strong>SIEVOX学生权益反馈系统</strong>
               <p>学生权益反馈、诉求跟进与处理进度查询直接进入 SIEVOX 完成。</p>
               <b>立即进入 <ArrowUpRight /></b>
             </button>
           ) : isSIEBridge ? (
             <button className="siehub-student-service-entry siebridge-entry" type="button" onClick={onOpenSIEBridge}>
               <span>02</span>
-              <BookOpen />
-              <strong>SIEBridge 课程资源共享平台</strong>
+              <img src={siebridgeLogo} alt="SIEBridge" />
+              <strong>SIEBridge课程资源共享平台</strong>
               <p>按专业与年级查找课程资料，上传真题、课件和笔记并查看审核进度。</p>
               <b>立即进入 <ArrowUpRight /></b>
             </button>
@@ -2295,7 +3222,7 @@ const DepartmentStudentPortal = ({ module, onOpenSIEVOX, onOpenSIEBridge, token,
   );
 };
 
-const DepartmentPlaceholder = ({ module, user, token, theme, onBack, onOpenSIEVOX, onOpenSIEBridge, onLogout, languageSwitcher = null, language = 'zh' }) => {
+const DepartmentPlaceholder = ({ module, user, token, theme, onBack, onOpenSIEVOX, onOpenSIEBridge, onOpenMy, onLogout, languageSwitcher = null, language = 'zh' }) => {
   const [performancePolicy, setPerformancePolicy] = useState(null);
   const [policyAccess, setPolicyAccess] = useState(null);
   const [policyLoading, setPolicyLoading] = useState(false);
@@ -2303,19 +3230,23 @@ const DepartmentPlaceholder = ({ module, user, token, theme, onBack, onOpenSIEVO
   const [policyMessage, setPolicyMessage] = useState('');
   const canSwitchPortal = canSwitchDepartmentPortal(user, module);
   const [departmentPortal, setDepartmentPortal] = useState(canSwitchPortal ? 'manage' : 'student');
-  const [manageWorkspace, setManageWorkspace] = useState('overview');
+  const [manageWorkspace, setManageWorkspace] = useState('introduction');
   const fallbackCanManagePerformance = canManageVolunteerPolicy(user, module);
   const canManageIntroduction = canManageDepartmentIntroduction(user, module);
   const canManageNotice = canManageDepartmentNotice(user, module);
+  const canManageMembers = canManageDepartmentMembers(user, module);
+  const canManageAccounts = canManageDepartmentAccounts(user, module);
   const canManagePerformance = policyAccess?.canEdit ?? fallbackCanManagePerformance;
   const canEnterSIEVOX = module?.key === 'student_rights' || user?.isUltimateAdmin;
   const isSIEBridge = module?.key === 'academic_technology';
+  const isCultureSportsArts = module?.key === 'culture_sports_arts';
+  const hideIntroductionWorkspace = isCultureSportsArts;
   const showManagePortal = canSwitchPortal && departmentPortal === 'manage';
 
   useEffect(() => {
     setDepartmentPortal(canSwitchPortal ? 'manage' : 'student');
-    setManageWorkspace('overview');
-  }, [canSwitchPortal, module?.key]);
+    setManageWorkspace(hideIntroductionWorkspace ? 'notice' : 'introduction');
+  }, [canSwitchPortal, module?.key, hideIntroductionWorkspace]);
 
   useEffect(() => {
     if (!module?.organization || !module?.key || !token) {
@@ -2403,7 +3334,7 @@ const DepartmentPlaceholder = ({ module, user, token, theme, onBack, onOpenSIEVO
   };
 
   return <main className="siehub-shell siehub-department-shell">
-    <header className="siehub-topbar"><div className="siehub-brand"><span className="siehub-brand-mark"><img src={siehubLogo} alt="SIEHUB" /><i></i></span><div><strong>SIEHUB</strong><small>{module?.title || '部门工作台'} / FRAMEWORK</small></div></div><div className="siehub-topbar-actions"><ThemeModeButtons theme={theme} compact /><button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)}><Palette /></button><HubUserChip user={user} /><button className="icon-button" type="button" onClick={onLogout} title="退出登录"><LogOut /></button>{languageSwitcher}</div></header>
+    <header className="siehub-topbar"><div className="siehub-brand"><span className="siehub-brand-mark"><img src={siehubLogo} alt="SIEHUB" /><i></i></span><div><strong>SIEHUB</strong><small>{module?.title || '部门工作台'} / FRAMEWORK</small></div></div><div className="siehub-topbar-actions"><ThemeModeButtons theme={theme} compact /><button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)}><Palette /></button><HubUserChip user={user} /><button className="icon-button" type="button" onClick={onOpenMy} title="账号设置"><UserRound /></button><button className="icon-button" type="button" onClick={onLogout} title="退出登录"><LogOut /></button>{languageSwitcher}</div></header>
     <div className="siehub-content">
       <button className="siehub-back" type="button" onClick={onBack}><ChevronLeft />返回模块总览</button>
       <section className="siehub-department-hero"><span className={`siehub-module-icon tone-${module?.tone || 'slate'}`}><DepartmentModuleMark module={module} /></span><div><p>SIEHUB / DEPARTMENT PLATFORM</p><h1>{module?.title}</h1><span>{module?.summary}</span></div></section>
@@ -2413,25 +3344,60 @@ const DepartmentPlaceholder = ({ module, user, token, theme, onBack, onOpenSIEVO
           <button type="button" className={departmentPortal === 'manage' ? 'is-active' : ''} onClick={() => setDepartmentPortal('manage')}>管理端</button>
         </div>
       )}
-      {showManagePortal ? (manageWorkspace === 'introduction' ? (
+      {showManagePortal && (
+        <div className="siehub-manage-tabs" aria-label="部门管理一级板块">
+          {!hideIntroductionWorkspace && <button type="button" className={manageWorkspace === 'introduction' ? 'is-active' : ''} onClick={() => setManageWorkspace('introduction')}>部门介绍编辑</button>}
+          <button type="button" className={manageWorkspace === 'notice' ? 'is-active' : ''} onClick={() => setManageWorkspace('notice')}>通知管理</button>
+          <button type="button" className={manageWorkspace === 'members' ? 'is-active' : ''} onClick={() => setManageWorkspace('members')}>成员管理</button>
+          <button type="button" className={manageWorkspace === 'accounts' ? 'is-active' : ''} onClick={() => setManageWorkspace('accounts')}>账号管理</button>
+          <button type="button" className={manageWorkspace === 'performance' ? 'is-active' : ''} onClick={() => setManageWorkspace('performance')}>绩效考核</button>
+        </div>
+      )}
+      {showManagePortal ? (manageWorkspace === 'introduction' && !hideIntroductionWorkspace ? (
         <DepartmentIntroductionEditor
           module={module}
           token={token}
           language={language}
-          onClose={() => setManageWorkspace('overview')}
+          onClose={() => setManageWorkspace('introduction')}
         />
       ) : manageWorkspace === 'notice' ? (
         <DepartmentNoticeWorkspace
           module={module}
           token={token}
           language={language}
-          onClose={() => setManageWorkspace('overview')}
+          onClose={() => setManageWorkspace('notice')}
         />
+      ) : manageWorkspace === 'members' ? (
+        <DepartmentMemberWorkspace module={module} token={token} canManage={canManageMembers} language={language} />
+      ) : manageWorkspace === 'accounts' ? (
+        <DepartmentAccountWorkspace module={module} token={token} canManage={canManageAccounts} language={language} />
+      ) : manageWorkspace === 'performance' ? (
+        <>
+          <DepartmentPerformancePolicyCard
+            module={module}
+            policy={performancePolicy}
+            canEdit={canManagePerformance}
+            loading={policyLoading}
+            saving={policySaving}
+            message={policyMessage}
+            onSave={savePerformancePolicy}
+            onReset={resetPerformancePolicy}
+          />
+          <DepartmentPerformanceWorkbench module={module} token={token} canManage={canManagePerformance} />
+        </>
       ) : (
         <>
           <div className="siehub-framework-grid">
             <section><span>01</span><h2>通知管理</h2><p>发布面向学生的部门通知、活动信息和公众号文章链接，首页消息中心会自动汇总展示。</p><button type="button" disabled={!canManageNotice} onClick={() => setManageWorkspace('notice')}>{canManageNotice ? '进入编辑' : '只读说明'}</button></section>
-            {canManageIntroduction && <DepartmentIntroductionManageCard onOpen={() => setManageWorkspace('introduction')} />}
+            {canManageIntroduction && !hideIntroductionWorkspace && <DepartmentIntroductionManageCard onOpen={() => setManageWorkspace('introduction')} />}
+            {hideIntroductionWorkspace && (
+              <section>
+                <span>02</span>
+                <h2>部门介绍</h2>
+                <p>文体艺术部介绍已切换到外部展示站，站内旧编辑页已暂时隐藏。</p>
+                <button type="button" onClick={() => window.open(CULTURE_SPORTS_ARTS_INTRO_URL, '_blank', 'noopener,noreferrer')}>打开展示站</button>
+              </section>
+            )}
             {isSIEBridge ? (
               <section><span>03</span><h2>SIEBridge 审核</h2><p>课程新增与资料上传申请在此集中审核，通过后展示到学生端。</p><button type="button" disabled>已接入</button></section>
             ) : (
@@ -2441,7 +3407,7 @@ const DepartmentPlaceholder = ({ module, user, token, theme, onBack, onOpenSIEVO
           </div>
           {isSIEBridge ? (
             <section className="siehub-bridge-card">
-              <BookOpen />
+              <img className="siehub-bridge-logo" src={siebridgeLogo} alt="SIEBridge" />
               <div><strong>SIEBridge 已作为独立业务页面运行</strong><span>课程检索、资料上传、提交记录和审核管理统一进入 SIEBridge 页面完成。</span></div>
               <button className="primary-button" type="button" onClick={onOpenSIEBridge}>进入 SIEBridge <ArrowUpRight /></button>
             </section>
@@ -2470,17 +3436,18 @@ const DepartmentPlaceholder = ({ module, user, token, theme, onBack, onOpenSIEVO
         <DepartmentStudentPortal module={module} onOpenSIEVOX={onOpenSIEVOX} onOpenSIEBridge={onOpenSIEBridge} token={token} user={user} language={language} />
       )}
     </div>
+    <SIEHUBMobileDock active="home" onHome={onBack} onMy={onOpenMy} />
     <ThemePanel theme={theme} />
   </main>;
 };
 
-const UltimateOrganizationWindow = ({ user, token, theme, onBack, onLogout, languageSwitcher = null }) => {
+const UltimateOrganizationWindow = ({ user, token, theme, onBack, onOpenMy, onLogout, languageSwitcher = null }) => {
   const allowed = Boolean(user?.isUltimateAdmin);
 
   return <main className="siehub-shell siehub-ultimate-window admin-demo-shell">
     <header className="siehub-topbar">
       <div className="siehub-brand"><span className="siehub-brand-mark"><img src={siehubLogo} alt="SIEHUB" /><i></i></span><div><strong>SIEHUB</strong><small>ORGANIZATION GOVERNANCE</small></div></div>
-      <div className="siehub-topbar-actions"><ThemeModeButtons theme={theme} compact /><button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)} title="外观设置"><Palette /></button><HubUserChip user={user} /><button className="icon-button" type="button" onClick={onLogout} title="退出登录"><LogOut /></button>{languageSwitcher}</div>
+      <div className="siehub-topbar-actions"><ThemeModeButtons theme={theme} compact /><button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)} title="外观设置"><Palette /></button><HubUserChip user={user} /><button className="icon-button" type="button" onClick={onOpenMy} title="账号设置"><UserRound /></button><button className="icon-button" type="button" onClick={onLogout} title="退出登录"><LogOut /></button>{languageSwitcher}</div>
     </header>
     <div className="siehub-content">
       <button className="siehub-back" type="button" onClick={onBack}><ChevronLeft />返回模块总览</button>
@@ -2503,24 +3470,25 @@ const UltimateOrganizationWindow = ({ user, token, theme, onBack, onLogout, lang
         </section>
       )}
     </div>
+    <SIEHUBMobileDock active="home" onHome={onBack} onMy={onOpenMy} />
     <ThemePanel theme={theme} />
   </main>;
 };
 
-const SIEBridgeWindow = ({ user, token, theme, onBack, onLogout, languageSwitcher = null }) => {
+const SIEBridgeWindow = ({ user, token, theme, onBack, onOpenMy, onLogout, languageSwitcher = null }) => {
   const canReview = canReviewSIEBridgeContent(user);
   const [workspace, setWorkspace] = useState('student');
 
   return (
     <main className="siehub-shell siebridge-window">
       <header className="siehub-topbar">
-        <div className="siehub-brand"><span className="siehub-brand-mark"><img src={siehubLogo} alt="SIEHUB" /><i></i></span><div><strong>SIEBridge</strong><small>COURSE RESOURCE PLATFORM</small></div></div>
-        <div className="siehub-topbar-actions"><ThemeModeButtons theme={theme} compact /><button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)} title="外观设置"><Palette /></button><HubUserChip user={user} /><button className="icon-button" type="button" onClick={onLogout} title="退出登录"><LogOut /></button>{languageSwitcher}</div>
+        <div className="siehub-brand"><span className="siehub-brand-mark"><img src={siebridgeLogo} alt="SIEBridge" /><i></i></span><div><strong>SIEBridge</strong><small>COURSE RESOURCE PLATFORM</small></div></div>
+        <div className="siehub-topbar-actions"><ThemeModeButtons theme={theme} compact /><button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)} title="外观设置"><Palette /></button><HubUserChip user={user} /><button className="icon-button" type="button" onClick={onOpenMy} title="账号设置"><UserRound /></button><button className="icon-button" type="button" onClick={onLogout} title="退出登录"><LogOut /></button>{languageSwitcher}</div>
       </header>
       <div className="siehub-content">
         <button className="siehub-back" type="button" onClick={onBack}><ChevronLeft />返回 SIEHUB</button>
         <section className="siehub-ultimate-hero">
-          <span className="siehub-module-icon tone-blue"><BookOpen /></span>
+          <span className="siehub-module-icon tone-blue"><img className="siehub-module-logo" src={siebridgeLogo} alt="SIEBridge" /></span>
           <div>
             <p>SIEHUB / SIEBRIDGE</p>
             <h1>SIEBridge 课程资源共享平台</h1>
@@ -2535,7 +3503,8 @@ const SIEBridgeWindow = ({ user, token, theme, onBack, onLogout, languageSwitche
         )}
         {workspace === 'review' && canReview ? <SIEBridgeReviewWorkspace token={token} /> : <SIEBridgeStudentPortal token={token} user={user} />}
       </div>
-      <ThemePanel theme={theme} />
+      <SIEHUBMobileDock active="home" onHome={onBack} onMy={onOpenMy} />
+    <ThemePanel theme={theme} />
     </main>
   );
 };
@@ -2547,7 +3516,7 @@ const HubInlineReturnButton = ({ onClick }) => (
   </button>
 );
 
-const Sidebar = ({ user, activePage, setActivePage, openCompose, onLogout, openSettings, serviceMetrics, language = 'zh' }) => (
+const Sidebar = ({ user, activePage, setActivePage, openCompose, onLogout, onOpenMy, serviceMetrics, language = 'zh' }) => (
   <aside className="sidebar" aria-label="主导航">
     <div className="brand-lockup"><img src={sieLogo} alt="SIEVOX" /><div><strong>SIEVOX</strong><span>学生权益反馈系统</span></div></div>
     <nav className="side-nav">
@@ -2561,13 +3530,13 @@ const Sidebar = ({ user, activePage, setActivePage, openCompose, onLogout, openS
     <div className="sidebar-user">
       <span className="avatar">{firstChar(user?.name)}</span>
       <div><strong>{user?.name}</strong><span>{user?.studentId}</span></div>
-      <button className="icon-button on-dark" type="button" onClick={openSettings}><Settings /></button>
+      <button className="icon-button on-dark" type="button" onClick={onOpenMy}><Settings /></button>
       <button className="icon-button on-dark" type="button" onClick={onLogout}><LogOut /></button>
     </div>
   </aside>
 );
 
-const Topbar = ({ pageTitle, theme, openPreview, notifications, openSettings, user, portalView, onPortalChange, onBackToHub, languageSwitcher = null }) => (
+const Topbar = ({ pageTitle, theme, openPreview, notifications, unreadCount = 0, onToggleNotifications, showNotifications = true, onOpenMy, user, portalView, onPortalChange, onBackToHub, languageSwitcher = null }) => (
   <header className="topbar">
     <div className="breadcrumb"><span>国际教育学院</span><ChevronRight /><strong id="page-title">{pageTitle}</strong></div>
     <div className="topbar-actions">
@@ -2586,12 +3555,58 @@ const Topbar = ({ pageTitle, theme, openPreview, notifications, openSettings, us
       <ThemeModeButtons theme={theme} compact />
       <button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)}><Palette /></button>
       {user?.isUltimateAdmin && <button className="outline-button" type="button" onClick={openPreview}><Smartphone />手机端预览</button>}
-      <button className="icon-button" type="button" onClick={openSettings}><Settings /></button>
-      <button className="icon-button" type="button"><Bell />{notifications.length > 0 && <span className="notification-dot"></span>}</button>
+      <button className="icon-button" type="button" onClick={onOpenMy} title="账号设置"><Settings /></button>
+      {showNotifications && <button className="icon-button" type="button" title="消息通知" onClick={onToggleNotifications}><Bell />{unreadCount > 0 && <span className="notification-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>}</button>}
       {languageSwitcher}
     </div>
   </header>
 );
+
+const NotificationDrawer = ({ open, notifications = [], unreadCount = 0, onClose, onMarkReadAll, onMarkReadOne, onOpenNotification }) => {
+  if (!open) return null;
+  return (
+    <div className="notification-drawer-backdrop" onClick={onClose}>
+      <aside className="notification-drawer" onClick={event => event.stopPropagation()}>
+        <header className="notification-drawer-head">
+          <div>
+            <p>MESSAGES</p>
+            <h2>消息通知</h2>
+            <span>未读 {unreadCount}</span>
+          </div>
+          <button className="icon-button" type="button" onClick={onClose} aria-label="关闭消息通知"><X /></button>
+        </header>
+        <div className="notification-drawer-actions">
+          <button type="button" className="outline-button" onClick={onMarkReadAll} disabled={notifications.length === 0}>全部标为已读</button>
+        </div>
+        <div className="notification-drawer-list">
+          {notifications.length === 0 ? (
+            <p className="siehub-empty-text">暂无消息。</p>
+          ) : notifications.map(item => {
+            const unread = !item.isRead;
+            return (
+              <button
+                key={item._id}
+                type="button"
+                className={cls('notification-item', unread && 'is-unread')}
+                onClick={() => {
+                  onMarkReadOne?.(item);
+                  onOpenNotification?.(item);
+                }}
+              >
+                <div>
+                  <strong>{item.type === 'new_message' ? '新留言' : item.type === 'new_feedback' ? '新反馈' : '系统通知'}</strong>
+                  <p>{item.content}</p>
+                  <small>{new Date(item.createdAt).toLocaleString('zh-CN')}</small>
+                </div>
+                {unread && <span className="notification-unread-dot" />}
+              </button>
+            );
+          })}
+        </div>
+      </aside>
+    </div>
+  );
+};
 
 const StatusPill = ({ status }) => {
   const meta = STATUS_META[status] || STATUS_META.pending;
@@ -2795,14 +3810,14 @@ const StudentDesktop = ({ user, stats, feedbacks, activePage, setActivePage, ope
   );
 };
 
-const MobileShell = ({ user, feedbacks, stats, page, setPage, openCompose, onOpenFeedback, theme, clock, languageSwitcher = null }) => {
+const MobileShell = ({ user, feedbacks, stats, page, setPage, openCompose, onOpenFeedback, onOpenMy, theme, clock, unreadCount = 0, onToggleNotifications, showNotifications = true, languageSwitcher = null }) => {
   const latest = feedbacks.find(item => item.status === 'processing') || feedbacks[0];
   return (
     <div className="mobile-stage">
       <div className="mobile-shell">
         <header className="mobile-header">
           <div className="mobile-brand"><img src={sieLogo} alt="SIEVOX" /><div><strong>SIEVOX</strong><span>学生权益反馈</span></div></div>
-          <div className="mobile-header-actions"><span className="mobile-role-chip"><span>{user?.name}</span><RoleTag user={user} /></span><button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)}><Palette /></button><button className="icon-button"><Bell /><span className="notification-dot"></span></button>{languageSwitcher}</div>
+          <div className="mobile-header-actions"><span className="mobile-role-chip"><span>{user?.name}</span><RoleTag user={user} /></span><button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)}><Palette /></button>{showNotifications && <button className="icon-button" type="button" onClick={onToggleNotifications} title="消息通知"><Bell />{unreadCount > 0 && <span className="notification-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>}</button>}{languageSwitcher}</div>
         </header>
         <main className="mobile-main">
           <section className={cls('mobile-page', page === 'home' && 'is-active')}>
@@ -2826,62 +3841,16 @@ const MobileShell = ({ user, feedbacks, stats, page, setPage, openCompose, onOpe
           <button className={page === 'feedbacks' ? 'is-active' : ''} type="button" onClick={() => setPage('feedbacks')}><MessagesSquare /><span>反馈</span></button>
           <button className="mobile-compose" type="button" onClick={() => openCompose('', true)}><Plus /></button>
           <button className={page === 'guide' ? 'is-active' : ''} type="button" onClick={() => setPage('guide')}><BookOpen /><span>指南</span></button>
-          <button type="button"><UserRound /><span>我的</span></button>
+          <button type="button" onClick={onOpenMy}><UserRound /><span>账号设置</span></button>
         </nav>
       </div>
     </div>
   );
 };
 
-const SettingsModal = ({ open, user, onClose, token, onLogout, onRefreshUser }) => {
-  const [tab, setTab] = useState('profile');
-  const [profile, setProfile] = useState({ name: '', studentId: '', email: '', phone: '' });
-  const [pwd, setPwd] = useState({ current: '', new: '' });
-  useEffect(() => {
-    if (open) setProfile({ name: user?.name || '', studentId: user?.studentId || '', email: user?.email || '', phone: user?.phone || '' });
-  }, [open, user]);
-  if (!open) return null;
+const SettingsModal = () => null;
 
-  const saveProfile = async (e) => {
-    e.preventDefault();
-    const res = await fetch(`${API_BASE}/auth/profile`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(profile) });
-    const data = await res.json();
-    alert(data.success ? '个人信息修改成功' : data.message || '修改失败');
-    if (data.success) onRefreshUser?.();
-  };
-  const changePwd = async (e) => {
-    e.preventDefault();
-    const res = await fetch(`${API_BASE}/auth/password`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ currentPassword: pwd.current, newPassword: pwd.new }) });
-    const data = await res.json();
-    alert(data.success ? '密码修改成功，请重新登录' : data.message || '修改失败');
-    if (data.success) onLogout();
-  };
-
-  return (
-    <div className="dialog-backdrop">
-      <dialog className="feedback-dialog settings-dialog" open>
-        <button className="dialog-close icon-button" type="button" onClick={onClose}><X /></button>
-        <div className="admin-tabs"><button className={tab === 'profile' ? 'is-active' : ''} onClick={() => setTab('profile')}>个人资料</button><button className={tab === 'password' ? 'is-active' : ''} onClick={() => setTab('password')}>修改密码</button></div>
-        {tab === 'profile' ? (
-          <form className="score-form" onSubmit={saveProfile}>
-            <div className="form-grid"><label><span>学号</span><input value={profile.studentId} onChange={e => setProfile({ ...profile, studentId: e.target.value })} /></label><label><span>姓名</span><input value={profile.name} onChange={e => setProfile({ ...profile, name: e.target.value })} /></label></div>
-            <label className="reason-field"><span>邮箱</span><input value={profile.email} onChange={e => setProfile({ ...profile, email: e.target.value })} /></label>
-            <label className="reason-field"><span>手机号</span><input value={profile.phone} onChange={e => setProfile({ ...profile, phone: e.target.value })} /></label>
-            <button className="primary-button">保存资料修改</button>
-          </form>
-        ) : (
-          <form className="score-form" onSubmit={changePwd}>
-            <label className="reason-field"><span>当前密码</span><input type="password" value={pwd.current} onChange={e => setPwd({ ...pwd, current: e.target.value })} /></label>
-            <label className="reason-field"><span>新密码</span><input type="password" value={pwd.new} onChange={e => setPwd({ ...pwd, new: e.target.value })} /></label>
-            <button className="primary-button">确认修改密码</button>
-          </form>
-        )}
-      </dialog>
-    </div>
-  );
-};
-
-const DashboardPage = ({ user, token, onLogout, onRefreshUser, theme, portalView = 'student', onPortalChange, onBackToHub, renderLanguageSwitcher, language = 'zh' }) => {
+const DashboardPage = ({ user, token, onLogout, onRefreshUser, onOpenMy, theme, portalView = 'student', onPortalChange, onBackToHub, renderLanguageSwitcher, language = 'zh', enableNotifications = false }) => {
   const [feedbacks, setFeedbacks] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [activePage, setActivePage] = useState('dashboard');
@@ -2890,11 +3859,12 @@ const DashboardPage = ({ user, token, onLogout, onRefreshUser, theme, portalView
   const [mobileComposeOpen, setMobileComposeOpen] = useState(false);
   const [composeCategory, setComposeCategory] = useState('');
   const [selectedFeedback, setSelectedFeedback] = useState(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [previewMobile, setPreviewMobile] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [loading, setLoading] = useState(false);
   const clock = usePlatformClock(language);
   const serviceMetrics = useServiceMetrics(token);
+  const unreadCount = useMemo(() => notifications.filter(item => !item.isRead).length, [notifications]);
 
   const stats = useMemo(() => {
     const s = { total: feedbacks.length, pending: 0, processing: 0, resolved: 0, rejected: 0 };
@@ -2909,12 +3879,46 @@ const DashboardPage = ({ user, token, onLogout, onRefreshUser, theme, portalView
   }, [token]);
 
   const fetchNotifications = useCallback(async () => {
+    if (!enableNotifications) return;
     try {
       const res = await fetch(`${API_BASE}/notifications`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       if (data.success) setNotifications(data.notifications || []);
     } catch {}
-  }, [token]);
+  }, [enableNotifications, token]);
+
+  const markNotificationsRead = useCallback(async (ids = []) => {
+    if (!enableNotifications) return;
+    try {
+      const body = ids.length ? { ids } : {};
+      const res = await fetch(`${API_BASE}/notifications/read`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (data.success) {
+        setNotifications(current => current.map(item => (
+          ids.length === 0 || ids.includes(item._id)
+            ? { ...item, isRead: true }
+            : item
+        )));
+      }
+    } catch {}
+  }, [enableNotifications, token]);
+
+  const handleOpenNotification = useCallback((notification) => {
+    const feedbackId = notification?.feedbackId?._id || notification?.feedbackId || null;
+    if (feedbackId) {
+      const match = feedbacks.find(item => (item._id || item.id) === feedbackId);
+      if (match) {
+        setSelectedFeedback(match);
+        setActivePage('feedbacks');
+        setMobilePage('feedbacks');
+      }
+    }
+    setShowNotifications(false);
+  }, [feedbacks]);
 
   useEffect(() => {
     document.body.classList.toggle('preview-mobile', previewMobile);
@@ -2923,10 +3927,10 @@ const DashboardPage = ({ user, token, onLogout, onRefreshUser, theme, portalView
 
   useEffect(() => {
     fetchFeedbacks();
-    fetchNotifications();
-    const id = setInterval(() => { fetchFeedbacks(); fetchNotifications(); }, 12000);
+    if (enableNotifications) fetchNotifications();
+    const id = setInterval(() => { fetchFeedbacks(); if (enableNotifications) fetchNotifications(); }, 12000);
     return () => clearInterval(id);
-  }, [fetchFeedbacks, fetchNotifications]);
+  }, [enableNotifications, fetchFeedbacks, fetchNotifications]);
 
   const openCompose = (category = '', mobile = false) => {
     setComposeCategory(category);
@@ -3001,19 +4005,43 @@ const DashboardPage = ({ user, token, onLogout, onRefreshUser, theme, portalView
   return (
     <>
       <div className="desktop-shell">
-        <Sidebar user={user} activePage={activePage} setActivePage={setActivePage} openCompose={openCompose} onLogout={onLogout} openSettings={() => setSettingsOpen(true)} serviceMetrics={serviceMetrics} language={language} />
+        <Sidebar user={user} activePage={activePage} setActivePage={setActivePage} openCompose={openCompose} onLogout={onLogout} onOpenMy={onOpenMy} serviceMetrics={serviceMetrics} language={language} />
         <main className="desktop-main">
-          <Topbar pageTitle={pageTitle} theme={theme} openPreview={() => setPreviewMobile(true)} notifications={notifications} openSettings={() => setSettingsOpen(true)} user={user} portalView={portalView} onPortalChange={onPortalChange} onBackToHub={onBackToHub} languageSwitcher={renderLanguageSwitcher?.()} />
+          <Topbar
+            pageTitle={pageTitle}
+            theme={theme}
+          openPreview={() => setPreviewMobile(true)}
+            notifications={enableNotifications ? notifications : []}
+            unreadCount={enableNotifications ? unreadCount : 0}
+            showNotifications={enableNotifications}
+            onToggleNotifications={() => setShowNotifications(current => !current)}
+            onOpenMy={onOpenMy}
+            user={user}
+            portalView={portalView}
+            onPortalChange={onPortalChange}
+            onBackToHub={onBackToHub}
+            languageSwitcher={renderLanguageSwitcher?.()}
+          />
           <StudentDesktop user={user} stats={stats} feedbacks={feedbacks} activePage={activePage} setActivePage={setActivePage} openCompose={openCompose} onOpenFeedback={setSelectedFeedback} clock={clock} />
         </main>
       </div>
       {user?.isUltimateAdmin && <button className="preview-exit icon-button" type="button" onClick={() => setPreviewMobile(false)}><X /></button>}
-      <MobileShell user={user} feedbacks={feedbacks} stats={stats} page={mobilePage} setPage={setMobilePage} openCompose={openCompose} onOpenFeedback={setSelectedFeedback} theme={theme} clock={clock} languageSwitcher={renderLanguageSwitcher?.()} />
+      <MobileShell user={user} feedbacks={feedbacks} stats={stats} page={mobilePage} setPage={setMobilePage} openCompose={openCompose} onOpenFeedback={setSelectedFeedback} onOpenMy={onOpenMy} theme={theme} clock={clock} unreadCount={enableNotifications ? unreadCount : 0} onToggleNotifications={() => setShowNotifications(current => !current)} showNotifications={enableNotifications} languageSwitcher={renderLanguageSwitcher?.()} />
       <div className={cls('drawer-backdrop', (composeOpen || mobileComposeOpen) && 'is-open')} onClick={() => { setComposeOpen(false); setMobileComposeOpen(false); }}></div>
       <ComposeDrawer open={composeOpen} category={composeCategory} setCategory={setComposeCategory} onClose={() => setComposeOpen(false)} onSubmit={submitFeedback} loading={loading} />
       <ComposeDrawer mobile open={mobileComposeOpen} category={composeCategory} setCategory={setComposeCategory} onClose={() => setMobileComposeOpen(false)} onSubmit={submitFeedback} loading={loading} />
+      {enableNotifications && (
+        <NotificationDrawer
+          open={showNotifications}
+          notifications={notifications}
+          unreadCount={unreadCount}
+          onClose={() => setShowNotifications(false)}
+          onMarkReadAll={() => markNotificationsRead()}
+          onMarkReadOne={item => markNotificationsRead([item._id])}
+          onOpenNotification={handleOpenNotification}
+        />
+      )}
       <FeedbackDialog feedback={selectedFeedback} onClose={() => setSelectedFeedback(null)} onReply={reply} onRecall={recall} onDelete={deleteFeedback} />
-      <SettingsModal open={settingsOpen} user={user} token={token} onClose={() => setSettingsOpen(false)} onLogout={onLogout} onRefreshUser={onRefreshUser} />
       <ThemePanel theme={theme} />
     </>
   );
@@ -3024,8 +4052,15 @@ export default function App() {
   const theme = useTheme();
   const languageTools = useLanguage();
   const [portalView, setPortalView] = useState('superadmin');
-  const [appSurface, setAppSurface] = useState('hub');
+  const [appSurface, setAppSurface] = useState(() => {
+    const pathSurface = getCurrentPathSurface();
+    if (pathSurface) return pathSurface;
+    if (currentHost && SIEVOX_HOST && currentHost === SIEVOX_HOST) return 'sievox';
+    if (currentHost && SIEBRIDGE_HOST && currentHost === SIEBRIDGE_HOST) return 'siebridge';
+    return 'hub';
+  });
   const [activeModule, setActiveModule] = useState(null);
+  const historySyncRef = useRef({ initialized: false, applyingPop: false, signature: '' });
   const renderLanguageSwitcher = () => <LanguageSwitcher language={languageTools.language} setLanguage={languageTools.setLanguage} />;
 
   useEffect(() => {
@@ -3039,11 +4074,54 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
+    if (user && appSurface === 'sievox') {
+      setPortalView(getDefaultSIEVOXPortalView(user));
+    }
+  }, [user, appSurface]);
+
+  useEffect(() => {
     if (!user) {
-      setAppSurface('hub');
+      setAppSurface(getCurrentPathSurface() || 'hub');
       setActiveModule(null);
+      historySyncRef.current = { initialized: false, applyingPop: false, signature: '' };
     }
   }, [user]);
+
+  useEffect(() => {
+    const handlePopState = (event) => {
+      if (!isSIEHUBHistoryState(event.state)) return;
+      const nextSurface = SIEHUB_APP_SURFACES.has(event.state.appSurface) ? event.state.appSurface : 'hub';
+      historySyncRef.current.applyingPop = true;
+      setAppSurface(nextSurface);
+      setActiveModule(findSIEHUBModuleByKey(event.state.activeModuleKey));
+      setPortalView(SIEHUB_PORTAL_VIEWS.has(event.state.portalView) ? event.state.portalView : 'superadmin');
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  useEffect(() => {
+    if (!user || typeof window === 'undefined') return;
+    const state = createSIEHUBHistoryState(appSurface, activeModule, portalView);
+    const signature = JSON.stringify(state);
+    const targetPath = getPathForSurface(appSurface);
+    const targetUrl = `${targetPath}${window.location.search || ''}${window.location.hash || ''}`;
+    if (historySyncRef.current.applyingPop) {
+      historySyncRef.current.applyingPop = false;
+      historySyncRef.current.signature = signature;
+      historySyncRef.current.initialized = true;
+      return;
+    }
+    if (!historySyncRef.current.initialized) {
+      window.history.replaceState(state, '', targetUrl);
+      historySyncRef.current = { initialized: true, applyingPop: false, signature };
+      return;
+    }
+    if (historySyncRef.current.signature !== signature) {
+      window.history.pushState(state, '', targetUrl);
+      historySyncRef.current.signature = signature;
+    }
+  }, [user, appSurface, activeModule, portalView]);
 
   const openModule = (module) => {
     setActiveModule(module);
@@ -3051,27 +4129,41 @@ export default function App() {
       setAppSurface(user?.isUltimateAdmin ? 'ultimateOrganization' : 'hub');
       return;
     }
-    const shouldOpenSIEVOXStudentPortal = module.key === 'student_rights' && !canSwitchDepartmentPortal(user, module);
-    setAppSurface(shouldOpenSIEVOXStudentPortal ? 'sievox' : 'department');
+    setAppSurface('department');
   };
+  const openMy = () => setAppSurface('my');
+  const openSIEVOX = () => {
+    setActiveModule(SIEHUB_MODULES.find(module => module.key === 'student_rights'));
+    setPortalView(getDefaultSIEVOXPortalView(user));
+    setAppSurface('sievox');
+  };
+  const openSIEBridge = () => {
+    setActiveModule(SIEHUB_MODULES.find(module => module.key === 'academic_technology'));
+    setAppSurface('siebridge');
+  };
+  const sievoxPortalView = user?.isUltimateAdmin ? portalView : getDefaultSIEVOXPortalView(user);
 
   let content;
   if (!user) content = <LoginPage onLogin={login} onRegister={register} theme={theme} language={languageTools.language} languageSwitcher={renderLanguageSwitcher()} />;
-  else if (appSurface === 'hub') content = <SIEHUBHome user={user} token={token} theme={theme} onOpenModule={openModule} onLogout={logout} language={languageTools.language} languageSwitcher={renderLanguageSwitcher()} />;
-  else if (appSurface === 'ultimateOrganization') content = <UltimateOrganizationWindow user={user} token={token} theme={theme} onBack={() => setAppSurface('hub')} onLogout={logout} languageSwitcher={renderLanguageSwitcher()} />;
-  else if (appSurface === 'department') content = <DepartmentPlaceholder module={activeModule} user={user} token={token} theme={theme} onBack={() => setAppSurface('hub')} onOpenSIEVOX={() => { setActiveModule(SIEHUB_MODULES.find(module => module.key === 'student_rights')); setAppSurface('sievox'); }} onOpenSIEBridge={() => { setActiveModule(SIEHUB_MODULES.find(module => module.key === 'academic_technology')); setAppSurface('siebridge'); }} onLogout={logout} languageSwitcher={renderLanguageSwitcher()} language={languageTools.language} />;
-  else if (appSurface === 'siebridge') content = <SIEBridgeWindow user={user} token={token} theme={theme} onBack={() => setAppSurface('hub')} onLogout={logout} languageSwitcher={renderLanguageSwitcher()} />;
-  else if (user.isUltimateAdmin && portalView === 'student') {
-    content = <DashboardPage user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} theme={theme} portalView={portalView} onPortalChange={setPortalView} onBackToHub={() => setAppSurface('hub')} renderLanguageSwitcher={renderLanguageSwitcher} language={languageTools.language} />;
-  } else if (user.role === 'admin' || user.role === 'superadmin') {
+  else if (appSurface === 'hub') content = <SIEHUBHome user={user} token={token} theme={theme} onOpenModule={openModule} onOpenSIEVOX={openSIEVOX} onOpenSIEBridge={openSIEBridge} onOpenMy={openMy} onLogout={logout} language={languageTools.language} languageSwitcher={renderLanguageSwitcher()} />;
+  else if (appSurface === 'my') content = <MyProfileWindow user={user} token={token} theme={theme} onBack={() => setAppSurface('hub')} onOpenMy={openMy} onLogout={logout} onRefreshUser={refreshUser} languageSwitcher={renderLanguageSwitcher()} />;
+  else if (appSurface === 'ultimateOrganization') content = <UltimateOrganizationWindow user={user} token={token} theme={theme} onBack={() => setAppSurface('hub')} onOpenMy={openMy} onLogout={logout} languageSwitcher={renderLanguageSwitcher()} />;
+  else if (appSurface === 'sievox') {
+    content = sievoxPortalView === 'student'
+      ? <DashboardPage user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} onOpenMy={openMy} theme={theme} portalView={sievoxPortalView} onPortalChange={setPortalView} onBackToHub={() => setAppSurface('hub')} renderLanguageSwitcher={renderLanguageSwitcher} language={languageTools.language} enableNotifications={false} />
+      : <AdminDashboard user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} onOpenMy={openMy} themeTools={theme} portalView={sievoxPortalView} onPortalChange={setPortalView} onBackToHub={() => setAppSurface('hub')} language={languageTools.language} languageSwitcher={renderLanguageSwitcher()} />;
+  }
+  else if (appSurface === 'department') content = <DepartmentPlaceholder module={activeModule} user={user} token={token} theme={theme} onBack={() => setAppSurface('hub')} onOpenSIEVOX={openSIEVOX} onOpenSIEBridge={openSIEBridge} onOpenMy={openMy} onLogout={logout} languageSwitcher={renderLanguageSwitcher()} language={languageTools.language} />;
+  else if (appSurface === 'siebridge') content = <SIEBridgeWindow user={user} token={token} theme={theme} onBack={() => setAppSurface('hub')} onOpenMy={openMy} onLogout={logout} languageSwitcher={renderLanguageSwitcher()} />;
+  else if (user.role === 'admin' || user.role === 'superadmin') {
     content = (
       <>
-        <AdminDashboard user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} themeTools={theme} portalView={user.isUltimateAdmin ? portalView : undefined} onPortalChange={setPortalView} onBackToHub={() => setAppSurface('hub')} language={languageTools.language} languageSwitcher={renderLanguageSwitcher()} />
+        <AdminDashboard user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} onOpenMy={openMy} themeTools={theme} portalView={user.isUltimateAdmin ? portalView : undefined} onPortalChange={setPortalView} onBackToHub={() => setAppSurface('hub')} language={languageTools.language} languageSwitcher={renderLanguageSwitcher()} />
         <ThemePanel theme={theme} />
       </>
     );
   } else {
-    content = <DashboardPage user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} theme={theme} onBackToHub={() => setAppSurface('hub')} renderLanguageSwitcher={renderLanguageSwitcher} language={languageTools.language} />;
+    content = <DashboardPage user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} onOpenMy={openMy} theme={theme} onBackToHub={() => setAppSurface('hub')} renderLanguageSwitcher={renderLanguageSwitcher} language={languageTools.language} />;
   }
 
   return content;

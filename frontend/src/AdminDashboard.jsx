@@ -1259,7 +1259,7 @@ const BusinessFeedbackWorkspace = ({
 };
 
 // ===================== 主页面: AdminDashboard =====================
-export default function AdminDashboard({ user, token, onLogout, onRefreshUser, themeTools, portalView, onPortalChange, onBackToHub, language = 'zh', languageSwitcher = null }) {
+export default function AdminDashboard({ user, token, onLogout, onRefreshUser, onOpenMy, themeTools, portalView, onPortalChange, onBackToHub, language = 'zh', languageSwitcher = null }) {
   const [feedbacks, setFeedbacks] = useState([]);
   const [stats, setStats] = useState(null);
   const [selectedFeedback, setSelectedFeedback] = useState(null);
@@ -1289,7 +1289,6 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
   }, [showUltimatePortal, showAccountManagement]);
 
   // 绩效与学期专属状态
-  const [showPerformanceManagement, setShowPerformanceManagement] = useState(false);
   const [performanceRecords, setPerformanceRecords] = useState([]);
   const [perfForm, setPerfForm] = useState({ volunteerIds: [], dimension: 'attendance', score: '', reason: '', occurrenceDate: '', activityName: '', targetSemester: '' });
   const [volunteers, setVolunteers] = useState([]);
@@ -1538,6 +1537,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
 
   const [notifications, setNotifications] = useState([]);
   const [showNotifs, setShowNotifs] = useState(false);
+  const unreadNotificationCount = notifications.filter(item => !item.isRead).length;
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -1547,12 +1547,28 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
     } catch (err) {}
   }, [token]);
 
-  const markNotificationsRead = async () => {
+  const markNotificationsRead = async (ids = []) => {
     try {
-      await fetch(`${API_BASE}/notifications/read`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } });
-      setNotifications([]);
-      setShowNotifs(false);
+      await fetch(`${API_BASE}/notifications/read`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(ids.length ? { ids } : {})
+      });
+      setNotifications(current => current.map(item => (
+        ids.length === 0 || ids.includes(item._id) ? { ...item, isRead: true } : item
+      )));
     } catch (err) {}
+  };
+
+  const openNotification = async (notification) => {
+    if (!notification) return;
+    if (!notification.isRead) await markNotificationsRead([notification._id]);
+    const feedbackId = notification.feedbackId?._id || notification.feedbackId;
+    if (feedbackId) {
+      const matched = feedbacks.find(item => (item._id || item.id) === feedbackId);
+      if (matched) setSelectedFeedback(matched);
+    }
+    setShowNotifs(false);
   };
 
   const handleChangePassword = async (e) => {
@@ -1628,15 +1644,13 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
     fetchStats();
     fetchFeedbacks(true); 
     fetchNotifications(); 
-    fetchPerformanceAndUsers(); 
     const interval = setInterval(() => {
       fetchStats();
       fetchFeedbacks(false); 
       fetchNotifications(); 
-      fetchPerformanceAndUsers(); 
     }, 15000);
     return () => clearInterval(interval);
-  }, [fetchStats, fetchFeedbacks, fetchNotifications, fetchPerformanceAndUsers]);
+  }, [fetchStats, fetchFeedbacks, fetchNotifications]);
 
   const handleRecallMsg = async (feedbackId, replyId) => {
     if (!window.confirm('确定要撤回这条回复吗？（撤回后学生和普通管理员将无法查看具体内容）')) return;
@@ -1725,14 +1739,14 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
 
         <nav className="side-nav">
           <p className="nav-label">学生服务</p>
-          <button className="nav-item is-active" type="button" onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(false); }}>
+          <button className="nav-item is-active" type="button" onClick={() => { setShowAccountManagement(false); }}>
             <span>▦</span><span>权益工作台</span>
           </button>
-          <button className="nav-item" type="button" onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(false); }}>
+          <button className="nav-item" type="button" onClick={() => { setShowAccountManagement(false); }}>
             <span>□</span><span>发起反馈</span><kbd>N</kbd>
           </button>
-          <button className="nav-item" type="button" onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(true); }}>
-            <span>▱</span><span>{user?.role === 'superadmin' ? '绩效管理' : '我的反馈'}</span><span className="nav-count">3</span>
+          <button className="nav-item" type="button" onClick={() => { setShowAccountManagement(false); }}>
+            <span>▱</span><span>业务反馈</span><span className="nav-count">●</span>
           </button>
           <button className="nav-item" type="button">
             <span>◇</span><span>服务指南</span>
@@ -1744,16 +1758,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
         <div className="sidebar-user">
           <span className="avatar">{(user?.name || '管').slice(0, 1)}</span>
           <div><strong>{user?.name}</strong><span>{user?.studentId}</span><RoleTag user={user} /></div>
-          <button className="icon-button on-dark" type="button" onClick={() => {
-            setProfileData({
-              name: user?.name || '',
-              studentId: user?.studentId || '',
-              email: user?.email || '',
-              phone: user?.phone || ''
-            });
-            setSettingsTab('profile');
-            setShowSettingsModal(true);
-          }}>⚙</button>
+          <button className="icon-button on-dark" type="button" onClick={() => onOpenMy?.()}>⚙</button>
         </div>
       </aside>
 
@@ -1786,7 +1791,6 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
           <AdminThemeModeButtons themeTools={themeTools} />
           <button className="icon-button theme-trigger" type="button" onClick={() => themeTools?.setOpen?.(true)} aria-label="外观设置">🎨</button>
           {isUltimateAdmin && <button className="outline-button" type="button">▯ 手机端预览</button>}
-          <button className="icon-button" type="button" onClick={() => setShowNotifs(!showNotifs)}>🔔{notifications.length > 0 && <span className="notification-dot"></span>}</button>
           <button className="outline-button" type="button" onClick={onLogout}>退出</button>
           {languageSwitcher}
         </div>
@@ -1820,17 +1824,17 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
                 <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl shadow-2xl z-[100] max-h-80 flex flex-col overflow-hidden text-left transition-colors">
                   <div className="p-3 border-b border-slate-200 dark:border-white/10 flex justify-between items-center bg-slate-50 dark:bg-white/5">
                     <span className="text-sm font-medium text-slate-800 dark:text-white">消息通知</span>
-                    {notifications.length > 0 && <button onClick={markNotificationsRead} className="text-xs text-purple-500 dark:text-purple-300 hover:text-purple-700 dark:hover:text-white transition-colors">全部标为已读</button>}
+                    {notifications.length > 0 && <button onClick={() => markNotificationsRead()} className="text-xs text-purple-500 dark:text-purple-300 hover:text-purple-700 dark:hover:text-white transition-colors">全部标为已读</button>}
                   </div>
                   <div className="overflow-y-auto flex-1 p-2 custom-scrollbar">
                     {notifications.length === 0 ? (
                       <p className="text-xs text-slate-500 dark:text-purple-200/50 text-center py-6">暂无新消息</p>
                     ) : (
                       notifications.map(n => (
-                        <div key={n._id} className="p-2.5 mb-1 bg-slate-50 dark:bg-white/5 rounded-lg border border-slate-200 dark:border-white/5 text-slate-800 dark:text-purple-100 flex flex-col gap-1 transition-colors">
+                        <button key={n._id} type="button" onClick={() => openNotification(n)} className={`w-full p-2.5 mb-1 rounded-lg border text-left text-slate-800 dark:text-purple-100 flex flex-col gap-1 transition-colors ${n.isRead ? 'bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/5' : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800/60'}`}>
                           <p className="text-xs break-words">{n.content}</p>
                           <span className="text-[10px] text-slate-500 dark:text-purple-200/40 text-right">{new Date(n.createdAt).toLocaleString('zh-CN')}</span>
-                        </div>
+                        </button>
                       ))
                     )}
                   </div>
@@ -1844,16 +1848,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
             </div>
             
             <button 
-              onClick={() => {
-                setProfileData({
-                  name: user?.name || '',
-                  studentId: user?.studentId || '',
-                  email: user?.email || '',
-                  phone: user?.phone || ''
-                });
-                setSettingsTab('profile');
-                setShowSettingsModal(true);
-              }}
+              onClick={() => onOpenMy?.()}
               className="px-4 py-2 bg-white/5 hover:bg-purple-500/20 text-purple-200 hover:text-purple-300 rounded-xl text-sm transition-all border border-white/10"
             >
               修改信息
@@ -1879,11 +1874,11 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
                 <h1>学院权益治理总控台</h1>
                 <p>统一查看账号权限、子管理员处理轨迹、学期绩效与成员名单，给系统运行留下一条清楚的治理账本。</p>
               </div>
-              <div className="superadmin-badge"><span>负责人权限</span><strong>{currentSemester || '2025-2026 第二学期'}</strong></div>
+              <div className="superadmin-badge"><span>当前模块</span><strong>业务反馈</strong></div>
             </div>
             <div className="superadmin-metrics">
               <div><span>系统账户</span><strong>{stats?.totalUsers || 326}</strong><small>学生 / 管理员 / 超管</small></div>
-              <div><span>活跃子管理员</span><strong>{rosterMembers.length || 12}</strong><small>本周均有处理记录</small></div>
+              <div><span>有效反馈</span><strong>{stats?.total || 0}</strong><small>当前筛选范围内</small></div>
               <div><span>待复核操作</span><strong>{stats?.pending || 7}</strong><small className="warning-text">含撤回回复</small></div>
               <div><span>绩效平均分</span><strong>86.5</strong><small>较上月 +4.2</small></div>
             </div>
@@ -1911,35 +1906,20 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
         )}
         <div className="superadmin-tabs admin-module-tabs">
           <button
-            onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(false); }}
-            className={!showAccountManagement && !showPerformanceManagement ? 'is-active' : ''}
+            onClick={() => { setShowAccountManagement(false); }}
+            className={!showAccountManagement ? 'is-active' : ''}
           >
             <span>📋</span> 业务反馈处理
           </button>
           
-          {showUltimatePortal && (
-            <button
-              onClick={() => { setShowAccountManagement(true); setShowPerformanceManagement(false); }}
-              className={showAccountManagement ? 'is-active' : ''}
-            >
-              <span>👥</span> 账号管理面板
-            </button>
-          )}
-
-          <button
-            onClick={() => { setShowAccountManagement(false); setShowPerformanceManagement(true); }}
-            className={showPerformanceManagement ? 'is-active' : ''}
-          >
-            <span>📊</span> {user?.role === 'superadmin' ? '部门绩效管理' : '我的绩效档案'}
-          </button>
         </div>
 
-        {showPerformanceManagement ? (
+        {false ? (
           <div className={`performance-redesign-panel ${user?.role === 'superadmin' ? 'super-performance-redesign' : 'self-performance-redesign'} animate-fadeIn space-y-4 md:space-y-6`}>
             <section className="performance-command">
               <div className="performance-command-copy">
                 <p className="performance-command-kicker">PERFORMANCE COMMAND</p>
-                <h2>{user?.role === 'superadmin' ? '部门绩效管理' : '我的绩效档案'}</h2>
+                <h2>历史面板已停用</h2>
                 <p>{user?.role === 'superadmin' ? '学期管理、成员名单、批量赋分、绩效流水撤回与期末动态加权统一在这里完成。' : '仅查看本人当前学期的积分、维度分布和绩效流水。'}</p>
               </div>
               {user?.role === 'superadmin' && (
@@ -2252,7 +2232,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
               </div>
             )}
           </div>
-        ) : showAccountManagement && showUltimatePortal ? (
+        ) : false && showAccountManagement && showUltimatePortal ? (
            <AccountManagement token={token} user={user} />
         ) : (
           <>
@@ -2537,7 +2517,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
       </div>
 
       {/* 动态加权核算器弹窗 */}
-      {showWeightCalc && (
+      {false && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
           <div className="w-full max-w-5xl p-6 relative bg-slate-900 border border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
             <button onClick={() => setShowWeightCalc(false)} className="absolute top-4 right-4 text-purple-200/50 hover:text-white text-lg z-10">✕</button>
@@ -2628,7 +2608,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
       )}
 
      {/* [新增] 管理本学期成员名单弹窗 */}
-      {showRosterModal && (
+      {false && (
         <div className="fixed inset-0 z-[180] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
           <div className="w-full max-w-lg p-6 relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-[85vh] transition-colors">
             <button onClick={() => setShowRosterModal(false)} className="absolute top-4 right-4 text-purple-400 dark:text-purple-200/50 hover:text-slate-800 dark:hover:text-white text-lg transition-colors">✕</button>
@@ -2679,7 +2659,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, t
       )}
 
      {/* 全局设置弹窗 */}
-      {showSettingsModal && (
+      {false && showSettingsModal && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
           <div className="w-full max-w-md p-6 relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl transition-colors">
             <button onClick={() => setShowSettingsModal(false)} className="absolute top-4 right-4 text-purple-400 dark:text-purple-200/50 hover:text-slate-800 dark:hover:text-white text-lg transition-colors">✕</button>
