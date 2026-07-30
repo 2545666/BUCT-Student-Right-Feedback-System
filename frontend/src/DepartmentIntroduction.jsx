@@ -15,6 +15,12 @@ import {
 } from 'lucide-react';
 import { API_BASE } from './api';
 
+const EXTERNAL_DEPARTMENT_INTRO_URLS = {
+  culture_sports_arts: '/culture-sports-arts/'
+};
+
+const getExternalIntroductionUrl = (module) => EXTERNAL_DEPARTMENT_INTRO_URLS[module?.key] || '';
+
 const getText = (value, language = 'zh') => {
   if (!value) return '';
   if (typeof value === 'string') return value;
@@ -201,11 +207,16 @@ const BlockPreview = ({ block, language = 'zh' }) => {
 };
 
 export const DepartmentIntroductionViewer = ({ module, token, language = 'zh' }) => {
-  const [loading, setLoading] = useState(true);
+  const externalUrl = getExternalIntroductionUrl(module);
+  const [loading, setLoading] = useState(!externalUrl);
   const [intro, setIntro] = useState(null);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
+    if (externalUrl) {
+      setLoading(false);
+      return undefined;
+    }
     let cancelled = false;
     setLoading(true);
     fetch(`${API_BASE}/hub/departments/${module.organization}/${module.key}/introduction`, {
@@ -226,9 +237,27 @@ export const DepartmentIntroductionViewer = ({ module, token, language = 'zh' })
     return () => {
       cancelled = true;
     };
-  }, [module.organization, module.key, token]);
+  }, [externalUrl, module.organization, module.key, token]);
 
   const content = intro?.content || defaultContent(module);
+  if (externalUrl) {
+    return (
+      <section className="dept-intro-page" data-i18n-skip>
+        <section className="dept-intro-page-hero tone-light">
+          <p>SIEHUB / DEPARTMENT</p>
+          <h1>{getModuleTitle(module, language)}</h1>
+          <span>{language === 'en' ? 'This department introduction has been moved to an external showcase.' : '该部门介绍已迁移到外部展示站。'}</span>
+        </section>
+        <section className="dept-intro-page-section">
+          <h2>{language === 'en' ? 'External showcase' : '外部展示站'}</h2>
+          <p>{language === 'en' ? 'Open the dedicated showcase site for the latest department introduction layout.' : '点击进入独立展示站查看最新的部门介绍外观。'}</p>
+          <a href={externalUrl} target="_blank" rel="noreferrer" className="dept-intro-external-link">
+            {language === 'en' ? 'Open showcase' : '打开展示站'} <ArrowUpRight />
+          </a>
+        </section>
+      </section>
+    );
+  }
   return (
     <section className="dept-intro-page" data-i18n-skip>
       {loading ? <div className="dept-intro-status">{language === 'en' ? 'Loading department introduction...' : '加载部门介绍中...'}</div> : null}
@@ -245,7 +274,8 @@ export const DepartmentIntroductionViewer = ({ module, token, language = 'zh' })
 
 export const DepartmentIntroductionEditor = ({ module, token, language = 'zh', onClose }) => {
   const isEnglish = language === 'en';
-  const [loading, setLoading] = useState(true);
+  const externalUrl = getExternalIntroductionUrl(module);
+  const [loading, setLoading] = useState(!externalUrl);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [uploadingBlockId, setUploadingBlockId] = useState('');
@@ -256,6 +286,10 @@ export const DepartmentIntroductionEditor = ({ module, token, language = 'zh', o
   const [revisions, setRevisions] = useState([]);
 
   useEffect(() => {
+    if (externalUrl) {
+      setLoading(false);
+      return undefined;
+    }
     let cancelled = false;
     setLoading(true);
     fetch(`${API_BASE}/hub/departments/${module.organization}/${module.key}/introduction/editor`, {
@@ -279,7 +313,7 @@ export const DepartmentIntroductionEditor = ({ module, token, language = 'zh', o
     return () => {
       cancelled = true;
     };
-  }, [module.organization, module.key, token]);
+  }, [externalUrl, module.organization, module.key, token]);
 
   const blocks = content.blocks || [];
   const selectedBlock = useMemo(() => blocks.find(block => block.id === selectedId) || blocks[0], [blocks, selectedId]);
@@ -346,11 +380,12 @@ export const DepartmentIntroductionEditor = ({ module, token, language = 'zh', o
       const res = await fetch(`${API_BASE}/hub/departments/${module.organization}/${module.key}/introduction/publish`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ reason: '管理端发布' })
+        body: JSON.stringify({ reason: '管理端发布', content })
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.message || '发布失败');
       setIntro(data.introduction);
+      setContent(data.introduction?.content || content);
       setMessage(isEnglish ? 'Department intro page published.' : '部门介绍页已发布。');
     } catch (error) {
       setMessage(error.message || '发布失败');
@@ -374,13 +409,30 @@ export const DepartmentIntroductionEditor = ({ module, token, language = 'zh', o
       const data = await res.json();
       if (!data.success) throw new Error(data.message || '上传失败');
       updateBlock(block.id, current => ({ ...current, data: { ...current.data, [targetField]: data.media.url } }));
-      setMessage(isEnglish ? 'Media uploaded. Remember to save the draft.' : '媒体已上传，记得保存草稿。');
+      setMessage(isEnglish ? 'Media uploaded. You can publish directly.' : '媒体已上传，可以直接发布。');
     } catch (error) {
       setMessage(error.message || '上传失败');
     } finally {
       setUploadingBlockId('');
     }
   };
+
+  if (externalUrl) {
+    return (
+      <section className="dept-intro-editor dept-intro-editor--external">
+        <div className="dept-intro-status">
+          {isEnglish ? 'This department introduction editor has been temporarily hidden.' : '该部门介绍编辑器已临时隐藏。'}
+        </div>
+        <section className="dept-intro-page-section">
+          <h2>{getModuleTitle(module, language)}</h2>
+          <p>{isEnglish ? 'Open the external showcase site instead.' : '请直接打开外部展示站。'}</p>
+          <a href={externalUrl} target="_blank" rel="noreferrer" className="dept-intro-external-link">
+            {isEnglish ? 'Open showcase' : '打开展示站'} <ArrowUpRight />
+          </a>
+        </section>
+      </section>
+    );
+  }
 
   const renderInspector = () => {
     if (!selectedBlock) return <div className="dept-intro-editor-empty">{isEnglish ? 'Select a block to edit.' : '选择一个区块后编辑内容。'}</div>;

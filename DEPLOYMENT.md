@@ -217,6 +217,20 @@ CORS_ORIGIN=https://你的域名.com,https://www.你的域名.com
 
 # 如果没有域名，填服务器IP
 # CORS_ORIGIN=http://你的服务器IP
+
+# “国教空间”微信公众号入口与同步
+# 资料未齐全时保持 false，首页仍可展示公众号入口的降级状态
+WECHAT_MP_ENABLED=false
+WECHAT_MP_APP_ID=
+WECHAT_MP_APP_SECRET=
+WECHAT_MP_ACCOUNT_NAME=国教空间
+WECHAT_MP_ACCOUNT_URL=
+WECHAT_MP_COVER_IMAGE_URL=
+WECHAT_MP_QR_IMAGE_URL=
+WECHAT_MP_FALLBACK_DESCRIPTION=关注“国教空间”微信公众号，查看学院资讯与学生工作动态。
+WECHAT_MP_SYNC_INTERVAL_MINUTES=60
+WECHAT_MP_NOTICE_ORGANIZATION=student_union
+WECHAT_MP_NOTICE_DEPARTMENT=new_media
 EOF
 
 # 使用 PM2 启动后端

@@ -1,0 +1,408 @@
+:root {
+  --display-font: "Songti SC", "STSong", "Source Han Serif SC", "SimSun", serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 0;
+  font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif;
+}
+
+img,
+picture {
+  display: block;
+  max-width: 100%;
+}
+
+.hero > *,
+.section-heading > *,
+.keyword-strip > *,
+.value-grid > *,
+.responsibility-list > *,
+.event-grid > *,
+.event-card > *,
+.chair-card > *,
+.member-row > *,
+.honors > *,
+.stats > *,
+.recruit-ticket > *,
+footer > * {
+  min-width: 0;
+}
+
+.hero-image-placeholder picture,
+.event-photo picture,
+.member-photo picture,
+.chair-avatar picture {
+  width: 100%;
+  height: 100%;
+}
+
+body.menu-open {
+  overflow: hidden;
+}
+
+.youth-journal h1,
+.youth-journal h2,
+.youth-journal h3,
+.youth-journal h4 {
+  font-family: var(--display-font);
+  font-weight: 900;
+  font-synthesis: weight;
+  text-wrap: balance;
+  -webkit-text-stroke: .25px currentColor;
+}
+
+@media (min-width: 901px) {
+  .youth-journal .hero h1,
+  .youth-journal .section-heading h2,
+  .youth-journal .responsibility-heading h3,
+  .youth-journal .department-motto p,
+  .youth-journal .track-heading h3,
+  .youth-journal .chair-copy h3,
+  .youth-journal .chair-card blockquote h4,
+  .youth-journal .honor-content h2,
+  .youth-journal .ticket-main h2,
+  .youth-journal .ticket-stub strong {
+    font-weight: 900;
+    font-synthesis: weight;
+    -webkit-text-stroke: .55px currentColor;
+    text-shadow: .012em 0 currentColor;
+  }
+
+  .youth-journal .hero h1,
+  .youth-journal .section-heading h2 {
+    -webkit-text-stroke-width: 1px;
+    text-shadow: .016em 0 currentColor;
+  }
+
+  .youth-journal .hero-description,
+  .youth-journal .section-lead,
+  .youth-journal .about-summary p {
+    font-weight: 500;
+  }
+}
+
+@media (max-width: 900px) {
+  .youth-journal .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    overflow: visible;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .youth-journal .menu-button {
+    position: relative;
+    z-index: 110;
+    touch-action: manipulation;
+  }
+
+  .youth-journal .menu-button i {
+    transition: transform .24s ease, opacity .18s ease;
+    transform-origin: center;
+  }
+
+  .youth-journal .menu-button[aria-expanded="true"] i:nth-child(1) {
+    transform: translateY(7px) rotate(45deg);
+  }
+
+  .youth-journal .menu-button[aria-expanded="true"] i:nth-child(2) {
+    opacity: 0;
+  }
+
+  .youth-journal .menu-button[aria-expanded="true"] i:nth-child(3) {
+    transform: translateY(-7px) rotate(-45deg);
+  }
+
+  .youth-journal .main-nav {
+    position: fixed;
+    inset: 70px 0 0;
+    z-index: 105;
+    width: 100%;
+    height: calc(100dvh - 70px);
+    min-height: calc(100vh - 70px);
+    padding: 18px 20px max(28px, env(safe-area-inset-bottom));
+    display: flex !important;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: #fbfaf6;
+    box-shadow: none;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(-10px);
+    transition: opacity .2s ease, transform .24s ease, visibility 0s linear .24s;
+  }
+
+  .youth-journal .main-nav.open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateY(0);
+    transition-delay: 0s;
+  }
+
+  .youth-journal .main-nav a {
+    width: 100%;
+    min-height: 52px;
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    border-bottom: 1px solid #ddd7cc;
+    color: var(--navy);
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .youth-journal .main-nav a.active {
+    color: var(--coral);
+  }
+
+  .youth-journal .main-nav .nav-join {
+    min-height: 54px;
+    margin-top: 16px;
+    justify-content: center;
+    border: 2px solid var(--navy);
+    background: var(--sun);
+    color: var(--navy);
+  }
+}
+
+@media (max-width: 620px) {
+  html {
+    scroll-padding-top: 76px;
+  }
+
+  [id] {
+    scroll-margin-top: 76px;
+  }
+
+  .youth-journal .menu-button {
+    width: 46px;
+    height: 46px;
+    flex: 0 0 46px;
+  }
+
+  .youth-journal .main-nav a {
+    min-height: 52px;
+    font-size: 15px;
+  }
+
+  .youth-journal .main-nav .nav-join {
+    min-height: 54px;
+  }
+
+  .youth-journal .hero {
+    padding: 48px 20px 44px;
+    gap: 30px;
+  }
+
+  .youth-journal .hero h1 {
+    font-size: clamp(52px, 16.5vw, 68px);
+  }
+
+  .youth-journal .hero-description {
+    font-size: 15px;
+    line-height: 1.85;
+  }
+
+  .youth-journal .hero-actions {
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .youth-journal .primary-button,
+  .youth-journal .play-link {
+    min-height: 48px;
+  }
+
+  .youth-journal .primary-button {
+    padding: 13px 17px;
+    font-size: 13px;
+  }
+
+  .youth-journal .hero-meta {
+    margin-top: 34px;
+  }
+
+  .youth-journal .hero-visual {
+    width: 100%;
+    height: calc((100vw - 52px) / 1.5 + 68px);
+    margin-top: 0;
+  }
+
+  .youth-journal .hero-image-placeholder {
+    inset: 0 6px 68px;
+    width: auto;
+    height: auto;
+  }
+
+  .youth-journal .hero-image-placeholder img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .youth-journal .floating-card {
+    bottom: 2px;
+    max-width: calc(100% - 34px);
+  }
+
+  .youth-journal .creative-marquee {
+    width: 100%;
+    color: #fff;
+    background: #c54732;
+    transform: none;
+  }
+
+  .youth-journal .keyword-strip small {
+    color: #b4bed2;
+  }
+
+  .youth-journal .section-heading h2 {
+    font-size: clamp(36px, 10.5vw, 43px);
+  }
+
+  .youth-journal .culture-events {
+    padding-inline: 6px;
+  }
+
+  .youth-journal .culture-events .event-card,
+  .youth-journal .culture-events .event-card:nth-child(even) {
+    width: calc(100% - 4px);
+    margin-inline: auto;
+  }
+
+  .youth-journal .event-photo {
+    height: auto;
+    aspect-ratio: 1.22;
+  }
+
+  .youth-journal .event-photo.chorus-cover {
+    aspect-ratio: .72;
+  }
+
+  .youth-journal .sports-events .event-card,
+  .youth-journal .sports-events .event-card.wide {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .youth-journal .sports-events .event-photo {
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    aspect-ratio: 1.45;
+  }
+
+  .youth-journal .sports-events .event-info {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    min-height: 122px;
+    padding: 20px 22px 24px;
+    background: rgba(239, 235, 227, .98);
+  }
+
+  .youth-journal .sports-events .event-info h4 {
+    margin: 7px 0 9px;
+    padding-right: 24px;
+    overflow-wrap: anywhere;
+    font-size: clamp(18px, 5.4vw, 22px);
+    line-height: 1.4;
+  }
+
+  .youth-journal .member-row {
+    padding-inline: 3px;
+  }
+
+  .youth-journal .leader-label p small {
+    color: #5f687a;
+    font-size: 8px;
+  }
+
+  .youth-journal .member-row article,
+  .youth-journal .member-row article:nth-child(even) {
+    width: calc(100% - 3px);
+    margin-inline: auto;
+  }
+
+  .youth-journal .chair-avatar {
+    height: min(112vw, 430px);
+  }
+
+  .youth-journal .recruit-ticket,
+  .youth-journal .activity-note {
+    max-width: calc(100% - 8px);
+  }
+
+  .youth-journal .gallery-modal {
+    width: 100%;
+    max-width: 100%;
+    padding: 66px 10px 16px;
+    grid-template-columns: 46px minmax(0, 1fr) 46px;
+    grid-template-rows: auto minmax(0, 1fr) 58px;
+    transform: none;
+  }
+
+  .youth-journal .gallery-close {
+    top: 10px;
+    right: 10px;
+    width: 48px;
+    height: 48px;
+  }
+
+  .youth-journal .gallery-arrow {
+    width: 44px;
+    height: 44px;
+  }
+
+  .youth-journal .gallery-stage {
+    margin-block: 10px;
+  }
+
+  .youth-journal .gallery-stage picture,
+  .youth-journal .gallery-stage img {
+    max-width: 100%;
+    max-height: 64dvh;
+  }
+
+  .youth-journal .gallery-thumbs {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+  }
+
+  .youth-journal .gallery-thumbs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .youth-journal .copyright {
+    color: #9ca8b8;
+    font-size: 9px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}

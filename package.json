@@ -1,0 +1,23 @@
+{
+  "name": "student-feedback-system",
+  "version": "1.0.0",
+  "description": "SIEHUB 是北京化工大学国际教育学院面向团委、学生会和普通学生的一体化学生工作平台。系统以“统一身份认证、部门模块分流、成熟业务系统接入”为核心，承载学生权益反馈、课程资源共享、部门主页展示、组织治理、绩效管理等功能。",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/2545666/BUCT-Student-Right-Feedback-System.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/2545666/BUCT-Student-Right-Feedback-System/issues"
+  },
+  "homepage": "https://github.com/2545666/BUCT-Student-Right-Feedback-System#readme"
+}

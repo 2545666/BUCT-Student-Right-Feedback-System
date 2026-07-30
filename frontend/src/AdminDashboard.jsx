@@ -1345,8 +1345,9 @@ const BusinessFeedbackWorkspace = ({
   setSearchQuery,
   filters,
   setFilters,
-  isUltimatePortal = false,
+  canManageSemester = false,
   currentSemester = '',
+  semesterLoadError = '',
   activeSemesterName,
   onSelectArchive,
   onClearArchive,
@@ -1384,14 +1385,14 @@ const BusinessFeedbackWorkspace = ({
             <span>{activeSemesterName ? `当前筛选：${activeSemesterName}` : '按学年统一归纳，点击学期卡片筛选该学期问题。'}</span>
           </div>
           <div className="feedback-archive-panel-actions">
-            {isUltimatePortal && (
+            {canManageSemester && (
               <div className="feedback-archive-current-semester">
                 <span>当前学期</span>
-                <strong>{currentSemester || '加载中'}</strong>
+                <strong>{currentSemester || semesterLoadError || '加载中'}</strong>
               </div>
             )}
             {activeSemesterName && <button type="button" onClick={onClearArchive}>查看全部学期</button>}
-            {isUltimatePortal && (
+            {canManageSemester && (
               <button type="button" className="feedback-archive-primary" onClick={onArchiveSemester}>
                 归档并开启新学期
               </button>
@@ -1566,6 +1567,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, o
   const [semesterName, setSemesterName] = useState('');
   const [feedbackArchives, setFeedbackArchives] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [semesterLoadError, setSemesterLoadError] = useState('');
   const [resetStudentId, setResetStudentId] = useState('');
   const [resetNewPassword, setResetNewPassword] = useState('');
   const [responseText, setResponseText] = useState('');
@@ -1579,6 +1581,18 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, o
   const isUltimateAdmin = Boolean(user?.isUltimateAdmin);
   const activePortal = isUltimateAdmin ? (portalView || 'superadmin') : (user?.role === 'admin' ? 'admin' : 'superadmin');
   const showUltimatePortal = isUltimateAdmin && activePortal === 'superadmin';
+  const canManageSievoxSemester = Boolean(
+    isUltimateAdmin ||
+    (user?.moduleCapabilities || []).some(module => (
+      module.moduleId === 'sievox' &&
+      (
+        module.accessLevel === 'manage' ||
+        module.accessLevel === 'ultimate' ||
+        module.capabilities?.includes('manage_module') ||
+        module.capabilities?.includes('enter_manage_portal')
+      )
+    ))
+  );
 
   useEffect(() => {
     if (!showUltimatePortal && showAccountManagement) {
@@ -1693,20 +1707,44 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, o
     fetchPerformanceAndUsers(selectedSemester);
   };
 
+  const fetchSemesterConfig = useCallback(async () => {
+    try {
+      const sysRes = await fetch(`${API_BASE}/admin/system/config`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const sysData = await sysRes.json();
+      if (!sysData.success) {
+        throw new Error(sysData.message || '学期信息加载失败');
+      }
+      const nextSemester = sysData.currentSemester || '';
+      setCurrentSemester(nextSemester);
+      setAvailableSemesters(sysData.semesters || []);
+      setSemesterLoadError('');
+      if (nextSemester) {
+        setSelectedSemester(prev => prev || nextSemester);
+        setPerfForm(prev => ({
+          ...prev,
+          targetSemester: prev.targetSemester || nextSemester
+        }));
+      }
+      return sysData;
+    } catch (err) {
+      console.error('获取当前学期失败:', err);
+      setSemesterLoadError('学期信息加载失败');
+      return null;
+    }
+  }, [token]);
+
   // [修改修复] 彻底解决由于多次 .json() 读取流或 undefined 引起的崩溃隐患
   const fetchPerformanceAndUsers = useCallback(async (targetSemester = '') => {
     try {
-      const sysRes = await fetch(`${API_BASE}/admin/system/config`, { headers: { 'Authorization': `Bearer ${token}` } });
-      const sysData = await sysRes.json();
+      const sysData = await fetchSemesterConfig();
       
       let querySemester = targetSemester || selectedSemester; 
       
-      if (sysData.success) {
-        setCurrentSemester(sysData.currentSemester);
-        setAvailableSemesters(sysData.semesters || []);
+      if (sysData?.success) {
         if (!querySemester) {
             querySemester = sysData.currentSemester;
-            setSelectedSemester(sysData.currentSemester);
         }
         setPerfForm(prev => ({ ...prev, targetSemester: querySemester }));
       }
@@ -1730,7 +1768,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, o
         }
       }
     } catch (err) { console.error('获取绩效信息失败:', err); }
-  }, [token, user?.role, selectedSemester]);
+  }, [fetchSemesterConfig, token, user?.role, selectedSemester]);
 
   // [新增] 打开"管理本学期成员名单"弹窗，初始勾选 = 当前名单
   const openRosterModal = () => {
@@ -1804,9 +1842,12 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, o
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ semester: newSemester })
       });
-      if ((await res.json()).success) {
+      const data = await res.json();
+      if (data.success) {
         alert('新学期已成功开启！全员积分已重置。');
         fetchPerformanceAndUsers(newSemester);
+      } else {
+        alert(data.message || '开启新学期失败');
       }
     } catch(err) { alert('操作失败'); }
   };
@@ -1970,10 +2011,15 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, o
   }, [fetchStats, fetchFeedbacks, fetchFeedbackArchives, fetchNotifications]);
 
   useEffect(() => {
-    if (!showUltimatePortal || currentSemester || availableSemesters.length > 0) return;
-    fetchPerformanceAndUsers(selectedSemester);
+    if (!token || currentSemester) return;
+    fetchSemesterConfig();
+  }, [token, currentSemester, fetchSemesterConfig]);
+
+  useEffect(() => {
+    if (!canManageSievoxSemester || !currentSemester || availableSemesters.length > 0) return;
+    fetchPerformanceAndUsers(selectedSemester || currentSemester);
   }, [
-    showUltimatePortal,
+    canManageSievoxSemester,
     currentSemester,
     availableSemesters.length,
     selectedSemester,
@@ -2260,7 +2306,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, o
               <div>
                 <p className="eyebrow">OPERATIONS DESK</p>
                 <h1>权益事务处理台</h1>
-                <p>2025–2026 学年第二学期 · 国际教育学院</p>
+                <p>{currentSemester || semesterLoadError || '学期信息加载中'} · 国际教育学院</p>
               </div>
               <div className="admin-actions">
                 <button className="outline-button" type="button" onClick={exportFeedbackReport}>导出报表</button>
@@ -2623,8 +2669,9 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, o
               setSearchQuery={setSearchQuery}
               filters={filters}
               setFilters={setFilters}
-              isUltimatePortal={showUltimatePortal}
+              canManageSemester={canManageSievoxSemester}
               currentSemester={currentSemester}
+              semesterLoadError={semesterLoadError}
               activeSemesterName={semesterName}
               onSelectArchive={selectFeedbackArchive}
               onClearArchive={clearFeedbackArchive}

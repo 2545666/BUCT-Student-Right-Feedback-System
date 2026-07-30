@@ -194,10 +194,7 @@
 }
 
 .siebridge-resource-section article {
-  display: grid;
-  grid-template-columns: 30px minmax(0, 1fr) 34px 34px;
-  align-items: center;
-  gap: 10px;
+  display: block;
   margin-top: 8px;
   padding: 12px;
   border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
@@ -205,24 +202,8 @@
   background: color-mix(in srgb, var(--canvas) 42%, var(--paper));
 }
 
-.siebridge-resource-section article > svg {
-  color: var(--theme-primary);
-}
-
-.siebridge-resource-section article div {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-}
-
-.siebridge-resource-section article strong,
-.siebridge-resource-section article span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.siebridge-resource-section article button {
+.siebridge-resource-section article button,
+.siebridge-resource-browser button {
   display: grid;
   place-items: center;
   width: 34px;
@@ -232,6 +213,220 @@
   background: var(--paper);
   color: var(--theme-primary);
   cursor: pointer;
+}
+
+.siebridge-resource-browser {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.siebridge-resource-browser-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.siebridge-resource-browser-head strong,
+.siebridge-resource-browser-head span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.siebridge-resource-browser-head span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.siebridge-file-tree-level {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.siebridge-folder-node {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.siebridge-folder-node > .siebridge-file-tree-level {
+  margin-left: 18px;
+  padding-left: 12px;
+  border-left: 1px solid color-mix(in srgb, var(--theme-primary) 22%, var(--line));
+}
+
+.siebridge-folder-button {
+  display: inline-flex !important;
+  justify-content: flex-start;
+  gap: 8px;
+  width: 100% !important;
+  height: 34px;
+  padding: 0 10px;
+  color: var(--ink) !important;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.siebridge-folder-button svg {
+  width: 16px;
+  height: 16px;
+  color: var(--theme-primary);
+}
+
+.siebridge-folder-button span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.siebridge-file-node {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto repeat(3, 34px);
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 14%, var(--line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--paper) 82%, var(--canvas));
+}
+
+.siebridge-file-node.has-select {
+  grid-template-columns: 18px 20px minmax(0, 1fr) auto repeat(3, 34px);
+}
+
+.siebridge-file-select {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+}
+
+.siebridge-file-select input {
+  width: 16px;
+  height: 16px;
+  appearance: none;
+  -webkit-appearance: none;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 34%, var(--line));
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--theme-primary) 4%, var(--paper));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--theme-primary) 10%, transparent);
+  cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+
+.siebridge-file-select input:checked {
+  border-color: color-mix(in srgb, var(--theme-primary) 84%, #111827);
+  background-color: var(--theme-primary);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M3.25 8.3l3.1 3.15 6.45-6.45' stroke='%23ffffff' stroke-width='2.15' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 11px 11px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-primary) 14%, transparent);
+}
+
+.siebridge-file-select input:hover {
+  transform: translateY(-0.5px);
+}
+
+.siebridge-file-select input:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--theme-primary) 40%, transparent);
+  outline-offset: 2px;
+}
+
+html[data-theme="dark"] .siebridge-file-select input {
+  border-color: color-mix(in srgb, var(--theme-primary) 48%, var(--line));
+  background: color-mix(in srgb, var(--theme-primary) 10%, var(--paper));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--theme-primary) 12%, transparent);
+}
+
+html[data-theme="dark"] .siebridge-file-select input:checked {
+  border-color: color-mix(in srgb, var(--theme-primary) 72%, #ffffff);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-primary) 18%, transparent);
+}
+
+.siebridge-file-node button.danger {
+  border-color: #fecdd3;
+  background: #fff1f2;
+  color: #be123c;
+}
+
+.siebridge-file-node button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.siebridge-file-node > svg {
+  width: 17px;
+  height: 17px;
+  color: var(--theme-primary);
+}
+
+.siebridge-file-node span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.siebridge-file-node em {
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.siebridge-file-batchbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 18%, var(--line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--theme-primary) 6%, var(--paper));
+}
+
+.siebridge-file-batchbar span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.siebridge-file-batchbar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: auto;
+  height: 30px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.siebridge-file-batchbar button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.siebridge-file-batchbar button.danger {
+  border-color: #fecdd3;
+  background: #fff1f2;
+  color: #be123c;
 }
 
 .siebridge-submissions {
@@ -423,15 +618,61 @@
   color: var(--theme-on-primary);
 }
 
+.siebridge-upload-group {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
 .siebridge-upload {
   position: relative;
   display: flex !important;
   align-items: center;
   gap: 12px !important;
-  margin-top: 12px;
   min-height: 92px;
   border-style: dashed !important;
   cursor: pointer;
+}
+
+.siebridge-folder-upload {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: fit-content;
+  min-height: 38px;
+  padding: 0 13px;
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 30%, var(--line));
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--theme-primary);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.siebridge-folder-upload svg {
+  width: 16px;
+  height: 16px;
+}
+
+.siebridge-folder-upload input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.siebridge-form-error {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid #fda4af;
+  border-radius: 8px;
+  background: #fff1f2;
+  color: #9f1239;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .siebridge-upload svg {
@@ -619,6 +860,147 @@
   border: 0;
 }
 
+.siebridge-preview dialog.markdown-preview {
+  height: min(820px, 92vh);
+  background: color-mix(in srgb, var(--paper) 94%, var(--canvas));
+}
+
+.siebridge-markdown-body {
+  height: calc(100% - 56px);
+  overflow: auto;
+  padding: clamp(18px, 3vw, 32px);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.8;
+}
+
+.siebridge-markdown-body h2,
+.siebridge-markdown-body h3,
+.siebridge-markdown-body h4,
+.siebridge-markdown-body h5 {
+  margin: 1.25em 0 .45em;
+  color: var(--ink);
+  letter-spacing: 0;
+  line-height: 1.28;
+}
+
+.siebridge-markdown-body h2:first-child,
+.siebridge-markdown-body h3:first-child,
+.siebridge-markdown-body h4:first-child,
+.siebridge-markdown-body h5:first-child {
+  margin-top: 0;
+}
+
+.siebridge-markdown-body p {
+  margin: 0 0 1em;
+  white-space: pre-wrap;
+}
+
+.siebridge-markdown-body ul,
+.siebridge-markdown-body ol {
+  margin: 0 0 1em;
+  padding-left: 1.45em;
+}
+
+.siebridge-markdown-body li {
+  margin: .28em 0;
+}
+
+.siebridge-markdown-body blockquote {
+  margin: 0 0 1em;
+  padding: 10px 14px;
+  border-left: 4px solid var(--theme-primary);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--theme-container) 22%, var(--paper));
+  color: var(--muted);
+}
+
+.siebridge-markdown-table-wrap {
+  max-width: 100%;
+  margin: 0 0 1em;
+  overflow: auto;
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 16%, var(--line));
+  border-radius: 8px;
+}
+
+.siebridge-markdown-body table {
+  width: 100%;
+  min-width: 520px;
+  border-collapse: collapse;
+  background: var(--paper);
+}
+
+.siebridge-markdown-body th,
+.siebridge-markdown-body td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  vertical-align: top;
+  font-size: 13px;
+}
+
+.siebridge-markdown-body th:last-child,
+.siebridge-markdown-body td:last-child {
+  border-right: 0;
+}
+
+.siebridge-markdown-body th {
+  background: color-mix(in srgb, var(--theme-container) 24%, var(--paper));
+  color: var(--ink);
+  font-weight: 900;
+}
+
+.siebridge-markdown-body tr:last-child td {
+  border-bottom: 0;
+}
+
+.siebridge-markdown-body pre {
+  margin: 0 0 1em;
+  padding: 14px;
+  overflow: auto;
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 18%, var(--line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--canvas) 72%, #0f172a);
+  color: #e5eef8;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.siebridge-markdown-body code {
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+}
+
+.siebridge-mermaid-state,
+.siebridge-mermaid-diagram,
+.siebridge-mermaid-error {
+  margin: 0 0 1em;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 16%, var(--line));
+  border-radius: 8px;
+  background: var(--paper);
+}
+
+.siebridge-mermaid-state {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.siebridge-mermaid-diagram {
+  overflow: auto;
+  text-align: center;
+}
+
+.siebridge-mermaid-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.siebridge-mermaid-error {
+  border-color: #fda4af;
+  background: #fff1f2;
+}
+
 html[data-theme="dark"] .siebridge-status.pending {
   color: #fcd34d;
   background: rgba(161, 98, 7, .24);
@@ -667,8 +1049,36 @@ html[data-theme="dark"] .siebridge-status.rejected {
     font-size: 24px;
   }
 
-  .siebridge-resource-section article {
-    grid-template-columns: 28px minmax(0, 1fr) 32px 32px;
+  .siebridge-file-node {
+    grid-template-columns: 18px minmax(0, 1fr) repeat(3, 32px);
+  }
+
+  .siebridge-file-node.has-select {
+    grid-template-columns: 18px 18px minmax(0, 1fr) repeat(3, 32px);
+  }
+
+  .siebridge-file-batchbar {
+    gap: 6px;
+  }
+
+  .siebridge-file-batchbar button {
+    height: 30px;
+    padding: 0 8px;
+  }
+
+  .siebridge-file-node em {
+    display: none;
+  }
+
+  .siebridge-folder-node > .siebridge-file-tree-level {
+    margin-left: 8px;
+    padding-left: 8px;
+  }
+
+  .siebridge-resource-browser-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
   }
 
   .siebridge-drawer,

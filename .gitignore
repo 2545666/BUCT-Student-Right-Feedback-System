@@ -24,7 +24,10 @@ npm-debug.log*
 dist/
 build/
 frontend/dist/
+desktop-app/release/
+mobile-app/release/
 *.tar.gz
+*.tgz
 
 # 上传文件目录
 uploads/

@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ArrowUpRight, BookOpen, Check, Clock3, Download, Eye, FileText,
-  Filter, Plus, Search, Send, Trash2, Upload, X
+  BookOpen, Check, Clock3, Download, Eye, FileText,
+  Filter, Folder, FolderOpen, Plus, Search, Send, Trash2, Upload, X
 } from 'lucide-react';
 import { API_BASE } from './api';
+import { getSieBridgeEntityId, shouldApplyCourseDetailResponse } from './siebridgeSelection';
 import './siebridge.css';
 
 const STATUS_META = {
@@ -27,9 +28,234 @@ const formatFileSize = (size = 0) => {
 
 const joinLabels = (items = []) => items.length ? items.join(' / ') : '未分类';
 
-const fileUrl = (path) => path?.startsWith('/api') ? path : `${API_BASE}${path || ''}`;
-const getEntityId = (item) => String(item?.id || item?._id || '');
+const getEntityId = getSieBridgeEntityId;
+const isMarkdownFile = (file = {}) => ['.md', '.markdown'].includes(String(file.extension || '').toLowerCase()) || /markdown|text\/plain/i.test(file.mimetype || '');
+const isPdfFile = (file = {}) => String(file.extension || '').toLowerCase() === '.pdf' || file.mimetype === 'application/pdf';
+const isPreviewableFile = (file = {}) => isPdfFile(file) || isMarkdownFile(file);
+const getFilePath = (file = {}) => file.webkitRelativePath || file.relativePath || file.originalName || file.filename || file.name || '';
+const getFileName = (file = {}) => file.originalName || file.filename || file.name || getFilePath(file).split('/').pop() || 'resource-file';
 
+const appendFilesToBody = (body, files = []) => {
+  body.append('filePaths', JSON.stringify(files.map(file => file.webkitRelativePath || file.relativePath || file.name)));
+  files.forEach(file => body.append('files', file));
+};
+
+const buildFileTree = (files = []) => {
+  const root = { folders: new Map(), files: [] };
+  files.forEach((file, index) => {
+    const parts = getFilePath(file).split('/').filter(Boolean);
+    if (!parts.length) {
+      root.files.push({ ...file, index });
+      return;
+    }
+    const fileName = parts.pop();
+    let cursor = root;
+    parts.forEach(part => {
+      if (!cursor.folders.has(part)) cursor.folders.set(part, { name: part, folders: new Map(), files: [] });
+      cursor = cursor.folders.get(part);
+    });
+    cursor.files.push({ ...file, index, originalName: file.originalName || fileName });
+  });
+  return root;
+};
+
+const hashText = (value = '') => {
+  let hash = 0;
+  String(value).split('').forEach(char => {
+    hash = ((hash << 5) - hash + char.charCodeAt(0)) | 0;
+  });
+  return Math.abs(hash).toString(36);
+};
+
+const parseTableRow = (line = '') => line
+  .trim()
+  .replace(/^\|/, '')
+  .replace(/\|$/, '')
+  .split('|')
+  .map(cell => cell.trim());
+
+const parseTableAlignments = (line = '') => parseTableRow(line).map(cell => {
+  const value = cell.trim();
+  if (/^:-+:$/.test(value)) return 'center';
+  if (/^-+:$/.test(value)) return 'right';
+  return 'left';
+});
+
+const isMarkdownTableSeparator = (line = '') => {
+  const cells = parseTableRow(line);
+  return cells.length > 1 && cells.every(cell => /^:?-{3,}:?$/.test(cell.trim()));
+};
+
+const isMarkdownTableStart = (lines = [], index = 0) => (
+  /\|/.test(lines[index] || '') && isMarkdownTableSeparator(lines[index + 1] || '')
+);
+
+const MermaidDiagram = ({ content = '', id }) => {
+  const [result, setResult] = useState({ status: 'loading', svg: '' });
+
+  useEffect(() => {
+    let active = true;
+    setResult({ status: 'loading', svg: '' });
+    import('mermaid')
+      .then(module => {
+        const mermaid = module.default;
+        mermaid.initialize({
+          startOnLoad: false,
+          securityLevel: 'strict',
+          theme: document.documentElement.dataset.theme === 'dark' ? 'dark' : 'default'
+        });
+        return mermaid.render(`siebridge-mermaid-${id}-${hashText(content)}`, content);
+      })
+      .then(({ svg }) => {
+        if (active) setResult({ status: 'ready', svg });
+      })
+      .catch(() => {
+        if (active) setResult({ status: 'error', svg: '' });
+      });
+    return () => { active = false; };
+  }, [content, id]);
+
+  if (result.status === 'loading') return <div className="siebridge-mermaid-state">正在渲染 Mermaid 图表...</div>;
+  if (result.status === 'error') return <pre className="siebridge-mermaid-error"><code>{content}</code></pre>;
+  return <div className="siebridge-mermaid-diagram" dangerouslySetInnerHTML={{ __html: result.svg }} />;
+};
+
+const MarkdownRenderer = ({ content = '' }) => {
+  const blocks = [];
+  const lines = String(content || '').replace(/\r\n/g, '\n').split('\n');
+  let index = 0;
+  while (index < lines.length) {
+    const line = lines[index];
+    if (!line.trim()) {
+      index += 1;
+      continue;
+    }
+    const fence = /^```([A-Za-z0-9_-]+)?\s*$/.exec(line);
+    if (fence) {
+      const codeLines = [];
+      const language = (fence[1] || '').toLowerCase();
+      index += 1;
+      while (index < lines.length && !lines[index].startsWith('```')) {
+        codeLines.push(lines[index]);
+        index += 1;
+      }
+      index += 1;
+      blocks.push({ type: language === 'mermaid' ? 'mermaid' : 'code', language, content: codeLines.join('\n') });
+      continue;
+    }
+    const heading = /^(#{1,4})\s+(.+)$/.exec(line);
+    if (heading) {
+      blocks.push({ type: 'heading', level: heading[1].length, content: heading[2] });
+      index += 1;
+      continue;
+    }
+    if (/^>\s?/.test(line)) {
+      const quoteLines = [];
+      while (index < lines.length && /^>\s?/.test(lines[index])) {
+        quoteLines.push(lines[index].replace(/^>\s?/, ''));
+        index += 1;
+      }
+      blocks.push({ type: 'quote', content: quoteLines.join('\n') });
+      continue;
+    }
+    if (isMarkdownTableStart(lines, index)) {
+      const headers = parseTableRow(lines[index]);
+      const alignments = parseTableAlignments(lines[index + 1]);
+      const rows = [];
+      index += 2;
+      while (index < lines.length && lines[index].trim() && /\|/.test(lines[index])) {
+        rows.push(parseTableRow(lines[index]));
+        index += 1;
+      }
+      blocks.push({ type: 'table', headers, alignments, rows });
+      continue;
+    }
+    if (/^[-*]\s+/.test(line)) {
+      const items = [];
+      while (index < lines.length && /^[-*]\s+/.test(lines[index])) {
+        items.push(lines[index].replace(/^[-*]\s+/, ''));
+        index += 1;
+      }
+      blocks.push({ type: 'list', ordered: false, items });
+      continue;
+    }
+    if (/^\d+\.\s+/.test(line)) {
+      const items = [];
+      while (index < lines.length && /^\d+\.\s+/.test(lines[index])) {
+        items.push(lines[index].replace(/^\d+\.\s+/, ''));
+        index += 1;
+      }
+      blocks.push({ type: 'list', ordered: true, items });
+      continue;
+    }
+    const paragraph = [line];
+    index += 1;
+    while (index < lines.length && lines[index].trim() && !/^(#{1,4})\s+/.test(lines[index]) && !lines[index].startsWith('```') && !isMarkdownTableStart(lines, index) && !/^[-*]\s+/.test(lines[index]) && !/^\d+\.\s+/.test(lines[index]) && !/^>\s?/.test(lines[index])) {
+      paragraph.push(lines[index]);
+      index += 1;
+    }
+    blocks.push({ type: 'paragraph', content: paragraph.join('\n') });
+  }
+
+  if (!blocks.length) return <p className="siebridge-muted">该 Markdown 文件暂无可渲染内容。</p>;
+
+  return (
+    <div className="siebridge-markdown-body">
+      {blocks.map((block, blockIndex) => {
+        const key = `${block.type}-${blockIndex}`;
+        if (block.type === 'heading') {
+          const Tag = `h${Math.min(block.level + 1, 5)}`;
+          return <Tag key={key}>{block.content}</Tag>;
+        }
+        if (block.type === 'code') return <pre key={key}><code>{block.content}</code></pre>;
+        if (block.type === 'mermaid') return <MermaidDiagram key={key} id={key} content={block.content} />;
+        if (block.type === 'quote') return <blockquote key={key}>{block.content}</blockquote>;
+        if (block.type === 'table') {
+          return (
+            <div className="siebridge-markdown-table-wrap" key={key}>
+              <table>
+                <thead>
+                  <tr>{block.headers.map((cell, cellIndex) => <th key={`${key}-h-${cellIndex}`} style={{ textAlign: block.alignments[cellIndex] || 'left' }}>{cell}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {block.rows.map((row, rowIndex) => (
+                    <tr key={`${key}-r-${rowIndex}`}>
+                      {block.headers.map((_, cellIndex) => <td key={`${key}-r-${rowIndex}-${cellIndex}`} style={{ textAlign: block.alignments[cellIndex] || 'left' }}>{row[cellIndex] || ''}</td>)}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
+        }
+        if (block.type === 'list') {
+          const ListTag = block.ordered ? 'ol' : 'ul';
+          return <ListTag key={key}>{block.items.map((item, itemIndex) => <li key={`${key}-${itemIndex}`}>{item}</li>)}</ListTag>;
+        }
+        return <p key={key}>{block.content}</p>;
+      })}
+    </div>
+  );
+};
+
+const SIEBridgePreviewDialog = ({ preview, onClose }) => {
+  if (!preview) return null;
+  return (
+    <div className="siebridge-preview">
+      <dialog open className={preview.type === 'markdown' ? 'markdown-preview' : ''}>
+        <header>
+          <strong>{preview.title}</strong>
+          <button className="icon-button" type="button" onClick={onClose}><X /></button>
+        </header>
+        {preview.type === 'markdown' ? (
+          <MarkdownRenderer content={preview.content} />
+        ) : (
+          <iframe src={preview.url} title={preview.title}></iframe>
+        )}
+      </dialog>
+    </div>
+  );
+};
 const apiJson = async (path, token, options = {}) => {
   const headers = {
     ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
@@ -57,9 +283,9 @@ const FileSelectionSummary = ({ files }) => {
   return (
     <ul className="siebridge-file-list" aria-label="已选择文件">
       {files.map((file, index) => (
-        <li key={`${file.name}-${file.size}-${index}`}>
+        <li key={`${getFilePath(file)}-${file.size}-${index}`}>
           <FileText />
-          <span title={file.name}>{file.name}</span>
+          <span title={getFilePath(file)}>{getFilePath(file)}</span>
           <em>{formatFileSize(file.size)}</em>
         </li>
       ))}
@@ -67,7 +293,172 @@ const FileSelectionSummary = ({ files }) => {
   );
 };
 
-const CourseForm = ({ meta, onClose, onSubmit, submitting }) => {
+const FileTreeNode = ({
+  node,
+  path = '',
+  openFolders,
+  onToggleFolder,
+  onPreview,
+  onDownload,
+  onDelete,
+  isDeletingFile,
+  selectable = false,
+  selectedFileIndexes = [],
+  onToggleSelect
+}) => {
+  const folders = Array.from(node.folders.entries()).sort(([a], [b]) => a.localeCompare(b));
+  const files = [...node.files].sort((a, b) => getFilePath(a).localeCompare(getFilePath(b)));
+  const selectedIndexSet = new Set(selectedFileIndexes);
+
+  return (
+    <div className="siebridge-file-tree-level">
+      {folders.map(([name, folder]) => {
+        const folderPath = path ? `${path}/${name}` : name;
+        const isOpen = openFolders.has(folderPath);
+        return (
+          <div className="siebridge-folder-node" key={folderPath}>
+            <button type="button" className="siebridge-folder-button" onClick={() => onToggleFolder(folderPath)}>
+              {isOpen ? <FolderOpen /> : <Folder />}
+              <span>{name}</span>
+            </button>
+            {isOpen && (
+              <FileTreeNode
+                node={folder}
+                path={folderPath}
+                openFolders={openFolders}
+                onToggleFolder={onToggleFolder}
+                onPreview={onPreview}
+                onDownload={onDownload}
+                onDelete={onDelete}
+                isDeletingFile={isDeletingFile}
+                selectable={selectable}
+                selectedFileIndexes={selectedFileIndexes}
+                onToggleSelect={onToggleSelect}
+              />
+            )}
+          </div>
+        );
+      })}
+      {files.map(file => {
+        const previewable = isPreviewableFile(file);
+        const fileIndex = Number.isInteger(file.index) ? file.index : 0;
+        return (
+          <div className={`siebridge-file-node${selectable ? ' has-select' : ''}`} key={`${getFilePath(file)}-${file.index}`}>
+            {selectable && (
+              <label className="siebridge-file-select" title="选择文件">
+                <input
+                  type="checkbox"
+                  checked={selectedIndexSet.has(fileIndex)}
+                  onChange={() => onToggleSelect?.(file)}
+                />
+              </label>
+            )}
+            <FileText />
+            <span title={getFilePath(file)}>{getFileName(file)}</span>
+            <em>{formatFileSize(file.size)}</em>
+            {previewable && <button type="button" title={isMarkdownFile(file) ? '渲染 Markdown' : '预览 PDF'} onClick={() => onPreview(file)}><Eye /></button>}
+            <button type="button" title="下载文件" onClick={() => onDownload(file)}><Download /></button>
+            {onDelete && <button type="button" className="danger" title="删除文件" disabled={isDeletingFile?.(file)} onClick={() => onDelete(file)}><Trash2 /></button>}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const ResourceFileBrowser = ({
+  resource,
+  onPreview,
+  onDownload,
+  onDelete,
+  deletingFileKey,
+  selectable = false,
+  selectedFileIndexes = [],
+  onToggleSelect,
+  onSelectAll,
+  onClearSelection,
+  onBatchDelete,
+  isBatchDeleting = false
+}) => {
+  const files = resource.files || [];
+  const [openFolders, setOpenFolders] = useState(() => {
+    const firstPath = getFilePath(files[0] || {});
+    const folders = firstPath.split('/').filter(Boolean).slice(0, -1);
+    return new Set(folders.map((_, index) => folders.slice(0, index + 1).join('/')));
+  });
+  const tree = useMemo(() => buildFileTree(files), [files]);
+
+  const toggleFolder = (folderPath) => {
+    setOpenFolders(prev => {
+      const next = new Set(prev);
+      if (next.has(folderPath)) next.delete(folderPath);
+      else next.add(folderPath);
+      return next;
+    });
+  };
+
+  if (!files.length) return <span>暂无文件</span>;
+
+  return (
+    <div className="siebridge-resource-browser">
+      <div className="siebridge-resource-browser-head">
+        <strong>{resource.title}</strong>
+        <span>{files.length > 1 ? `${files.length} 个文件` : `${getFileName(files[0])} · ${formatFileSize(files[0].size)}`}</span>
+      </div>
+      {selectable && (
+        <div className="siebridge-file-batchbar">
+          <span>已选 {selectedFileIndexes.length} 个</span>
+          <button type="button" onClick={onSelectAll}>全选</button>
+          <button type="button" onClick={onClearSelection} disabled={!selectedFileIndexes.length}>清空</button>
+          <button
+            type="button"
+            className="danger"
+            disabled={!selectedFileIndexes.length || isBatchDeleting}
+            onClick={onBatchDelete}
+          >
+            <Trash2 />{isBatchDeleting ? '删除中' : '批量删除'}
+          </button>
+        </div>
+      )}
+      <FileTreeNode
+        node={tree}
+        openFolders={openFolders}
+        onToggleFolder={toggleFolder}
+        onPreview={(file) => onPreview(resource, file)}
+        onDownload={(file) => onDownload(resource, file)}
+        onDelete={onDelete ? (file) => onDelete(resource, file) : null}
+        isDeletingFile={(file) => deletingFileKey === `${resource.id || resource._id}-${file.index}`}
+        selectable={selectable}
+        selectedFileIndexes={selectedFileIndexes}
+        onToggleSelect={(file) => onToggleSelect?.(resource, file)}
+      />
+    </div>
+  );
+};
+
+const SIEBridgeUploadPicker = ({ files, onChange, title }) => {
+  const applySelection = (fileList) => onChange(Array.from(fileList || []));
+  return (
+    <div className="siebridge-upload-group">
+      <label className="siebridge-upload">
+        <Upload />
+        <div>
+          <strong>{files.length ? `已选择 ${files.length} 个文件` : title}</strong>
+          <p>支持上传单个文件、多个文件或整个文件夹，单个不超过 200MB，文件夹内部层级会保留</p>
+          <FileSelectionSummary files={files} />
+        </div>
+        <input type="file" multiple onChange={e => applySelection(e.target.files)} />
+      </label>
+      <label className="siebridge-folder-upload">
+        <Folder />
+        <span>选择文件夹</span>
+        <input type="file" multiple webkitdirectory="true" directory="true" onChange={e => applySelection(e.target.files)} />
+      </label>
+    </div>
+  );
+};
+
+const CourseForm = ({ meta, onClose, onSubmit, submitting, error }) => {
   const [form, setForm] = useState({
     code: '',
     name: '',
@@ -120,14 +511,15 @@ const CourseForm = ({ meta, onClose, onSubmit, submitting }) => {
           {(meta.sections || DEFAULT_SECTIONS).map(item => <button key={item.key} type="button" className={form.section === item.key ? 'is-active' : ''} onClick={() => setForm({ ...form, section: item.key })}>{item.label}</button>)}
         </div>
         <label className="siebridge-wide-field"><span>说明</span><textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="可补充课程教师、考试年份、资料来源说明等" /></label>
-        <label className="siebridge-upload"><Upload /><div><strong>{files.length ? `已选择 ${files.length} 个文件` : '上传课程资料'}</strong><p>支持 PDF、Word、PPT、Excel、ZIP，单个不超过 50MB</p><FileSelectionSummary files={files} /></div><input type="file" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip" onChange={e => setFiles(Array.from(e.target.files || []))} /></label>
+        <SIEBridgeUploadPicker files={files} onChange={setFiles} title="上传课程资料" />
+        {error && <div className="siebridge-form-error">{error}</div>}
         <footer><button type="button" className="text-button" onClick={onClose}>取消</button><button className="primary-button" disabled={submitting} type="submit">{submitting ? '提交中...' : '提交审核'} <Send /></button></footer>
       </form>
     </div>
   );
 };
 
-const ResourceForm = ({ course, meta, onClose, onSubmit, submitting }) => {
+const ResourceForm = ({ course, meta, onClose, onSubmit, submitting, error }) => {
   const [form, setForm] = useState({ section: 'past_exams', title: '', description: '' });
   const [files, setFiles] = useState([]);
   const submit = (event) => {
@@ -147,7 +539,8 @@ const ResourceForm = ({ course, meta, onClose, onSubmit, submitting }) => {
         </div>
         <label><span>资料标题</span><input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="请输入资料标题" required /></label>
         <label className="siebridge-wide-field"><span>说明</span><textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="可补充年份、版本、适用范围等" /></label>
-        <label className="siebridge-upload"><Upload /><div><strong>{files.length ? `已选择 ${files.length} 个文件` : '选择资料文件'}</strong><p>审核通过后才会在学生端展示</p><FileSelectionSummary files={files} /></div><input type="file" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip" onChange={e => setFiles(Array.from(e.target.files || []))} /></label>
+        <SIEBridgeUploadPicker files={files} onChange={setFiles} title="选择资料文件" />
+        {error && <div className="siebridge-form-error">{error}</div>}
         <footer><button type="button" className="text-button" onClick={onClose}>取消</button><button className="primary-button" disabled={submitting} type="submit">{submitting ? '提交中...' : '提交审核'} <Send /></button></footer>
       </form>
     </div>
@@ -169,6 +562,7 @@ export const SIEBridgeStudentPortal = ({ token }) => {
   const [preview, setPreview] = useState(null);
   const [message, setMessage] = useState('');
   const detailRequestRef = useRef(0);
+  const detailAbortRef = useRef(null);
 
   const loadMeta = useCallback(async () => {
     const data = await apiJson('/siebridge/meta', token);
@@ -192,6 +586,9 @@ export const SIEBridgeStudentPortal = ({ token }) => {
   const loadCourseDetail = useCallback(async (course) => {
     const courseId = typeof course === 'string' ? course : getEntityId(course);
     if (!courseId) return;
+    if (detailAbortRef.current) detailAbortRef.current.abort();
+    const controller = new AbortController();
+    detailAbortRef.current = controller;
     const requestId = detailRequestRef.current + 1;
     detailRequestRef.current = requestId;
     const summary = typeof course === 'string'
@@ -202,15 +599,24 @@ export const SIEBridgeStudentPortal = ({ token }) => {
     setResources([]);
     setDetailLoading(true);
     try {
-      const data = await apiJson(`/siebridge/courses/${courseId}`, token);
-      if (detailRequestRef.current !== requestId) return;
+      const data = await apiJson(`/siebridge/courses/${courseId}`, token, { signal: controller.signal });
+      if (!shouldApplyCourseDetailResponse({
+        requestId,
+        activeRequestId: detailRequestRef.current,
+        requestedCourseId: courseId,
+        responseCourse: data.course
+      })) return;
       setSelectedCourseId(getEntityId(data.course) || courseId);
       setSelectedCourse(data.course || summary || null);
       setResources(data.resources || []);
     } catch (error) {
+      if (error.name === 'AbortError') return;
       if (detailRequestRef.current === requestId) setMessage(error.message);
     } finally {
-      if (detailRequestRef.current === requestId) setDetailLoading(false);
+      if (detailRequestRef.current === requestId) {
+        setDetailLoading(false);
+        detailAbortRef.current = null;
+      }
     }
   }, [courses, token]);
 
@@ -238,7 +644,7 @@ export const SIEBridgeStudentPortal = ({ token }) => {
     try {
       const body = new FormData();
       Object.entries(form).forEach(([key, value]) => body.append(key, Array.isArray(value) ? JSON.stringify(value) : value));
-      files.forEach(file => body.append('files', file));
+      appendFilesToBody(body, files);
       await apiJson('/siebridge/courses', token, { method: 'POST', body });
       setCourseFormOpen(false);
       setMessage('课程与资料已提交审核');
@@ -256,7 +662,7 @@ export const SIEBridgeStudentPortal = ({ token }) => {
     try {
       const body = new FormData();
       Object.entries(form).forEach(([key, value]) => body.append(key, value));
-      files.forEach(file => body.append('files', file));
+      appendFilesToBody(body, files);
       await apiJson(`/siebridge/courses/${courseId}/resources`, token, { method: 'POST', body });
       setResourceFormCourse(null);
       setMessage('资料已提交审核');
@@ -268,27 +674,36 @@ export const SIEBridgeStudentPortal = ({ token }) => {
     }
   };
 
-  const openPreview = async (resource) => {
+  const openPreview = async (resource, selectedFile) => {
     try {
-      const res = await fetch(`${API_BASE}/siebridge/resources/${resource.id || resource._id}/preview`, { headers: { Authorization: `Bearer ${token}` } });
+      const file = selectedFile || resource.files?.[0] || {};
+      const fileIndex = Number.isInteger(file.index) ? file.index : 0;
+      const res = await fetch(`${API_BASE}/siebridge/resources/${resource.id || resource._id}/preview?file=${fileIndex}`, { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error('该资料暂不支持在线预览');
-      const blob = await res.blob();
       if (preview?.url) URL.revokeObjectURL(preview.url);
-      setPreview({ title: resource.title, url: URL.createObjectURL(blob) });
+      const contentType = res.headers.get('content-type') || '';
+      if (isMarkdownFile(file) || /markdown|text\/plain/i.test(contentType)) {
+        setPreview({ title: `${resource.title} / ${getFileName(file)}`, type: 'markdown', content: await res.text() });
+        return;
+      }
+      const blob = await res.blob();
+      setPreview({ title: `${resource.title} / ${getFileName(file)}`, type: 'pdf', url: URL.createObjectURL(blob) });
     } catch (error) {
       setMessage(error.message);
     }
   };
 
-  const downloadResource = async (resource) => {
+  const downloadResource = async (resource, selectedFile) => {
     try {
-      const res = await fetch(`${API_BASE}/siebridge/resources/${resource.id || resource._id}/download`, { headers: { Authorization: `Bearer ${token}` } });
+      const file = selectedFile || resource.files?.[0] || {};
+      const fileIndex = Number.isInteger(file.index) ? file.index : 0;
+      const res = await fetch(`${API_BASE}/siebridge/resources/${resource.id || resource._id}/download?file=${fileIndex}`, { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error('下载失败');
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = resource.files?.[0]?.originalName || `${resource.title}.pdf`;
+      link.download = getFileName(file) || `${resource.title}.pdf`;
       link.click();
       URL.revokeObjectURL(url);
     } catch (error) {
@@ -326,7 +741,7 @@ export const SIEBridgeStudentPortal = ({ token }) => {
             </button>
           )) : <div className="siebridge-empty"><BookOpen /><strong>暂无课程</strong><span>可以添加课程并提交资料等待审核。</span></div>}
         </div>
-        <div className="siebridge-course-detail">
+        <div className="siebridge-course-detail" key={selectedCourseId || 'empty-course'}>
           {selectedCourse ? (
             <>
               <header>
@@ -337,18 +752,11 @@ export const SIEBridgeStudentPortal = ({ token }) => {
               {(meta.sections || DEFAULT_SECTIONS).map(section => (
                 <section key={section.key} className="siebridge-resource-section">
                   <h4>{section.label}</h4>
-                  {(groupedResources[section.key] || []).length ? groupedResources[section.key].map(resource => {
-                    const file = resource.files?.[0] || {};
-                    const isPdf = file.extension === '.pdf' || file.mimetype === 'application/pdf';
-                    return (
-                      <article key={resource.id || resource._id}>
-                        <FileText />
-                        <div><strong>{resource.title}</strong><span>{file.originalName || '资料文件'} · {formatFileSize(file.size)}</span></div>
-                        {isPdf && <button type="button" title="预览 PDF" onClick={() => openPreview(resource)}><Eye /></button>}
-                        <button type="button" title="下载资料" onClick={() => downloadResource(resource)}><Download /></button>
-                      </article>
-                    );
-                  }) : <p className="siebridge-muted">暂无已通过资料</p>}
+                  {(groupedResources[section.key] || []).length ? groupedResources[section.key].map(resource => (
+                    <article key={resource.id || resource._id}>
+                      <ResourceFileBrowser resource={resource} onPreview={openPreview} onDownload={downloadResource} />
+                    </article>
+                  )) : <p className="siebridge-muted">暂无已通过资料</p>}
                 </section>
               ))}
             </>
@@ -359,9 +767,9 @@ export const SIEBridgeStudentPortal = ({ token }) => {
         <header><div><p>MY SUBMISSIONS</p><h3>我的上传审核情况</h3></div><Clock3 /></header>
         <div>{submissionItems.length ? submissionItems.slice(0, 8).map(item => <article key={`${item.kind}-${item.id || item._id}`}><span>{item.kind}</span><strong>{item.name || item.title}</strong><small>{item.courseName || item.code || ''}</small><StatusBadge status={item.status} />{item.reviewComment && <em>{item.reviewComment}</em>}</article>) : <p className="siebridge-muted">暂无提交记录</p>}</div>
       </section>
-      {courseFormOpen && <CourseForm meta={meta} onClose={() => setCourseFormOpen(false)} onSubmit={submitCourse} submitting={submitting} />}
-      {resourceFormCourse && <ResourceForm course={resourceFormCourse} meta={meta} onClose={() => setResourceFormCourse(null)} onSubmit={submitResource} submitting={submitting} />}
-      {preview && <div className="siebridge-preview"><dialog open><header><strong>{preview.title}</strong><button className="icon-button" type="button" onClick={() => { URL.revokeObjectURL(preview.url); setPreview(null); }}><X /></button></header><iframe src={preview.url} title={preview.title}></iframe></dialog></div>}
+      {courseFormOpen && <CourseForm meta={meta} onClose={() => setCourseFormOpen(false)} onSubmit={submitCourse} submitting={submitting} error={message} />}
+      {resourceFormCourse && <ResourceForm course={resourceFormCourse} meta={meta} onClose={() => setResourceFormCourse(null)} onSubmit={submitResource} submitting={submitting} error={message} />}
+      <SIEBridgePreviewDialog preview={preview} onClose={() => { if (preview?.url) URL.revokeObjectURL(preview.url); setPreview(null); }} />
     </section>
   );
 };
@@ -374,6 +782,9 @@ export const SIEBridgeReviewWorkspace = ({ token }) => {
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState(null);
   const [deletingResourceId, setDeletingResourceId] = useState('');
+  const [deletingFileKey, setDeletingFileKey] = useState('');
+  const [batchDeletingResourceId, setBatchDeletingResourceId] = useState('');
+  const [selectedResourceFiles, setSelectedResourceFiles] = useState({});
 
   const loadReviews = useCallback(async () => {
     setLoading(true);
@@ -407,27 +818,36 @@ export const SIEBridgeReviewWorkspace = ({ token }) => {
     }
   };
 
-  const openPreview = async (resource) => {
+  const openPreview = async (resource, selectedFile) => {
     try {
-      const res = await fetch(`${API_BASE}/siebridge/resources/${resource.id || resource._id}/preview`, { headers: { Authorization: `Bearer ${token}` } });
+      const file = selectedFile || resource.files?.[0] || {};
+      const fileIndex = Number.isInteger(file.index) ? file.index : 0;
+      const res = await fetch(`${API_BASE}/siebridge/resources/${resource.id || resource._id}/preview?file=${fileIndex}`, { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error('该资料暂不支持在线预览');
-      const blob = await res.blob();
       if (preview?.url) URL.revokeObjectURL(preview.url);
-      setPreview({ title: resource.title, url: URL.createObjectURL(blob) });
+      const contentType = res.headers.get('content-type') || '';
+      if (isMarkdownFile(file) || contentType.includes('markdown') || contentType.includes('text/plain')) {
+        setPreview({ title: `${resource.title} / ${getFileName(file)}`, type: 'markdown', content: await res.text() });
+        return;
+      }
+      const blob = await res.blob();
+      setPreview({ title: `${resource.title} / ${getFileName(file)}`, type: 'pdf', url: URL.createObjectURL(blob) });
     } catch (error) {
       setMessage(error.message);
     }
   };
 
-  const downloadResource = async (resource) => {
+  const downloadResource = async (resource, selectedFile) => {
     try {
-      const res = await fetch(`${API_BASE}/siebridge/resources/${resource.id || resource._id}/download`, { headers: { Authorization: `Bearer ${token}` } });
+      const file = selectedFile || resource.files?.[0] || {};
+      const fileIndex = Number.isInteger(file.index) ? file.index : 0;
+      const res = await fetch(`${API_BASE}/siebridge/resources/${resource.id || resource._id}/download?file=${fileIndex}`, { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error('下载失败');
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = resource.files?.[0]?.originalName || resource.title;
+      link.download = getFileName(file) || resource.title;
       link.click();
       URL.revokeObjectURL(url);
     } catch (error) {
@@ -454,6 +874,81 @@ export const SIEBridgeReviewWorkspace = ({ token }) => {
     }
   };
 
+  const deleteApprovedResourceFile = async (resource, file) => {
+    const resourceId = resource.id || resource._id;
+    const fileIndex = Number.isInteger(file.index) ? file.index : 0;
+    const fileName = getFilePath(file) || getFileName(file);
+    const confirmation = window.prompt(`危险操作：只删除当前文件，不会删除这条资料记录中的其他文件。\n\n请输入文件名或“确认删除”以继续：\n${fileName}`);
+    if (!confirmation) return;
+    const deleteKey = `${resourceId}-${fileIndex}`;
+    setDeletingFileKey(deleteKey);
+    try {
+      await apiJson(`/siebridge/resources/${resourceId}/files/${fileIndex}`, token, {
+        method: 'DELETE',
+        body: JSON.stringify({ confirmation: confirmation.trim() })
+      });
+      setMessage('文件已删除');
+      await loadReviews();
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setDeletingFileKey('');
+    }
+  };
+
+  const getSelectedFileIndexes = (resource) => selectedResourceFiles[resource.id || resource._id] || [];
+
+  const toggleSelectedResourceFile = (resource, file) => {
+    const resourceId = resource.id || resource._id;
+    const fileIndex = Number.isInteger(file.index) ? file.index : 0;
+    setSelectedResourceFiles(prev => {
+      const selected = new Set(prev[resourceId] || []);
+      if (selected.has(fileIndex)) selected.delete(fileIndex);
+      else selected.add(fileIndex);
+      return { ...prev, [resourceId]: Array.from(selected).sort((a, b) => a - b) };
+    });
+  };
+
+  const selectAllResourceFiles = (resource) => {
+    const resourceId = resource.id || resource._id;
+    const fileIndexes = (resource.files || []).map((_, index) => index);
+    setSelectedResourceFiles(prev => ({ ...prev, [resourceId]: fileIndexes }));
+  };
+
+  const clearSelectedResourceFiles = (resource) => {
+    const resourceId = resource.id || resource._id;
+    setSelectedResourceFiles(prev => ({ ...prev, [resourceId]: [] }));
+  };
+
+  const batchDeleteApprovedResourceFiles = async (resource) => {
+    const resourceId = resource.id || resource._id;
+    const fileIndexes = getSelectedFileIndexes(resource);
+    if (!fileIndexes.length) {
+      setMessage('请先选择要删除的文件');
+      return;
+    }
+    if ((resource.files || []).length - fileIndexes.length < 1) {
+      setMessage('不能批量删除全部文件，请使用整条资料删除');
+      return;
+    }
+    const confirmation = window.prompt(`危险操作：将删除当前资料中已选的 ${fileIndexes.length} 个文件，且不可恢复。\n\n请输入“确认删除”以继续。`);
+    if (!confirmation) return;
+    setBatchDeletingResourceId(resourceId);
+    try {
+      await apiJson(`/siebridge/resources/${resourceId}/files`, token, {
+        method: 'DELETE',
+        body: JSON.stringify({ fileIndexes, confirmation: confirmation.trim() })
+      });
+      setSelectedResourceFiles(prev => ({ ...prev, [resourceId]: [] }));
+      setMessage(`已删除 ${fileIndexes.length} 个文件`);
+      await loadReviews();
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setBatchDeletingResourceId('');
+    }
+  };
+
   const reviewItems = [
     ...courses.map(item => ({ ...item, type: 'course', kind: '课程申请' })),
     ...resources.map(item => ({ ...item, type: 'resource', kind: '资料申请', courseName: item.course?.name }))
@@ -474,12 +969,30 @@ export const SIEBridgeReviewWorkspace = ({ token }) => {
             <div><span>{item.kind}</span><strong>{item.name || item.title}</strong><small>{item.courseName || item.code || ''} · {item.submittedBy?.name || '未知上传者'}</small></div>
             <StatusBadge status={item.status} />
             {item.reviewComment && <p>{item.reviewComment}</p>}
-            {item.type === 'resource' && <div className="siebridge-review-files"><button type="button" onClick={() => openPreview(item)}><Eye />预览</button><button type="button" onClick={() => downloadResource(item)}><Download />下载</button>{status === 'approved' && <button type="button" className="danger" disabled={deletingResourceId === (item.id || item._id)} onClick={() => deleteApprovedResource(item)}><Trash2 />{deletingResourceId === (item.id || item._id) ? '删除中' : '删除'}</button>}</div>}
+            {item.type === 'resource' && (
+              <div className="siebridge-review-files">
+                <ResourceFileBrowser
+                  resource={item}
+                  onPreview={openPreview}
+                  onDownload={downloadResource}
+                  onDelete={status === 'approved' ? deleteApprovedResourceFile : null}
+                  deletingFileKey={deletingFileKey}
+                  selectable={status === 'approved'}
+                  selectedFileIndexes={getSelectedFileIndexes(item)}
+                  onToggleSelect={toggleSelectedResourceFile}
+                  onSelectAll={() => selectAllResourceFiles(item)}
+                  onClearSelection={() => clearSelectedResourceFiles(item)}
+                  onBatchDelete={() => batchDeleteApprovedResourceFiles(item)}
+                  isBatchDeleting={batchDeletingResourceId === (item.id || item._id)}
+                />
+                {status === 'approved' && <button type="button" className="danger" disabled={deletingResourceId === (item.id || item._id)} onClick={() => deleteApprovedResource(item)}><Trash2 />{deletingResourceId === (item.id || item._id) ? '删除中' : '删除'}</button>}
+              </div>
+            )}
             {status === 'pending' && <footer><button type="button" onClick={() => review(item.type, item.id || item._id, 'approved')}><Check />通过</button><button type="button" className="danger" onClick={() => review(item.type, item.id || item._id, 'rejected')}><X />驳回</button></footer>}
           </article>
         )) : <div className="siebridge-empty"><Clock3 /><strong>暂无记录</strong><span>当前筛选下没有需要显示的审核项。</span></div>}
       </div>
-      {preview && <div className="siebridge-preview"><dialog open><header><strong>{preview.title}</strong><button className="icon-button" type="button" onClick={() => { URL.revokeObjectURL(preview.url); setPreview(null); }}><X /></button></header><iframe src={preview.url} title={preview.title}></iframe></dialog></div>}
+      <SIEBridgePreviewDialog preview={preview} onClose={() => { if (preview?.url) URL.revokeObjectURL(preview.url); setPreview(null); }} />
     </section>
   );
 };

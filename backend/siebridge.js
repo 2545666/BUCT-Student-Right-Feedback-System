@@ -24,8 +24,8 @@ const SIEBRIDGE_SECTIONS = Object.freeze([
   { key: 'other', label: '其他资料' }
 ]);
 
-const ALLOWED_EXTENSIONS = new Set(['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx', '.zip']);
-const MAX_FILE_SIZE = 50 * 1024 * 1024;
+const MAX_FILE_SIZE = 200 * 1024 * 1024;
+const MAX_FILE_COUNT = 100;
 
 const cleanText = (value, max = 160) => String(value || '').trim().replace(/<[^>]*>/g, '').slice(0, max);
 const normalizeCourseCode = (value) => cleanText(value, 40).replace(/\s+/g, '').toUpperCase();
@@ -39,12 +39,79 @@ const isValidDeleteConfirmation = (resource, confirmation) => {
   return Boolean(value && (value === title || value === DELETE_CONFIRMATION_PHRASE));
 };
 
+const isValidFileDeleteConfirmation = (file, confirmation) => {
+  const value = cleanText(confirmation, 300);
+  const fileName = cleanText(decodeOriginalName(file?.originalName), 300);
+  const relativePath = cleanText(displayStoredRelativePath(file?.relativePath, fileName), 300);
+  return Boolean(value && (value === fileName || value === relativePath || value === DELETE_CONFIRMATION_PHRASE));
+};
+
+const hasReadableCjk = (value = '') => /[\u3400-\u9fff]/.test(value);
+const hasUnreadableChars = (value = '') => /[\u0000-\u001f\u007f-\u009f\ufffd]/.test(value);
+
 const decodeOriginalName = (name = '') => {
+  const value = String(name || '');
+  if (!value) return 'resource-file';
+  if (hasReadableCjk(value) && !hasUnreadableChars(value)) return value;
   try {
-    return Buffer.from(name, 'latin1').toString('utf8');
+    const decoded = Buffer.from(value, 'latin1').toString('utf8');
+    if (!decoded || hasUnreadableChars(decoded)) return value;
+    if (hasReadableCjk(decoded)) return decoded;
+    return value;
   } catch {
-    return name || 'resource-file';
+    return value;
   }
+};
+
+const normalizeRelativePath = (value = '', fallback = '') => {
+  const decoded = decodeOriginalName(value || fallback || '');
+  const normalized = decoded
+    .replace(/\\/g, '/')
+    .split('/')
+    .map(part => cleanText(part, 160))
+    .filter(Boolean)
+    .join('/');
+  if (!normalized || normalized.includes('..')) return cleanText(decodeOriginalName(fallback), 160);
+  return normalized.slice(0, 600);
+};
+
+const displayStoredRelativePath = (relativePath = '', fallback = '') => {
+  const normalized = normalizeRelativePath(relativePath || fallback, fallback);
+  if (hasUnreadableChars(normalized)) return decodeOriginalName(fallback);
+  return normalized;
+};
+
+const parseFilePaths = (value = []) => {
+  const raw = Array.isArray(value) ? value[value.length - 1] : value;
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return Array.isArray(value) ? value : [value];
+  }
+};
+
+const isAllowedSiebridgeUploadFile = (file = {}) => {
+  const rawName = String(file.originalname || file.name || '');
+  if (!rawName.trim()) return false;
+  const originalName = decodeOriginalName(rawName);
+  return Boolean(cleanText(originalName, 300));
+};
+
+const formatSiebridgeUploadError = (error) => {
+  if (!error) return null;
+  if (error instanceof multer.MulterError) {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return { status: 413, message: '单个文件不能超过 200MB，请压缩后重新上传' };
+    }
+    if (error.code === 'LIMIT_FILE_COUNT') {
+      return { status: 413, message: `单次最多上传 ${MAX_FILE_COUNT} 个文件，请分批上传` };
+    }
+    return { status: 400, message: error.message || '上传文件失败' };
+  }
+  if (error.message === '文件名无效') return { status: 400, message: '存在文件名无效的文件，请检查后重新上传' };
+  return null;
 };
 
 const parseList = (value, allowed) => {
@@ -98,6 +165,7 @@ const resourceSchema = new mongoose.Schema({
   files: [{
     storedName: String,
     originalName: String,
+    relativePath: String,
     mimetype: String,
     size: Number,
     extension: String,
@@ -150,15 +218,20 @@ const serializeResource = (resource, exposeFiles = true) => {
     section: item.section,
     title: item.title,
     description: item.description || '',
-    files: exposeFiles ? (item.files || []).map(file => ({
-      originalName: file.originalName,
-      filename: file.originalName,
+    files: exposeFiles ? (item.files || []).map((file, index) => {
+      const originalName = decodeOriginalName(file.originalName);
+      return ({
+      index,
+      originalName,
+      filename: originalName,
+      relativePath: displayStoredRelativePath(file.relativePath, originalName),
       mimetype: file.mimetype,
       size: file.size,
       extension: file.extension,
-      previewUrl: `/api/siebridge/resources/${item._id}/preview`,
-      downloadUrl: `/api/siebridge/resources/${item._id}/download`
-    })) : [],
+      previewUrl: `/api/siebridge/resources/${item._id}/preview?file=${index}`,
+      downloadUrl: `/api/siebridge/resources/${item._id}/download?file=${index}`
+    });
+    }) : [],
     downloadCount: item.downloadCount || 0,
     status: item.status,
     submittedBy: serializeUserBrief(item.submittedBy),
@@ -224,11 +297,20 @@ const resolveStoredResourcePath = (uploadDir, storedName = '') => {
   return absolutePath;
 };
 
-const toStoredFiles = async (files = []) => Promise.all(files.map(async (file) => {
+const getResourceFileByIndex = (resource, value) => {
+  const files = resource?.files || [];
+  const index = Number.isInteger(Number(value)) ? Number(value) : 0;
+  if (index < 0 || index >= files.length) return null;
+  return files[index];
+};
+
+const toStoredFiles = async (files = [], relativePaths = []) => Promise.all(files.map(async (file, index) => {
   const buffer = await fs.promises.readFile(file.path);
+  const originalName = decodeOriginalName(file.originalname);
   return {
     storedName: file.filename,
-    originalName: decodeOriginalName(file.originalname),
+    originalName,
+    relativePath: normalizeRelativePath(relativePaths[index], originalName),
     mimetype: file.mimetype,
     size: file.size,
     extension: path.extname(file.originalname || file.filename || '').toLowerCase(),
@@ -260,12 +342,23 @@ const installSieBridgeRoutes = ({ app, authenticate, logAction, Notification }) 
 
   const siebridgeUpload = multer({
     storage,
-    limits: { fileSize: MAX_FILE_SIZE, files: 10 },
+    limits: { fileSize: MAX_FILE_SIZE, files: MAX_FILE_COUNT },
     fileFilter: (req, file, cb) => {
-      const ext = path.extname(file.originalname || '').toLowerCase();
-      cb(ALLOWED_EXTENSIONS.has(ext) ? null : new Error('不支持的文件类型'), ALLOWED_EXTENSIONS.has(ext));
+      const allowed = isAllowedSiebridgeUploadFile(file);
+      cb(allowed ? null : new Error('文件名无效'), allowed);
     }
   });
+  const handleSiebridgeUpload = (req, res, next) => {
+    siebridgeUpload.array('files', MAX_FILE_COUNT)(req, res, (error) => {
+      const uploadError = formatSiebridgeUploadError(error);
+      if (uploadError) {
+        cleanupFiles(req.files || []);
+        return res.status(uploadError.status).json({ success: false, message: uploadError.message });
+      }
+      if (error) return next(error);
+      return next();
+    });
+  };
 
   app.get('/api/siebridge/meta', authenticate, (req, res) => {
     res.json({
@@ -313,7 +406,7 @@ const installSieBridgeRoutes = ({ app, authenticate, logAction, Notification }) 
     }
   });
 
-  app.post('/api/siebridge/courses', authenticate, siebridgeUpload.array('files', 10), async (req, res) => {
+  app.post('/api/siebridge/courses', authenticate, handleSiebridgeUpload, async (req, res) => {
     const files = req.files || [];
     try {
       const courseData = buildCoursePayload(req.body);
@@ -335,7 +428,7 @@ const installSieBridgeRoutes = ({ app, authenticate, logAction, Notification }) 
       const resource = await SiebridgeResource.create({
         course: course._id,
         ...resourceData.payload,
-        files: await toStoredFiles(files),
+        files: await toStoredFiles(files, parseFilePaths(req.body.filePaths)),
         submittedBy: req.user._id
       });
       await logAction(req.user._id, 'submit_siebridge_course', 'siebridgeCourse', course._id, { code: course.code, resource: resource._id }, req);
@@ -347,7 +440,7 @@ const installSieBridgeRoutes = ({ app, authenticate, logAction, Notification }) 
     }
   });
 
-  app.post('/api/siebridge/courses/:courseId/resources', authenticate, siebridgeUpload.array('files', 10), async (req, res) => {
+  app.post('/api/siebridge/courses/:courseId/resources', authenticate, handleSiebridgeUpload, async (req, res) => {
     const files = req.files || [];
     try {
       const course = await SiebridgeCourse.findById(req.params.courseId);
@@ -363,7 +456,7 @@ const installSieBridgeRoutes = ({ app, authenticate, logAction, Notification }) 
       const resource = await SiebridgeResource.create({
         course: course._id,
         ...resourceData.payload,
-        files: await toStoredFiles(files),
+        files: await toStoredFiles(files, parseFilePaths(req.body.filePaths)),
         submittedBy: req.user._id
       });
       await logAction(req.user._id, 'submit_siebridge_resource', 'siebridgeResource', resource._id, { course: course._id }, req);
@@ -489,14 +582,113 @@ const installSieBridgeRoutes = ({ app, authenticate, logAction, Notification }) 
     }
   });
 
+  app.delete('/api/siebridge/resources/:id/files/:fileIndex', authenticate, async (req, res) => {
+    if (!canReviewSieBridge(req.user)) return res.status(403).json({ success: false, message: '无权删除 SIEBridge 资料文件' });
+    try {
+      const resource = await populateResource(SiebridgeResource.findById(req.params.id));
+      if (!resource) return res.status(404).json({ success: false, message: '资料不存在' });
+      if (resource.status !== 'approved') return res.status(400).json({ success: false, message: '仅可删除已通过审核的资料文件' });
+      if ((resource.files || []).length <= 1) {
+        return res.status(400).json({ success: false, message: '该资料仅剩一个文件，请使用整条资料删除' });
+      }
+
+      const fileIndex = Number(req.params.fileIndex);
+      const file = getResourceFileByIndex(resource, fileIndex);
+      if (!file) return res.status(404).json({ success: false, message: '文件不存在' });
+      if (!isValidFileDeleteConfirmation(file, req.body?.confirmation)) {
+        return res.status(400).json({ success: false, message: '删除确认信息不匹配，请输入文件名或“确认删除”' });
+      }
+
+      const absolutePath = resolveStoredResourcePath(privateUploadDir, file.storedName);
+      if (!absolutePath) return res.status(409).json({ success: false, message: '资料文件路径异常，已阻止删除' });
+      try {
+        await fs.promises.unlink(absolutePath);
+      } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+      }
+
+      resource.files.splice(fileIndex, 1);
+      await resource.save();
+      await logAction(req.user._id, 'delete_siebridge_resource_file', 'siebridgeResource', resource._id, {
+        title: resource.title,
+        file: decodeOriginalName(file.originalName),
+        course: resource.course?._id || resource.course
+      }, req);
+      return res.json({ success: true, resource: serializeResource(resource) });
+    } catch (error) {
+      res.status(500).json({ success: false, message: '删除资料文件失败' });
+    }
+  });
+
+  app.delete('/api/siebridge/resources/:id/files', authenticate, async (req, res) => {
+    if (!canReviewSieBridge(req.user)) return res.status(403).json({ success: false, message: '无权批量删除 SIEBridge 资料文件' });
+    try {
+      const resource = await populateResource(SiebridgeResource.findById(req.params.id));
+      if (!resource) return res.status(404).json({ success: false, message: '资料不存在' });
+      if (resource.status !== 'approved') return res.status(400).json({ success: false, message: '仅可删除已通过审核的资料文件' });
+      if (cleanText(req.body?.confirmation, 160) !== DELETE_CONFIRMATION_PHRASE) {
+        return res.status(400).json({ success: false, message: '批量删除请准确输入“确认删除”' });
+      }
+
+      const files = resource.files || [];
+      const fileIndexes = [...new Set((Array.isArray(req.body?.fileIndexes) ? req.body.fileIndexes : [])
+        .map(Number)
+        .filter(index => Number.isInteger(index) && index >= 0 && index < files.length))]
+        .sort((a, b) => b - a);
+      if (!fileIndexes.length) return res.status(400).json({ success: false, message: '请选择要删除的文件' });
+      if (files.length - fileIndexes.length < 1) {
+        return res.status(400).json({ success: false, message: '不能批量删除全部文件，请使用整条资料删除' });
+      }
+
+      const targetFiles = [];
+      for (const fileIndex of fileIndexes) {
+        const file = files[fileIndex];
+        const absolutePath = resolveStoredResourcePath(privateUploadDir, file?.storedName);
+        if (!absolutePath) return res.status(409).json({ success: false, message: '资料文件路径异常，已阻止删除' });
+        targetFiles.push({ fileIndex, file, absolutePath });
+      }
+
+      const deletedFiles = [];
+      for (const { file, absolutePath } of targetFiles) {
+        try {
+          await fs.promises.unlink(absolutePath);
+        } catch (error) {
+          if (error.code !== 'ENOENT') throw error;
+        }
+        deletedFiles.push(decodeOriginalName(file.originalName));
+      }
+      for (const { fileIndex } of targetFiles) {
+        resource.files.splice(fileIndex, 1);
+      }
+
+      await resource.save();
+      await logAction(req.user._id, 'batch_delete_siebridge_resource_files', 'siebridgeResource', resource._id, {
+        title: resource.title,
+        files: deletedFiles,
+        count: deletedFiles.length,
+        course: resource.course?._id || resource.course
+      }, req);
+      return res.json({ success: true, resource: serializeResource(resource) });
+    } catch (error) {
+      res.status(500).json({ success: false, message: '批量删除资料文件失败' });
+    }
+  });
+
   app.get('/api/siebridge/resources/:id/preview', authenticate, async (req, res) => {
     try {
       const resource = await populateResource(SiebridgeResource.findById(req.params.id));
       if (!resource || !await canReadPrivateResource(req.user, resource)) return res.status(404).json({ success: false, message: '资料不存在' });
-      const file = resource.files?.[0];
-      if (!file || file.extension !== '.pdf') return res.status(400).json({ success: false, message: '仅 PDF 支持在线预览' });
+      const file = getResourceFileByIndex(resource, req.query.file);
+      const isPdf = file?.extension === '.pdf';
+      const isMarkdown = ['.md', '.markdown'].includes(file?.extension);
+      if (!file || (!isPdf && !isMarkdown)) return res.status(400).json({ success: false, message: '仅 PDF 与 Markdown 支持在线预览' });
       const absolutePath = resolveStoredResourcePath(privateUploadDir, file.storedName);
       if (!absolutePath || !fs.existsSync(absolutePath)) return res.status(404).json({ success: false, message: '文件不存在' });
+      if (isMarkdown) {
+        res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+        res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(file.originalName)}"`);
+        return res.send(await fs.promises.readFile(absolutePath, 'utf8'));
+      }
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(file.originalName)}"`);
       return res.sendFile(absolutePath);
@@ -509,7 +701,7 @@ const installSieBridgeRoutes = ({ app, authenticate, logAction, Notification }) 
     try {
       const resource = await populateResource(SiebridgeResource.findById(req.params.id));
       if (!resource || !await canReadPrivateResource(req.user, resource)) return res.status(404).json({ success: false, message: '资料不存在' });
-      const file = resource.files?.[0];
+      const file = getResourceFileByIndex(resource, req.query.file);
       const absolutePath = file ? resolveStoredResourcePath(privateUploadDir, file.storedName) : '';
       if (!file || !absolutePath || !fs.existsSync(absolutePath)) return res.status(404).json({ success: false, message: '文件不存在' });
       resource.downloadCount += 1;
@@ -527,6 +719,11 @@ module.exports = {
   SIEBRIDGE_MAJORS,
   SIEBRIDGE_SECTIONS,
   canReviewSieBridge,
+  decodeOriginalName,
+  formatSiebridgeUploadError,
+  isAllowedSiebridgeUploadFile,
+  isValidFileDeleteConfirmation,
   isValidDeleteConfirmation,
+  normalizeRelativePath,
   installSieBridgeRoutes
 };

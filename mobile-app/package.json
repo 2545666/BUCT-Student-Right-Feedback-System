@@ -1,0 +1,23 @@
+{
+  "name": "siehub-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SIEHUB mobile webview shell",
+  "scripts": {
+    "sync": "cap sync",
+    "add:android": "cap add android",
+    "add:ios": "cap add ios",
+    "copy": "cap copy",
+    "assets": "capacitor-assets generate --assetPath assets --iconBackgroundColor \"#ffffff\" --splashBackgroundColor \"#ffffff\" --android --ios",
+    "build:android:debug": "cd android && gradlew.bat assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/cli": "^6.1.2",
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/ios": "^6.1.2"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5"
+  }
+}

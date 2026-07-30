@@ -170,6 +170,26 @@ const isSiebridgeDepartment = (organization, department) =>
   organization === SIEBRIDGE_DEPARTMENT.organization &&
   department === SIEBRIDGE_DEPARTMENT.department;
 
+const buildManageCapabilities = (organization, department, options = {}) => {
+  const caps = [
+    'view',
+    'enter_student_portal',
+    'enter_manage_portal',
+    'switch_portal',
+    'manage_module',
+    'manage_department_introduction',
+    'manage_department_notice',
+    'manage_department_members',
+    'manage_department_accounts',
+    'manage_department_performance',
+    'manage_volunteer_performance_policy'
+  ];
+  if (options.includeSiebridgeReview && isSiebridgeDepartment(organization, department)) {
+    caps.push('review_siebridge_content', 'delete_siebridge_approved_resource');
+  }
+  return caps;
+};
+
 const getHubModuleId = (organization, department) =>
   isSievoxDepartment(organization, department)
     ? 'sievox'
@@ -229,53 +249,27 @@ const getHubModuleAccess = (user = {}) => {
           'view',
           'manage_organization_framework',
           'manage_cohort_archive',
-          'manage_member_identity'
+          'manage_member_identity',
+          'manage_department_accounts',
+          'manage_department_members',
+          'manage_department_performance'
         ]
       });
     });
     listDepartments().forEach(({ organization, department }) => {
-      grant(organization, department, 'manage', [
-        'view',
-        'enter_student_portal',
-        'enter_manage_portal',
-        'switch_portal',
-        'manage_module',
-        'manage_department_introduction',
-        'manage_department_notice',
-        'manage_volunteer_performance_policy',
-        ...(isSiebridgeDepartment(organization, department) ? ['review_siebridge_content', 'delete_siebridge_approved_resource'] : [])
-      ]);
+      grant(organization, department, 'manage', buildManageCapabilities(organization, department, { includeSiebridgeReview: true }));
     });
     return Array.from(accessByModuleId.values());
   }
 
   if (['department_head', 'youth_league_cadre'].includes(user.positionTitle)) {
-    grant(user.organization, user.department, 'manage', [
-      'view',
-      'enter_student_portal',
-      'enter_manage_portal',
-      'switch_portal',
-      'manage_module',
-      'manage_department_introduction',
-      'manage_department_notice',
-      'manage_volunteer_performance_policy'
-    ]);
+    grant(user.organization, user.department, 'manage', buildManageCapabilities(user.organization, user.department));
     return Array.from(accessByModuleId.values());
   }
 
   if (user.positionTitle === 'presidium_member' || user.positionTitle === 'youth_league_deputy_secretary') {
     normalizeManagedDepartments(user.managedDepartments).forEach(({ organization, department }) => {
-      grant(organization, department, 'manage', [
-        'view',
-        'enter_student_portal',
-        'enter_manage_portal',
-        'switch_portal',
-        'manage_module',
-        'manage_department_introduction',
-        'manage_department_notice',
-        'manage_volunteer_performance_policy',
-        ...(isSiebridgeDepartment(organization, department) ? ['review_siebridge_content', 'delete_siebridge_approved_resource'] : [])
-      ]);
+      grant(organization, department, 'manage', buildManageCapabilities(organization, department, { includeSiebridgeReview: true }));
     });
     return Array.from(accessByModuleId.values());
   }
@@ -363,6 +357,15 @@ function validateAssignment(input = {}) {
 
   if (!ORGANIZATIONS[organization]) return { valid: false, message: '请选择团委或学生会' };
   if (!getDepartment(organization, department)) return { valid: false, message: '所选部门不属于当前组织' };
+
+  if (memberRole === 'volunteer' && positionTitle === 'volunteer') {
+    return {
+      valid: true,
+      accessRole: ACCESS_ROLE_BY_MEMBER_ROLE[memberRole],
+      organization,
+      department
+    };
+  }
 
   if (positionTitle === 'youth_league_cadre' && organization !== 'youth_league') {
     return { valid: false, message: '团委学生兼职团干部只能归属团委部门' };

@@ -1,0 +1,8 @@
+{
+  "appId": "cn.siehub.mobile",
+  "appName": "SIEHUB",
+  "webDir": "web",
+  "server": {
+    "androidScheme": "https"
+  }
+}

@@ -37,6 +37,7 @@ const {
   listHubModules,
   listHubWindows,
   HUB_SYSTEM,
+  SIEVOX_DEPARTMENT,
   validateAssignment
 } = require('./organization');
 const { installSieBridgeRoutes } = require('./siebridge');
@@ -57,6 +58,30 @@ const storage = multer.diskStorage({
   }
 });
 const upload = multer({ storage: storage, limits: { fileSize: 50 * 1024 * 1024 } }); // 限制 50MB
+
+const avatarUploadDir = path.join(uploadDir, 'avatars');
+if (!fs.existsSync(avatarUploadDir)) {
+  fs.mkdirSync(avatarUploadDir, { recursive: true });
+}
+const avatarStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, avatarUploadDir);
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname || '').toLowerCase() || '.png';
+    cb(null, `${req.user?._id || 'avatar'}-${Date.now()}-${crypto.randomBytes(6).toString('hex')}${ext}`);
+  }
+});
+const avatarUpload = multer({
+  storage: avatarStorage,
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter: function (req, file, cb) {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) {
+      return cb(new Error('unsupported_avatar_type'));
+    }
+    cb(null, true);
+  }
+});
 
 const departmentIntroUploadDir = path.join(__dirname, 'department_intro_uploads');
 if (!fs.existsSync(departmentIntroUploadDir)) {
@@ -84,7 +109,32 @@ const departmentIntroUpload = multer({
 
 // [修复] 将静态资源映射到 /api/uploads 下，完美利用现有的代理配置
 app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
+const departmentNoticeUploadDir = path.join(__dirname, 'department_notice_uploads');
+if (!fs.existsSync(departmentNoticeUploadDir)) {
+  fs.mkdirSync(departmentNoticeUploadDir, { recursive: true });
+}
+const departmentNoticeStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, departmentNoticeUploadDir);
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    cb(null, `${Date.now()}-${crypto.randomBytes(8).toString('hex')}${ext}`);
+  }
+});
+const departmentNoticeUpload = multer({
+  storage: departmentNoticeStorage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    const allowed = new Set(['.jpg', '.jpeg', '.png', '.webp']);
+    if (!allowed.has(ext)) return cb(new Error('Only jpg, jpeg, png and webp images are supported'));
+    cb(null, true);
+  }
+});
+
 app.use('/api/department-intro-assets', express.static(departmentIntroUploadDir));
+app.use('/api/department-notice-assets', express.static(departmentNoticeUploadDir));
 // ============================================
 // 环境配置
 // ============================================
@@ -93,14 +143,29 @@ const config = {
   mongoUri: process.env.MONGODB_URI || 'mongodb://localhost:27017/buct_feedback',
   jwtSecret: process.env.JWT_SECRET || 'your-super-secret-jwt-key-buct-2024-secure',
   jwtExpire: process.env.JWT_EXPIRE || '7d',
+  jwtRememberExpire: process.env.JWT_REMEMBER_EXPIRE || '180d',
   nodeEnv: process.env.NODE_ENV || 'development',
   smtpHost: process.env.SMTP_HOST || '',
   smtpPort: Number(process.env.SMTP_PORT || 587),
   smtpSecure: process.env.SMTP_SECURE === 'true',
   smtpUser: process.env.SMTP_USER || '',
   smtpPass: process.env.SMTP_PASS || '',
-  smtpFrom: process.env.SMTP_FROM || process.env.SMTP_USER || 'SIEHUB <no-reply@siehub.local>'
+  smtpFrom: process.env.SMTP_FROM || process.env.SMTP_USER || 'SIEHUB <no-reply@siehub.local>',
+  sslKeyPath: process.env.SSL_KEY_PATH || path.join(__dirname, 'ssl', 'sievox.cn.key'),
+  sslCertPath: process.env.SSL_CERT_PATH || path.join(__dirname, 'ssl', 'sievox.cn.pem')
 };
+
+const getLoginTokenExpiresIn = (remember = false) => (remember ? config.jwtRememberExpire : config.jwtExpire);
+const isMobileUserAgent = (userAgent = '') => /Android|iPhone|iPad|iPod|Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+const shouldPersistLogin = (remember = false, userAgent = '') => remember || isMobileUserAgent(userAgent);
+const allowedCorsOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim()).filter(Boolean)
+  : [
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      'http://localhost:5173',
+      'http://127.0.0.1:5173'
+    ];
 
 app.set('etag', false);
 app.use('/api', (req, res, next) => {
@@ -129,12 +194,7 @@ app.use(helmet({
 
 // CORS配置
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://localhost:5173',
-    'http://127.0.0.1:5173'
-  ],
+  origin: allowedCorsOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -204,6 +264,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     trim: true,
     match: [/^1[3-9]\d{9}$/, '手机号格式不正确']
+  },
+  avatarUrl: {
+    type: String,
+    default: ''
   },
   role: {
     type: String,
@@ -394,6 +458,8 @@ const notificationSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   type: String, // 'new_feedback', 'status_update', 'new_message'
   content: String,
+  feedbackId: { type: mongoose.Schema.Types.ObjectId, ref: 'Feedback' },
+  targetUrl: String,
   isRead: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
 });
@@ -413,6 +479,20 @@ const auditLogSchema = new mongoose.Schema({
 });
 
 const AuditLog = mongoose.model('AuditLog', auditLogSchema);
+
+const loginEventSchema = new mongoose.Schema({
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
+  studentId: { type: String, default: '', index: true },
+  success: { type: Boolean, required: true, index: true },
+  reason: { type: String, default: '' },
+  ip: String,
+  userAgent: String
+}, {
+  timestamps: true
+});
+loginEventSchema.index({ user: 1, createdAt: -1 });
+loginEventSchema.index({ studentId: 1, createdAt: -1 });
+const LoginEvent = mongoose.model('LoginEvent', loginEventSchema);
 
 const PRIVACY_NOTICE_VERSION = 'siehub_privacy_notice_v1';
 
@@ -602,7 +682,8 @@ const cohortMembershipSchema = new mongoose.Schema({
     name: String,
     studentId: String,
     email: String,
-    phone: String
+    phone: String,
+    avatarUrl: String
   },
   systemRole: { type: String, enum: ['student', 'admin', 'superadmin'], required: true },
   memberRole: { type: String, enum: Object.keys(MEMBER_ROLES), required: true },
@@ -685,7 +766,7 @@ async function resolveSemesterMembers(semester) {
   const currentSemester = config ? config.value : null;
 
   if (semester && semester === currentSemester) {
-    const admins = await User.find({ role: 'admin' })
+    const admins = await User.find({ memberRole: 'volunteer' })
       .select('name studentId').sort({ createdAt: -1 });
     return { members: admins.map(u => ({ _id: u._id, name: u.name, studentId: u.studentId })), source: 'current' };
   }
@@ -752,6 +833,22 @@ const logAction = async (userId, action, resource, resourceId, details, req) => 
 };
 
 // 输入验证辅助函数
+const recordLoginEvent = async ({ user = null, studentId = '', success = false, reason = '' }, req) => {
+  try {
+    await LoginEvent.create({
+      user: user?._id || user || null,
+      studentId: studentId || user?.studentId || '',
+      success: Boolean(success),
+      reason,
+      ip: req.ip,
+      userAgent: req.get('User-Agent') || ''
+    });
+  } catch (error) {
+    console.error('login event record failed:', error);
+  }
+};
+const DEFAULT_CURRENT_SEMESTER = '2026-2027学年 第一学期';
+
 const sanitizeInput = (input) => {
   if (typeof input === 'string') {
     return input.trim().replace(/<[^>]*>/g, '');
@@ -908,6 +1005,7 @@ const serializeUser = (user) => ({
   name: user.name,
   email: user.email,
   phone: user.phone || '',
+  avatarUrl: user.avatarUrl || '',
   role: user.role,
   isUltimateAdmin: Boolean(user.isUltimateAdmin),
   memberRole: user.memberRole || 'student',
@@ -931,7 +1029,9 @@ const getPerformancePolicyModuleAccess = (user, assignment) => {
     moduleId: moduleAccess.moduleId,
     accessLevel: moduleAccess.accessLevel,
     capabilities: moduleAccess.capabilities || [],
-    canEdit: moduleAccess.capabilities?.includes('manage_volunteer_performance_policy') || false
+    canEdit: moduleAccess.capabilities?.includes('manage_department_performance') ||
+      moduleAccess.capabilities?.includes('manage_volunteer_performance_policy') ||
+      false
   };
 };
 
@@ -966,6 +1066,30 @@ const getDepartmentNoticeAccess = (user, assignment) => {
     canPublish: canManage
   };
 };
+
+const getDepartmentCapabilityAccess = (user, assignment, capability) => {
+  if (!isValidManagedDepartment(assignment)) return null;
+  const moduleAccess = getHubModuleAccess(user).find(item =>
+    item.organization === assignment.organization &&
+    item.department === assignment.department
+  );
+  if (!moduleAccess?.capabilities?.includes(capability)) return null;
+  return {
+    moduleId: moduleAccess.moduleId,
+    accessLevel: moduleAccess.accessLevel,
+    capabilities: moduleAccess.capabilities || []
+  };
+};
+
+const hasDepartmentCapability = (user, assignment, capability) =>
+  Boolean(getDepartmentCapabilityAccess(user, assignment, capability));
+
+const canUseSensitiveSecurityTools = (user = {}) =>
+  Boolean(
+    user.isUltimateAdmin ||
+    (user.role === 'superadmin' && (!user.positionTitle || user.positionTitle === 'student')) ||
+    ['presidium_member', 'youth_league_deputy_secretary'].includes(user.positionTitle)
+  );
 
 const cleanText = (value, maxLength = 500) => {
   const clean = sanitizeInput(value || '');
@@ -1429,7 +1553,7 @@ const normalizeDepartmentPerformancePolicyPayload = (payload = {}, organization,
 const getCurrentSemesterName = async () => {
   let current = await SystemConfig.findOne({ key: 'currentSemester' });
   if (!current) {
-    current = await SystemConfig.create({ key: 'currentSemester', value: '2025-2026学年 第二学期' });
+    current = await SystemConfig.create({ key: 'currentSemester', value: DEFAULT_CURRENT_SEMESTER });
   }
   return current.value;
 };
@@ -1481,6 +1605,162 @@ const getSemesterDateRange = (semesterName, now = new Date()) => {
     : { start: createChinaBoundaryDate(year, 1), end: createChinaBoundaryDate(year, 7) };
 };
 
+const FEEDBACK_CATEGORY_LABELS = {
+  academic: '教学教务',
+  accommodation: '宿舍住宿',
+  catering: '餐饮服务',
+  safety: '安全保卫',
+  comprehensive: '综合服务与其他'
+};
+
+const FEEDBACK_STATUS_LABELS = {
+  pending: '待受理',
+  processing: '处理中',
+  resolved: '已解决',
+  rejected: '已拒绝'
+};
+
+const FEEDBACK_PRIORITY_LABELS = {
+  low: '较低',
+  normal: '一般',
+  high: '紧急',
+  urgent: '加急'
+};
+
+const getChinaDateParts = (value) => {
+  const date = value instanceof Date ? value : new Date(value);
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(date).reduce((acc, part) => {
+    if (part.type !== 'literal') acc[part.type] = part.value;
+    return acc;
+  }, {});
+  return {
+    year: Number(parts.year),
+    month: Number(parts.month),
+    day: Number(parts.day),
+    dateText: `${parts.year}-${parts.month}-${parts.day}`
+  };
+};
+
+const getSemesterInfoFromDate = (value) => {
+  const { year, month } = getChinaDateParts(value);
+  let academicStartYear;
+  let term;
+  if (month >= 8) {
+    academicStartYear = year;
+    term = 1;
+  } else if (month === 1) {
+    academicStartYear = year - 1;
+    term = 1;
+  } else {
+    academicStartYear = year - 1;
+    term = 2;
+  }
+  const academicEndYear = academicStartYear + 1;
+  const academicYear = `${academicStartYear}-${academicEndYear}学年`;
+  const termLabel = term === 1 ? '第一学期' : '第二学期';
+  return {
+    academicStartYear,
+    academicEndYear,
+    academicYear,
+    term,
+    termLabel,
+    semester: `${academicYear} ${termLabel}`,
+    sortKey: `${academicStartYear}-${term}`
+  };
+};
+
+const getFirstAdminResponseAt = (feedback = {}) => {
+  const times = (feedback.responses || [])
+    .filter(resp => ['admin', 'superadmin'].includes(resp.senderType) && resp.isRecalled !== true && resp.createdAt)
+    .map(resp => new Date(resp.createdAt))
+    .filter(date => !Number.isNaN(date.getTime()))
+    .sort((a, b) => a.getTime() - b.getTime());
+  return times[0] || null;
+};
+
+const escapeRegExp = (value = '') => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const buildAdminFeedbackQueryFromRequest = (req, { forceExcludeRevoked = false, ignoreTimeRange = false } = {}) => {
+  const {
+    status,
+    category,
+    priority,
+    search,
+    startDate,
+    endDate,
+    semester
+  } = req.query || {};
+  const query = {};
+
+  if (forceExcludeRevoked || !hasSuperadminAccess(req.user)) {
+    query.isRevoked = { $ne: true };
+  }
+  if (status) query.status = sanitizeInput(status);
+  if (category) query.category = sanitizeInput(category);
+  if (priority) query.priority = sanitizeInput(priority);
+
+  if (req.user.role === 'superadmin' && !req.user.isUltimateAdmin) {
+    Object.assign(query, buildDepartmentScopedQuery(req.user));
+  }
+
+  if (!ignoreTimeRange) {
+    if (semester) {
+      const { start, end } = getSemesterDateRange(sanitizeInput(semester));
+      query.createdAt = { $gte: start, $lt: end };
+    } else if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) query.createdAt.$gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        query.createdAt.$lte = end;
+      }
+    }
+  }
+
+  if (search) {
+    const keywords = sanitizeInput(search).trim().split(/\s+/).filter(Boolean);
+    if (keywords.length > 0) {
+      query.$and = keywords.map(kw => {
+        const pattern = escapeRegExp(kw);
+        return {
+          $or: [
+            { title: { $regex: pattern, $options: 'i' } },
+            { content: { $regex: pattern, $options: 'i' } },
+            { subCategory: { $regex: pattern, $options: 'i' } }
+          ]
+        };
+      });
+    }
+  }
+
+  return query;
+};
+
+const csvCell = (value) => {
+  const text = value === null || value === undefined ? '' : String(value);
+  return `"${text.replace(/"/g, '""').replace(/\r?\n/g, ' ')}"`;
+};
+
+const formatDateTimeForReport = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date);
+};
+
 const getDepartmentPerformanceAccess = (user, assignment) => {
   const access = getPerformancePolicyModuleAccess(user, assignment);
   if (!access || !access.canEdit) return null;
@@ -1513,6 +1793,19 @@ const serializeDepartmentPerformanceRecord = (record) => ({
 
 const hasSuperadminAccess = (user) => Boolean(user?.isUltimateAdmin || user?.role === 'superadmin');
 const hasUltimateAccess = (user) => Boolean(user?.isUltimateAdmin);
+const hasSievoxSemesterAccess = (user) => {
+  if (!user) return false;
+  if (user.isUltimateAdmin) return true;
+  return (getHubModuleAccess(user) || []).some(module => (
+    module.moduleId === 'sievox' &&
+    (
+      module.accessLevel === 'manage' ||
+      module.accessLevel === 'ultimate' ||
+      module.capabilities?.includes('manage_module') ||
+      module.capabilities?.includes('enter_manage_portal')
+    )
+  ));
+};
 
 const ultimateOnly = (req, res, next) => {
   if (!hasUltimateAccess(req.user)) {
@@ -1569,7 +1862,7 @@ const getScopedVolunteerIds = async (user) => {
   if (user.isUltimateAdmin) return null;
   const scopeQuery = buildUserDepartmentScopedQuery(user);
   if (scopeQuery._id === null) return [];
-  const ids = await User.find({ role: 'admin', ...scopeQuery }).distinct('_id');
+  const ids = await User.find({ memberRole: 'volunteer', ...scopeQuery }).distinct('_id');
   return ids.map(id => id.toString());
 };
 
@@ -1661,8 +1954,63 @@ const buildMemberSnapshot = (user) => ({
   name: user.name,
   studentId: user.studentId,
   email: user.email,
-  phone: user.phone || ''
+  phone: user.phone || '',
+  avatarUrl: user.avatarUrl || ''
 });
+
+const getDepartmentMemberSortRank = (member = {}) => {
+  const positionTitle = member.positionTitle || member.user?.positionTitle || 'student';
+  const memberRole = member.memberRole || member.user?.memberRole || 'student';
+  if (['presidium_member', 'youth_league_deputy_secretary'].includes(positionTitle)) return 0;
+  if (['department_head', 'youth_league_cadre'].includes(positionTitle)) return 1;
+  if (memberRole === 'volunteer' || positionTitle === 'volunteer') return 2;
+  return 3;
+};
+
+const serializeDepartmentMember = (member, cohort = null, source = 'archive') => {
+  const account = member.accountSnapshot || {};
+  const user = member.user || {};
+  const positionTitle = member.positionTitle || user.positionTitle || 'student';
+  const memberRole = member.memberRole || user.memberRole || 'student';
+  const showPerformance = memberRole === 'volunteer' || positionTitle === 'volunteer';
+  return {
+    id: member._id || user._id,
+    userId: user._id || member.user || null,
+    source,
+    cohort: cohort ? serializeCohort(cohort) : null,
+    name: account.name || user.name || '',
+    studentId: account.studentId || user.studentId || '',
+    email: account.email || user.email || '',
+    phone: account.phone || user.phone || '',
+    avatarUrl: account.avatarUrl || user.avatarUrl || '',
+    systemRole: member.systemRole || user.role || 'student',
+    memberRole,
+    memberRoleLabel: MEMBER_ROLES[memberRole] || '',
+    positionTitle,
+    identityLabel: POSITION_TITLES[positionTitle] || '',
+    organization: member.organization || user.organization || null,
+    organizationLabel: ORGANIZATIONS[member.organization || user.organization]?.label || '',
+    department: member.department || user.department || null,
+    departmentLabel: getDepartmentLabel(member.organization || user.organization, member.department || user.department),
+    managedDepartments: (member.managedDepartments || user.managedDepartments || []).map(serializeManagedDepartment),
+    performanceSnapshot: showPerformance ? (member.performanceSnapshot || {}) : null,
+    showPerformance,
+    archivedAt: member.archivedAt || null,
+    createdAt: member.createdAt || user.createdAt || null
+  };
+};
+
+const sortDepartmentMembers = (a, b) => {
+  const rankDiff = getDepartmentMemberSortRank(a) - getDepartmentMemberSortRank(b);
+  if (rankDiff !== 0) return rankDiff;
+  const aPerformance = Number(a.performanceSnapshot?.total || 0);
+  const bPerformance = Number(b.performanceSnapshot?.total || 0);
+  if (getDepartmentMemberSortRank(a) === 2 && aPerformance !== bPerformance) {
+    return bPerformance - aPerformance;
+  }
+  return String(a.studentId || a.accountSnapshot?.studentId || a.user?.studentId || '')
+    .localeCompare(String(b.studentId || b.accountSnapshot?.studentId || b.user?.studentId || ''), 'zh-Hans-CN');
+};
 
 const buildIdentityUpdate = (input = {}, actorId = null) => {
   const requested = {
@@ -1856,6 +2204,51 @@ app.get('/api/hub/departments/:organization/:department/notices/:id', authentica
   }
 });
 
+app.post(
+  '/api/hub/departments/:organization/:department/notices/cover',
+  authenticate,
+  (req, res, next) => {
+    departmentNoticeUpload.single('file')(req, res, (error) => {
+      if (error) {
+        return res.status(400).json({ success: false, message: error.message || 'Department notice cover upload failed' });
+      }
+      next();
+    });
+  },
+  async (req, res) => {
+    const assignment = { organization: req.params.organization, department: req.params.department };
+    if (!isValidManagedDepartment(assignment)) {
+      if (req.file?.path) fs.unlink(req.file.path, () => {});
+      return res.status(404).json({ success: false, message: '部门模块不存在' });
+    }
+
+    const access = getDepartmentNoticeAccess(req.user, assignment);
+    if (!access?.canCreate && !access?.canEdit) {
+      if (req.file?.path) fs.unlink(req.file.path, () => {});
+      return res.status(403).json({ success: false, message: '当前身份不能上传该部门通知封面' });
+    }
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: '请选择要上传的图片' });
+    }
+
+    const isImage = ['image/jpeg', 'image/png', 'image/webp'].includes(req.file.mimetype);
+    if (!isImage) {
+      fs.unlink(req.file.path, () => {});
+      return res.status(400).json({ success: false, message: '仅支持 jpg、png、webp 图片' });
+    }
+
+    const media = {
+      url: `/api/department-notice-assets/${req.file.filename}`,
+      originalName: req.file.originalname,
+      filename: req.file.filename,
+      mimeType: req.file.mimetype,
+      size: req.file.size
+    };
+    await logAction(req.user._id, 'upload_department_notice_cover', 'departmentNotice', null, { ...assignment, size: media.size, mimeType: media.mimeType }, req);
+    res.json({ success: true, media, access });
+  }
+);
+
 app.post('/api/hub/departments/:organization/:department/notices', authenticate, async (req, res) => {
   const assignment = { organization: req.params.organization, department: req.params.department };
   if (!isValidManagedDepartment(assignment)) return res.status(404).json({ success: false, message: '部门模块不存在' });
@@ -2035,22 +2428,25 @@ app.post('/api/hub/departments/:organization/:department/introduction/publish', 
 
   try {
     const existing = await DepartmentIntroduction.findOne(assignment).lean();
-    if (!existing?.draftContent) {
-      return res.status(400).json({ success: false, message: '请先保存草稿后再发布' });
-    }
+    const hasIncomingContent = Object.prototype.hasOwnProperty.call(req.body || {}, 'content');
+    const contentToPublish = hasIncomingContent
+      ? normalizeIntroductionContent(req.body.content || {}, assignment)
+      : (existing?.draftContent || existing?.publishedContent || createDefaultDepartmentIntroduction(assignment.organization, assignment.department));
 
     const intro = await DepartmentIntroduction.findOneAndUpdate(
       assignment,
       {
         ...assignment,
-        publishedContent: existing.draftContent,
-        publishedVersion: (existing.publishedVersion || 0) + 1,
+        draftContent: contentToPublish,
+        draftVersion: (existing?.draftVersion || 0) + (hasIncomingContent ? 1 : 0),
+        publishedContent: contentToPublish,
+        publishedVersion: (existing?.publishedVersion || 0) + 1,
         status: 'published',
         updatedBy: req.user._id,
         publishedBy: req.user._id,
         publishedAt: new Date()
       },
-      { new: true }
+      { upsert: true, new: true, setDefaultsOnInsert: true }
     ).lean();
 
     await DepartmentIntroductionRevision.create({
@@ -2250,7 +2646,7 @@ app.get('/api/hub/departments/:organization/:department/performance-workbench', 
     const currentSemester = await getCurrentSemesterName();
     const semester = sanitizeInput(req.query.semester) || currentSemester;
     const volunteers = await User.find({
-      role: 'admin',
+      memberRole: 'volunteer',
       organization: assignment.organization,
       department: assignment.department,
       isActive: true
@@ -2310,7 +2706,7 @@ app.put('/api/hub/departments/:organization/:department/performance-roster', aut
     const semester = sanitizeInput(req.body.semester) || await getCurrentSemesterName();
     const requestedIds = Array.from(new Set((Array.isArray(req.body.volunteerIds) ? req.body.volunteerIds : []).map(String).filter(Boolean)));
     const departmentVolunteers = await User.find({
-      role: 'admin',
+      memberRole: 'volunteer',
       organization: assignment.organization,
       department: assignment.department,
       isActive: true
@@ -2376,7 +2772,7 @@ app.post('/api/hub/departments/:organization/:department/performance-records', a
 
     const targetVolunteers = await User.find({
       _id: { $in: volunteerIds },
-      role: 'admin',
+      memberRole: 'volunteer',
       organization: assignment.organization,
       department: assignment.department,
       isActive: true
@@ -2436,6 +2832,323 @@ app.delete('/api/hub/departments/:organization/:department/performance-records/:
     res.json({ success: true, message: '绩效记录已撤回' });
   } catch (error) {
     res.status(500).json({ success: false, message: '撤回部门绩效失败' });
+  }
+});
+
+app.get('/api/hub/departments/:organization/:department/members', authenticate, async (req, res) => {
+  const assignment = {
+    organization: req.params.organization,
+    department: req.params.department
+  };
+  if (!isValidManagedDepartment(assignment)) {
+    return res.status(404).json({ success: false, message: '部门模块不存在' });
+  }
+  if (!hasDepartmentCapability(req.user, assignment, 'manage_department_members')) {
+    return res.status(403).json({ success: false, message: '当前身份不能查看该部门成员' });
+  }
+
+  try {
+    const directDepartmentMemberQuery = {
+      organization: assignment.organization,
+      department: assignment.department,
+      $or: [
+        { memberRole: { $in: ['volunteer', 'department_head'] } },
+        { positionTitle: { $in: ['volunteer', 'department_head', 'youth_league_cadre'] } }
+      ]
+    };
+    const managedDepartmentLeaderQuery = {
+      managedDepartments: {
+        $elemMatch: {
+          organization: assignment.organization,
+          department: assignment.department
+        }
+      },
+      $or: [
+        { memberRole: 'presidium' },
+        { positionTitle: { $in: ['presidium_member', 'youth_league_deputy_secretary'] } }
+      ]
+    };
+
+    const currentUsers = await User.find({
+      $or: [directDepartmentMemberQuery, managedDepartmentLeaderQuery]
+    }).select('-password').lean();
+
+    const currentMembers = await Promise.all(
+      currentUsers
+        .map(user => ({
+          _id: user._id,
+          user,
+          systemRole: user.role,
+          memberRole: user.memberRole || 'student',
+          positionTitle: user.positionTitle || 'student',
+          organization: user.organization,
+          department: user.department,
+          managedDepartments: user.managedDepartments || [],
+          createdAt: user.createdAt
+        }))
+        .map(async member => {
+          const shouldShowPerformance = member.memberRole === 'volunteer' || member.positionTitle === 'volunteer';
+          if (shouldShowPerformance) {
+            member.performanceSnapshot = await buildPerformanceSnapshot(member.user._id, []);
+          }
+          return serializeDepartmentMember(member, null, 'current');
+        })
+    ).then(items => items.sort(sortDepartmentMembers));
+
+    const archivedMemberships = await CohortMembership.find({
+      $or: [
+        {
+          organization: assignment.organization,
+          department: assignment.department
+        },
+        {
+          managedDepartments: {
+            $elemMatch: {
+              organization: assignment.organization,
+              department: assignment.department
+            }
+          }
+        }
+      ],
+      memberRole: { $ne: 'student' },
+      archivedAt: { $ne: null }
+    })
+      .populate('cohort')
+      .populate('user', 'name studentId email phone avatarUrl role memberRole positionTitle organization department managedDepartments createdAt')
+      .sort({ archivedAt: -1, createdAt: -1 });
+
+    const groupMap = new Map();
+    archivedMemberships.forEach(member => {
+      const cohort = member.cohort;
+      const key = String(cohort?._id || member.cohort || 'unknown');
+      if (!groupMap.has(key)) {
+        groupMap.set(key, {
+          cohort: cohort ? serializeCohort(cohort) : { id: key, name: '未知届次', status: 'archived', semesters: [] },
+          members: []
+        });
+      }
+      groupMap.get(key).members.push(serializeDepartmentMember(member, cohort, 'archive'));
+    });
+
+    const cohorts = Array.from(groupMap.values()).map(group => ({
+      ...group,
+      members: group.members.sort(sortDepartmentMembers)
+    })).sort((a, b) => {
+      const aTime = new Date(a.cohort?.archivedAt || a.cohort?.endDate || a.cohort?.createdAt || 0).getTime();
+      const bTime = new Date(b.cohort?.archivedAt || b.cohort?.endDate || b.cohort?.createdAt || 0).getTime();
+      return bTime - aTime;
+    });
+
+    res.json({
+      success: true,
+      access: getDepartmentCapabilityAccess(req.user, assignment, 'manage_department_members'),
+      current: currentMembers,
+      cohorts
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '获取部门成员失败' });
+  }
+});
+
+app.post('/api/hub/departments/:organization/:department/members', authenticate, async (req, res) => {
+  const assignment = {
+    organization: req.params.organization,
+    department: req.params.department
+  };
+  if (!isValidManagedDepartment(assignment)) {
+    return res.status(404).json({ success: false, message: '部门模块不存在' });
+  }
+  if (!hasDepartmentCapability(req.user, assignment, 'manage_department_members')) {
+    return res.status(403).json({ success: false, message: '当前身份不能管理该部门成员' });
+  }
+
+  try {
+    const cleanStudentId = sanitizeInput(req.body?.studentId || '');
+    if (!isValidStudentId(cleanStudentId)) {
+      return res.status(400).json({ success: false, message: '请输入10位成员学号' });
+    }
+
+    const user = await User.findOne({ studentId: cleanStudentId });
+    if (!user) return res.status(404).json({ success: false, message: '成员账号不存在，请先完成账号注册或由终极管理员创建账号' });
+    if (user.isUltimateAdmin) return res.status(400).json({ success: false, message: '终极管理员账号不能被设为部门志愿者' });
+
+    const identity = buildIdentityUpdate({
+      memberRole: 'volunteer',
+      positionTitle: 'volunteer',
+      organization: assignment.organization,
+      department: assignment.department,
+      managedDepartments: []
+    }, req.user._id);
+    if (!identity.valid) return res.status(400).json({ success: false, message: identity.message });
+
+    Object.assign(user, identity.update);
+    await user.save();
+
+    const activeCohort = await Cohort.findOne({ status: 'active' }).sort({ startDate: -1, createdAt: -1 });
+    let membership = null;
+    if (activeCohort) {
+      membership = await CohortMembership.findOneAndUpdate(
+        { cohort: activeCohort._id, user: user._id },
+        {
+          $set: {
+            cohort: activeCohort._id,
+            user: user._id,
+            accountSnapshot: buildMemberSnapshot(user),
+            systemRole: user.role,
+            memberRole: user.memberRole,
+            positionTitle: user.positionTitle,
+            organization: user.organization,
+            department: user.department,
+            managedDepartments: []
+          },
+          $push: {
+            appointmentHistory: {
+              memberRole: user.memberRole,
+              positionTitle: user.positionTitle,
+              organization: user.organization,
+              department: user.department,
+              startDate: new Date()
+            }
+          }
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+    }
+
+    await logAction(req.user._id, 'add_department_volunteer', 'user', user._id, {
+      ...assignment,
+      cohortId: activeCohort?._id || null
+    }, req);
+    res.json({
+      success: true,
+      user: serializeUser(user),
+      member: membership ? serializeCohortMember(membership) : null,
+      message: activeCohort ? '已添加为本部门志愿者' : '已添加为本部门志愿者；当前没有 active 届次，未写入届次归档名单'
+    });
+  } catch (error) {
+    console.error('添加部门志愿者失败:', error);
+    res.status(500).json({ success: false, message: '添加部门志愿者失败' });
+  }
+});
+
+app.delete('/api/hub/departments/:organization/:department/members/:id', authenticate, async (req, res) => {
+  const assignment = {
+    organization: req.params.organization,
+    department: req.params.department
+  };
+  if (!isValidManagedDepartment(assignment)) {
+    return res.status(404).json({ success: false, message: '部门模块不存在' });
+  }
+  if (!hasDepartmentCapability(req.user, assignment, 'manage_department_members')) {
+    return res.status(403).json({ success: false, message: '当前身份不能管理该部门成员' });
+  }
+
+  try {
+    const rawId = sanitizeInput(req.params.id || '');
+    const target = mongoose.Types.ObjectId.isValid(rawId)
+      ? await User.findById(rawId)
+      : await User.findOne({ studentId: rawId });
+    if (!target) return res.status(404).json({ success: false, message: '成员账号不存在' });
+    if (target.isUltimateAdmin) return res.status(400).json({ success: false, message: '不能删除终极管理员账号身份' });
+
+    const isDepartmentVolunteer = (target.memberRole === 'volunteer' || target.positionTitle === 'volunteer') &&
+      target.organization === assignment.organization &&
+      target.department === assignment.department;
+    if (!isDepartmentVolunteer) {
+      return res.status(400).json({ success: false, message: '只能删除本部门当前志愿者' });
+    }
+    if (!ensureVolunteerDepartmentAccess(req.user, target)) {
+      return res.status(403).json({ success: false, message: '当前身份不能删除该志愿者' });
+    }
+
+    const activeCohortIds = await Cohort.find({ status: { $ne: 'archived' } }).distinct('_id');
+    let deletedMemberships = { deletedCount: 0 };
+    if (activeCohortIds.length > 0) {
+      deletedMemberships = await CohortMembership.deleteMany({
+        user: target._id,
+        cohort: { $in: activeCohortIds },
+        organization: assignment.organization,
+        department: assignment.department,
+        $or: [
+          { memberRole: 'volunteer' },
+          { positionTitle: 'volunteer' }
+        ]
+      });
+    }
+
+    target.role = 'student';
+    target.memberRole = 'student';
+    target.positionTitle = 'student';
+    target.organization = null;
+    target.department = null;
+    target.managedDepartments = [];
+    target.moduleCapabilities = [];
+    await target.save();
+
+    await logAction(req.user._id, 'remove_department_volunteer', 'user', target._id, {
+      ...assignment,
+      removedCurrentMemberships: deletedMemberships.deletedCount || 0
+    }, req);
+
+    res.json({ success: true, user: serializeUser(target), message: '已删除本部门志愿者，并降级为普通学生' });
+  } catch (error) {
+    console.error('删除部门志愿者失败', error);
+    res.status(500).json({ success: false, message: '删除部门志愿者失败' });
+  }
+});
+
+app.get('/api/hub/departments/:organization/:department/accounts', authenticate, async (req, res) => {
+  const assignment = {
+    organization: req.params.organization,
+    department: req.params.department
+  };
+  if (!isValidManagedDepartment(assignment)) {
+    return res.status(404).json({ success: false, message: '部门模块不存在' });
+  }
+  if (!hasDepartmentCapability(req.user, assignment, 'manage_department_accounts')) {
+    return res.status(403).json({ success: false, message: '当前身份不能管理该部门账号' });
+  }
+
+  try {
+    const users = await User.find({
+      organization: assignment.organization,
+      department: assignment.department
+    }).select('-password').sort({ positionTitle: 1, studentId: 1 });
+    res.json({
+      success: true,
+      access: getDepartmentCapabilityAccess(req.user, assignment, 'manage_department_accounts'),
+      users: users.map(serializeUser)
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '获取部门账号失败' });
+  }
+});
+
+app.patch('/api/hub/departments/:organization/:department/accounts/:id/status', authenticate, async (req, res) => {
+  const assignment = {
+    organization: req.params.organization,
+    department: req.params.department
+  };
+  if (!isValidManagedDepartment(assignment)) {
+    return res.status(404).json({ success: false, message: '部门模块不存在' });
+  }
+  if (!hasDepartmentCapability(req.user, assignment, 'manage_department_accounts')) {
+    return res.status(403).json({ success: false, message: '当前身份不能管理该部门账号' });
+  }
+
+  try {
+    const target = await User.findById(req.params.id);
+    if (!target) return res.status(404).json({ success: false, message: '用户不存在' });
+    if (target.organization !== assignment.organization || target.department !== assignment.department) {
+      return res.status(403).json({ success: false, message: '目标账号不属于该部门' });
+    }
+    const nextStatus = typeof req.body.isActive === 'boolean' ? req.body.isActive : !target.isActive;
+    target.isActive = nextStatus;
+    await target.save();
+    await logAction(req.user._id, 'toggle_department_account', 'user', target._id, { ...assignment, isActive: nextStatus }, req);
+    res.json({ success: true, user: serializeUser(target) });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '更新账号状态失败' });
   }
 });
 
@@ -2734,8 +3447,21 @@ app.post('/api/ultimate/cohorts/:id/archive', authenticate, ultimateOnly, async 
     const snapshots = [];
 
     for (const member of members) {
-      if (member.user) member.accountSnapshot = buildMemberSnapshot(member.user);
-      member.performanceSnapshot = await buildPerformanceSnapshot(member.user?._id || member.user, cohort.semesters || []);
+      if (member.user) {
+        member.accountSnapshot = buildMemberSnapshot(member.user);
+        member.performanceSnapshot = await buildPerformanceSnapshot(member.user?._id || member.user, cohort.semesters || []);
+        if (!member.user.isUltimateAdmin) {
+          member.user.role = 'student';
+          member.user.memberRole = 'student';
+          member.user.positionTitle = 'student';
+          member.user.organization = null;
+          member.user.department = null;
+          member.user.managedDepartments = [];
+          await member.user.save();
+        }
+      } else {
+        member.performanceSnapshot = await buildPerformanceSnapshot(member.user?._id || member.user, cohort.semesters || []);
+      }
       member.archivedAt = new Date();
       member.archivedBy = req.user._id;
       snapshots.push(member);
@@ -2945,18 +3671,23 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { studentId, password } = req.body;
+    const remember = req.body?.remember === true || req.body?.remember === 'true' || req.body?.remember === 1 || req.body?.remember === '1';
+    const persistLogin = shouldPersistLogin(remember, req.get('user-agent'));
     
     if (!studentId || !password) {
       return res.status(400).json({ success: false, message: '请输入学号和密码' });
     }
     
     const user = await User.findOne({ studentId }).select('+password');
+    const loginStudentId = studentId;
+    if (!user) await recordLoginEvent({ studentId: loginStudentId, success: false, reason: 'user_not_found' }, req);
     
     if (!user) {
       return res.status(401).json({ success: false, message: '学号或密码错误' });
     }
     
     // 检查账户锁定
+    if (user.isLocked()) await recordLoginEvent({ user, studentId: loginStudentId, success: false, reason: 'locked' }, req);
     if (user.isLocked()) {
       return res.status(423).json({ 
         success: false, 
@@ -2973,6 +3704,7 @@ app.post('/api/auth/login', async (req, res) => {
         user.lockUntil = Date.now() + 30 * 60 * 1000; // 锁定30分钟
       }
       await user.save();
+      await recordLoginEvent({ user, studentId: loginStudentId, success: false, reason: user.loginAttempts >= 5 ? 'locked_after_failures' : 'password_mismatch' }, req);
       
       return res.status(401).json({ success: false, message: '学号或密码错误' });
     }
@@ -2987,10 +3719,11 @@ app.post('/api/auth/login', async (req, res) => {
     const token = jwt.sign(
       { id: user._id, role: user.role },
       config.jwtSecret,
-      { expiresIn: config.jwtExpire }
+      { expiresIn: getLoginTokenExpiresIn(persistLogin) }
     );
     
     await logAction(user._id, 'login', 'user', user._id, {}, req);
+    await recordLoginEvent({ user, studentId: loginStudentId, success: true, reason: 'success' }, req);
     
     res.json({
       success: true,
@@ -3104,10 +3837,60 @@ app.put('/api/auth/profile', authenticate, async (req, res) => {
 
 // ================== 反馈相关 ==================
 // [新增] 获取当前用户的未读通知
+app.post('/api/auth/avatar', authenticate, avatarUpload.single('avatar'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: '未检测到头像文件' });
+    }
+    const user = await User.findById(req.user._id);
+    user.avatarUrl = `/api/uploads/avatars/${req.file.filename}`;
+    await user.save();
+    await logAction(req.user._id, 'update_avatar', 'user', req.user._id, { avatarUrl: user.avatarUrl }, req);
+    res.json({ success: true, user: serializeUser(user), avatarUrl: user.avatarUrl });
+  } catch (error) {
+    console.error('avatar upload failed:', error);
+    res.status(500).json({ success: false, message: '头像上传失败' });
+  }
+});
+
+app.get('/api/my/login-logs', authenticate, async (req, res) => {
+  try {
+    if (!canUseSensitiveSecurityTools(req.user)) {
+      return res.status(403).json({ success: false, message: '当前身份不能查看登录日志' });
+    }
+    const limit = Math.max(1, Math.min(100, Number(req.query.limit || 30)));
+    const logs = await LoginEvent.find({
+      $or: [
+        { user: req.user._id },
+        { studentId: req.user.studentId }
+      ]
+    })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+    res.json({
+      success: true,
+      logs: logs.map(item => ({
+        id: item._id,
+        success: item.success,
+        reason: item.reason,
+        ip: item.ip,
+        userAgent: item.userAgent,
+        createdAt: item.createdAt
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '获取登录日志失败' });
+  }
+});
+
 app.get('/api/notifications', authenticate, async (req, res) => {
   try {
-    const notifications = await Notification.find({ user: req.user._id, isRead: false }).sort({ createdAt: -1 });
-    res.json({ success: true, notifications });
+    const [notifications, unreadCount] = await Promise.all([
+      Notification.find({ user: req.user._id }).sort({ createdAt: -1 }).limit(50),
+      Notification.countDocuments({ user: req.user._id, isRead: false })
+    ]);
+    res.json({ success: true, notifications, unreadCount });
   } catch (error) {
     res.status(500).json({ success: false });
   }
@@ -3191,8 +3974,14 @@ app.get('/api/service-metrics', authenticate, async (req, res) => {
 // [新增] 标记通知为已读
 app.put('/api/notifications/read', authenticate, async (req, res) => {
   try {
-    await Notification.updateMany({ user: req.user._id, isRead: false }, { isRead: true });
-    res.json({ success: true });
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids.filter(Boolean) : [];
+    if (ids.length > 0) {
+      await Notification.updateMany({ user: req.user._id, _id: { $in: ids } }, { isRead: true });
+    } else {
+      await Notification.updateMany({ user: req.user._id, isRead: false }, { isRead: true });
+    }
+    const unreadCount = await Notification.countDocuments({ user: req.user._id, isRead: false });
+    res.json({ success: true, unreadCount });
   } catch (error) {
     res.status(500).json({ success: false });
   }
@@ -3251,6 +4040,7 @@ app.post('/api/feedback/:id/reply', authenticate, async (req, res) => {
     const notifications = admins.map(admin => ({
       user: admin._id,
       type: 'new_message',
+      feedbackId: feedback._id,
       content: `您有新的留言：学生对问题 [${feedback.title}] 进行了补充`
     }));
     await Notification.insertMany(notifications);
@@ -3289,6 +4079,7 @@ app.post('/api/feedback', authenticate, async (req, res) => {
     const notifications = admins.map(admin => ({
       user: admin._id,
       type: 'new_feedback',
+      feedbackId: feedback._id,
       content: `您有新的问题待处理：[${title}]`
     }));
     await Notification.insertMany(notifications);
@@ -3364,66 +4155,124 @@ app.get('/api/feedback/:id', authenticate, async (req, res) => {
 
 // ================== 管理员API ==================
 
+app.get('/api/admin/feedback-archives', authenticate, adminOnly, async (req, res) => {
+  try {
+    const query = buildAdminFeedbackQueryFromRequest(req, {
+      forceExcludeRevoked: true,
+      ignoreTimeRange: true
+    });
+    const feedbacks = await Feedback.find(query)
+      .select('createdAt updatedAt status category priority responses resolvedAt')
+      .lean();
+
+    const semesterMap = new Map();
+    feedbacks.forEach(feedback => {
+      const info = getSemesterInfoFromDate(feedback.createdAt);
+      if (!semesterMap.has(info.semester)) {
+        const range = getSemesterDateRange(info.semester);
+        const inclusiveEnd = new Date(range.end.getTime() - 24 * 60 * 60 * 1000);
+        semesterMap.set(info.semester, {
+          ...info,
+          startDate: getChinaDateParts(range.start).dateText,
+          endDate: getChinaDateParts(inclusiveEnd).dateText,
+          total: 0,
+          pending: 0,
+          processing: 0,
+          resolved: 0,
+          rejected: 0,
+          highPriority: 0,
+          responded: 0,
+          responseHoursTotal: 0,
+          categories: {}
+        });
+      }
+      const target = semesterMap.get(info.semester);
+      target.total += 1;
+      target[feedback.status] = (target[feedback.status] || 0) + 1;
+      if (feedback.priority === 'high' || feedback.priority === 'urgent') target.highPriority += 1;
+      target.categories[feedback.category] = (target.categories[feedback.category] || 0) + 1;
+
+      const firstResponseAt = getFirstAdminResponseAt(feedback);
+      if (firstResponseAt) {
+        const hours = (firstResponseAt.getTime() - new Date(feedback.createdAt).getTime()) / (1000 * 60 * 60);
+        if (hours >= 0) {
+          target.responded += 1;
+          target.responseHoursTotal += hours;
+        }
+      }
+    });
+
+    const currentSemester = await getCurrentSemesterName();
+    if (!semesterMap.has(currentSemester)) {
+      const range = getSemesterDateRange(currentSemester);
+      const info = getSemesterInfoFromDate(range.start);
+      const inclusiveEnd = new Date(range.end.getTime() - 24 * 60 * 60 * 1000);
+      semesterMap.set(currentSemester, {
+        ...info,
+        semester: currentSemester,
+        startDate: getChinaDateParts(range.start).dateText,
+        endDate: getChinaDateParts(inclusiveEnd).dateText,
+        total: 0,
+        pending: 0,
+        processing: 0,
+        resolved: 0,
+        rejected: 0,
+        highPriority: 0,
+        responded: 0,
+        responseHoursTotal: 0,
+        categories: {}
+      });
+    }
+
+    const semesters = Array.from(semesterMap.values()).map(item => ({
+      ...item,
+      averageFirstResponseHours: item.responded > 0
+        ? Math.round((item.responseHoursTotal / item.responded) * 10) / 10
+        : null,
+      responseHoursTotal: undefined
+    })).sort((a, b) => {
+      if (a.academicStartYear !== b.academicStartYear) return b.academicStartYear - a.academicStartYear;
+      return a.term - b.term;
+    });
+
+    const yearMap = new Map();
+    semesters.forEach(semester => {
+      if (!yearMap.has(semester.academicYear)) {
+        yearMap.set(semester.academicYear, {
+          academicYear: semester.academicYear,
+          academicStartYear: semester.academicStartYear,
+          total: 0,
+          pending: 0,
+          processing: 0,
+          resolved: 0,
+          rejected: 0,
+          semesters: []
+        });
+      }
+      const year = yearMap.get(semester.academicYear);
+      year.total += semester.total;
+      year.pending += semester.pending || 0;
+      year.processing += semester.processing || 0;
+      year.resolved += semester.resolved || 0;
+      year.rejected += semester.rejected || 0;
+      year.semesters.push(semester);
+    });
+
+    const academicYears = Array.from(yearMap.values())
+      .sort((a, b) => b.academicStartYear - a.academicStartYear);
+
+    res.json({ success: true, currentSemester, academicYears });
+  } catch (error) {
+    console.error('获取反馈归档失败:', error);
+    res.status(500).json({ success: false, message: '获取反馈归档失败' });
+  }
+});
+
 // [修改] 获取所有反馈（管理员）- 支持高级检索与时间归档
 app.get('/api/admin/feedbacks', authenticate, adminOnly, async (req, res) => {
   try {
-    const { 
-      status, 
-      category, 
-      priority, 
-      page = 1, 
-      limit = 20,
-      search,      // [新增] 接收搜索关键词
-      startDate,   // [新增] 接收开始日期
-      endDate      // [新增] 接收结束日期
-    } = req.query;
-    
-    // 1. 构建基础查询条件
-    const query = {};
-    
-    // [新增] 权限隔离：普通管理员看不到已撤回的反馈，超管可以看到所有
-    if (!hasSuperadminAccess(req.user)) {
-      query.isRevoked = { $ne: true };
-    }
-
-    if (status) query.status = status;
-    if (category) query.category = category;
-    if (priority) query.priority = priority;
-
-    if (req.user.role === 'superadmin' && !req.user.isUltimateAdmin) {
-      Object.assign(query, buildDepartmentScopedQuery(req.user));
-    }
-
-    // 2. [新增] 时间范围检索 logic (用于学期归档)
-    if (startDate || endDate) {
-      query.createdAt = {};
-      if (startDate) {
-        query.createdAt.$gte = new Date(startDate); // 大于等于开始时间
-      }
-      if (endDate) {
-        // 将结束时间设定为当天的最后一毫秒，确保包含当天的数据
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        query.createdAt.$lte = end;
-      }
-    }
-
-    // 3. [新增] 多关键词复合检索 logic
-    if (search) {
-      // 将搜索字符串按空格拆分为数组，支持多个关键词同时搜索
-      const keywords = search.trim().split(/\s+/);
-      
-      if (keywords.length > 0) {
-        // 使用 $and 逻辑：必须同时满足所有关键词（精准定位）
-        // 在 title 和 content 中进行模糊匹配 ($regex)
-        query.$and = keywords.map(kw => ({
-          $or: [
-            { title: { $regex: kw, $options: 'i' } },   // 匹配标题 (忽略大小写)
-            { content: { $regex: kw, $options: 'i' } }  // 匹配内容 (忽略大小写)
-          ]
-        }));
-      }
-    }
+    const { page = 1, limit = 20 } = req.query;
+    const query = buildAdminFeedbackQueryFromRequest(req);
     
     // 执行数据库查询
     const feedbacks = await Feedback.find(query)
@@ -3455,6 +4304,73 @@ app.get('/api/admin/feedbacks', authenticate, adminOnly, async (req, res) => {
   } catch (error) {
     console.error('获取反馈列表失败:', error); // 增加详细错误日志
     res.status(500).json({ success: false, message: '获取反馈列表失败' });
+  }
+});
+
+app.get('/api/admin/feedbacks/export', authenticate, adminOnly, async (req, res) => {
+  try {
+    const query = buildAdminFeedbackQueryFromRequest(req);
+    const feedbacks = await Feedback.find(query)
+      .populate('user', 'studentId name email phone')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const headers = [
+      '反馈编号',
+      '标题',
+      '问题类别',
+      '具体分类',
+      '状态',
+      '优先级',
+      '提交人',
+      '学号',
+      '是否匿名',
+      '处理组织',
+      '处理部门',
+      '提交时间',
+      '更新时间',
+      '解决时间',
+      '首次响应时间',
+      '首次响应小时数',
+      '回复数',
+      '正文摘要'
+    ];
+
+    const rows = feedbacks.map(feedback => {
+      const firstResponseAt = getFirstAdminResponseAt(feedback);
+      const firstResponseHours = firstResponseAt
+        ? Math.max(0, Math.round(((firstResponseAt.getTime() - new Date(feedback.createdAt).getTime()) / (1000 * 60 * 60)) * 10) / 10)
+        : '';
+      return [
+        feedback._id,
+        feedback.title,
+        FEEDBACK_CATEGORY_LABELS[feedback.category] || feedback.category,
+        feedback.subCategory || '',
+        feedback.isRevoked ? '已撤回' : (FEEDBACK_STATUS_LABELS[feedback.status] || feedback.status),
+        FEEDBACK_PRIORITY_LABELS[feedback.priority] || feedback.priority,
+        feedback.isAnonymous ? '匿名学生' : (feedback.user?.name || ''),
+        feedback.isAnonymous ? '匿名' : (feedback.user?.studentId || ''),
+        feedback.isAnonymous ? '是' : '否',
+        ORGANIZATIONS[feedback.handlingOrganization]?.label || '',
+        getDepartmentLabel(feedback.handlingOrganization, feedback.handlingDepartment) || '',
+        formatDateTimeForReport(feedback.createdAt),
+        formatDateTimeForReport(feedback.updatedAt),
+        formatDateTimeForReport(feedback.resolvedAt),
+        formatDateTimeForReport(firstResponseAt),
+        firstResponseHours,
+        (feedback.responses || []).filter(resp => resp.isRecalled !== true).length,
+        String(feedback.content || '').slice(0, 500)
+      ].map(csvCell).join(',');
+    });
+
+    const csv = `\uFEFF${headers.map(csvCell).join(',')}\n${rows.join('\n')}`;
+    const filename = `SIEVOX反馈报表-${new Date().toISOString().slice(0, 10)}.csv`;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
+    res.send(csv);
+  } catch (error) {
+    console.error('导出反馈报表失败:', error);
+    res.status(500).json({ success: false, message: '导出反馈报表失败' });
   }
 });
 
@@ -3629,8 +4545,8 @@ app.patch('/api/admin/users/:studentId/reset-password', authenticate, adminOnly,
     const { newPassword } = req.body;
     const targetStudentId = req.params.studentId;
 
-    if (!hasUltimateAccess(req.user)) {
-      return res.status(403).json({ success: false, message: '权限不足：仅终极管理员可重置他人密码' });
+    if (!canUseSensitiveSecurityTools(req.user)) {
+      return res.status(403).json({ success: false, message: '权限不足：仅超级管理员、主席/团副可重置他人密码' });
     }
 
     if (!newPassword) {
@@ -3747,7 +4663,7 @@ app.get('/api/admin/stats', authenticate, adminOnly, async (req, res) => {
 app.get('/api/admin/system/config', authenticate, adminOnly, async (req, res) => {
   try {
     let config = await SystemConfig.findOne({ key: 'currentSemester' });
-    if (!config) config = await SystemConfig.create({ key: 'currentSemester', value: '2025-2026学年 第二学期' });
+    if (!config) config = await SystemConfig.create({ key: 'currentSemester', value: DEFAULT_CURRENT_SEMESTER });
     const perfSemesters = await PerformanceRecord.distinct('semester');
     const rosterSemesters = await SemesterMember.distinct('semester');
     const semesters = Array.from(new Set([...perfSemesters, ...rosterSemesters]));
@@ -3758,7 +4674,7 @@ app.get('/api/admin/system/config', authenticate, adminOnly, async (req, res) =>
 
 // [新增] 归档并开启新学期 (仅超管)
 app.post('/api/admin/system/semester', authenticate, adminOnly, async (req, res) => {
-  if (!hasUltimateAccess(req.user)) return res.status(403).json({ success: false, message: '仅终极管理员可开启新学期' });
+  if (!hasSievoxSemesterAccess(req.user)) return res.status(403).json({ success: false, message: '仅 SIEVOX 管理权限者可开启新学期' });
   try {
     // [新增] 切换前冻结上一学期名单：若旧学期尚无显式名单，则把其"有效名单"快照存档
     const oldConfig = await SystemConfig.findOne({ key: 'currentSemester' });
@@ -3785,7 +4701,7 @@ app.post('/api/admin/system/semester', authenticate, adminOnly, async (req, res)
 
 // [新增] 重命名学期 (仅超管)：同步改绩效流水、成员名单、当前学期与受管学期列表
 app.put('/api/admin/system/semester/rename', authenticate, adminOnly, async (req, res) => {
-  if (!hasUltimateAccess(req.user)) return res.status(403).json({ success: false, message: '仅终极管理员可重命名学期' });
+  if (!hasSievoxSemesterAccess(req.user)) return res.status(403).json({ success: false, message: '仅 SIEVOX 管理权限者可重命名学期' });
   try {
     const { oldName, newName } = req.body;
     if (!oldName || !newName) return res.status(400).json({ success: false, message: '缺少学期名称' });
@@ -3879,7 +4795,7 @@ app.post('/api/admin/performance', authenticate, adminOnly, async (req, res) => 
     const volunteerMap = new Map(targetVolunteers.map(volunteer => [volunteer._id.toString(), volunteer]));
     
     const config = await SystemConfig.findOne({ key: 'currentSemester' });
-    const currentSemester = config ? config.value : '2025-2026学年 第二学期';
+    const currentSemester = config ? config.value : DEFAULT_CURRENT_SEMESTER;
     
     // [修复] 补录时优先使用指定的学期，否则使用当前学期
     const finalSemester = targetSemester || currentSemester;
@@ -4149,9 +5065,23 @@ app.post('/api/admin/ultimate/cohorts/:id/archive', authenticate, adminOnly, ult
   try {
     const cohort = await Cohort.findById(req.params.id);
     if (!cohort) return res.status(404).json({ success: false, message: '届次不存在' });
-    const memberships = await CohortMembership.find({ cohort: cohort._id });
+    const memberships = await CohortMembership.find({ cohort: cohort._id }).populate('user');
     for (const membership of memberships) {
-      membership.performanceSnapshot = await buildPerformanceSnapshot(membership.user, cohort.semesters || []);
+      if (membership.user) {
+        membership.accountSnapshot = buildMemberSnapshot(membership.user);
+        membership.performanceSnapshot = await buildPerformanceSnapshot(membership.user._id, cohort.semesters || []);
+        if (!membership.user.isUltimateAdmin) {
+          membership.user.role = 'student';
+          membership.user.memberRole = 'student';
+          membership.user.positionTitle = 'student';
+          membership.user.organization = null;
+          membership.user.department = null;
+          membership.user.managedDepartments = [];
+          await membership.user.save();
+        }
+      } else {
+        membership.performanceSnapshot = await buildPerformanceSnapshot(membership.user, cohort.semesters || []);
+      }
       membership.archivedAt = new Date();
       membership.archivedBy = req.user._id;
       await membership.save();
@@ -4224,8 +5154,8 @@ const startServer = async () => {
       }).listen(80, () => {
         console.log(`🚀 生产环境: HTTP 服务器运行在端口 80 (仅用于自动重定向至 HTTPS)`);
       })
-      const privateKey = fs.readFileSync(path.join(__dirname, 'ssl', 'sievox.cn.key'), 'utf8');
-      const certificate = fs.readFileSync(path.join(__dirname, 'ssl', 'sievox.cn.pem'), 'utf8');
+      const privateKey = fs.readFileSync(config.sslKeyPath, 'utf8');
+      const certificate = fs.readFileSync(config.sslCertPath, 'utf8');
       const credentials = { key: privateKey, cert: certificate };
 
       const httpsServer = https.createServer(credentials, app);
@@ -4250,6 +5180,9 @@ const startServer = async () => {
 
 app.buildWechatNoticePayload = buildWechatNoticePayload;
 app.normalizeDateToEndOfDay = normalizeDateToEndOfDay;
+app.getLoginTokenExpiresIn = getLoginTokenExpiresIn;
+app.isMobileUserAgent = isMobileUserAgent;
+app.shouldPersistLogin = shouldPersistLogin;
 
 if (require.main === module) {
   startServer();

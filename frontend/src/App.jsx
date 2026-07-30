@@ -255,7 +255,6 @@ const EN_TRANSLATIONS = {
   '服务指南': 'Service guide',
   '当前登录身份': 'Current identity',
   '外观设置': 'Appearance',
-  '手机端预览': 'Mobile preview',
   '退出登录': 'Sign out',
   '退出': 'Sign out',
   '学生权益反馈系统': 'Student Rights Feedback System',
@@ -624,7 +623,6 @@ Object.assign(EN_TRANSLATIONS, {
   '暂无绩效流水。': 'No performance records yet.',
   '该学期暂未获取积分': 'No points recorded for this semester',
   '全部标为已读': 'Mark all as read',
-  '手机端预览': 'Mobile preview',
   '账号管理': 'Account management',
   '修改信息': 'Edit information',
   '注销': 'Deactivate',
@@ -1872,7 +1870,8 @@ const DepartmentPerformanceWorkbench = ({ module, token, canManage }) => {
               const id = user.id || user._id;
               return (
                 <label key={id} className="siehub-member-check">
-                  <input type="checkbox" checked={rosterSelection.includes(id)} onChange={() => toggleRoster(id)} />
+                  <input className="siehub-checkbox" type="checkbox" checked={rosterSelection.includes(id)} onChange={() => toggleRoster(id)} />
+                  <i aria-hidden="true"></i>
                   <span><strong>{user.name}</strong><small>{user.studentId}</small></span>
                 </label>
               );
@@ -1888,7 +1887,8 @@ const DepartmentPerformanceWorkbench = ({ module, token, canManage }) => {
               const id = user.id || user._id;
               return (
                 <label key={id}>
-                  <input type="checkbox" checked={recordSelection.includes(id)} onChange={() => toggleRecordMember(id)} />
+                  <input className="siehub-checkbox" type="checkbox" checked={recordSelection.includes(id)} onChange={() => toggleRecordMember(id)} />
+                  <i aria-hidden="true"></i>
                   <span>{user.name}</span>
                 </label>
               );
@@ -2011,9 +2011,51 @@ const DepartmentAccountWorkspace = ({ module, token, canManage, language = 'zh' 
   );
 };
 
+const DEPARTMENT_MEMBER_TIER_META = [
+  { key: 'presidium', rank: 0, label: '主席层级', shortLabel: '主席层级' },
+  { key: 'department_lead', rank: 1, label: '负责人层级', shortLabel: '负责人层级' },
+  { key: 'volunteer', rank: 2, label: '志愿者', shortLabel: '志愿者' }
+];
+
+const getDepartmentMemberTierRank = (member = {}) => {
+  const positionTitle = member.positionTitle || member.user?.positionTitle || 'student';
+  const memberRole = member.memberRole || member.user?.memberRole || 'student';
+  if (['presidium_member', 'youth_league_deputy_secretary'].includes(positionTitle) || memberRole === 'presidium') return 0;
+  if (['department_head', 'youth_league_cadre'].includes(positionTitle) || memberRole === 'department_lead') return 1;
+  return 2;
+};
+
+const groupDepartmentMembersByTier = (members = []) => {
+  const groups = DEPARTMENT_MEMBER_TIER_META.map(meta => ({ ...meta, members: [] }));
+  members.forEach(member => {
+    const tier = getDepartmentMemberTierRank(member);
+    const target = groups.find(item => item.rank === tier);
+    if (target) target.members.push(member);
+  });
+  return groups;
+};
+
+const getDepartmentTierLabel = (rank, organization) => {
+  if (rank === 0) return organization === 'youth_league' ? '团委学生兼职副书记' : '主席团成员';
+  if (rank === 1) return organization === 'youth_league' ? '团委学生兼职团干部' : '部门负责人';
+  return '志愿者';
+};
+
+const getDepartmentMemberRoleTitle = (member = {}) => {
+  const positionTitle = member.positionTitle || member.user?.positionTitle || '';
+  if (positionTitle === 'presidium_member') return '主席团成员';
+  if (positionTitle === 'youth_league_deputy_secretary') return '团委学生兼职副书记';
+  if (positionTitle === 'youth_league_cadre') return '团委学生兼职团干部';
+  if (positionTitle === 'department_head') return '部门负责人';
+  if (positionTitle === 'volunteer' || member.memberRole === 'volunteer') return '志愿者';
+  return member.identityLabel || member.memberRoleLabel || '-';
+};
+
 const DepartmentMemberWorkspace = ({ module, token, canManage, language = 'zh' }) => {
   const [currentMembers, setCurrentMembers] = useState([]);
   const [cohorts, setCohorts] = useState([]);
+  const [studentIdToAdd, setStudentIdToAdd] = useState('');
+  const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
   const refreshMembers = useCallback(async () => {
@@ -2036,6 +2078,58 @@ const DepartmentMemberWorkspace = ({ module, token, canManage, language = 'zh' }
   }, [module?.organization, module?.key, token, canManage]);
 
   useEffect(() => { refreshMembers(); }, [refreshMembers]);
+  const currentMemberGroups = useMemo(() => groupDepartmentMembersByTier(currentMembers), [currentMembers]);
+  const cohortGroups = useMemo(() => cohorts.map(group => ({
+    ...group,
+    tierGroups: groupDepartmentMembersByTier(group.members || [])
+  })), [cohorts]);
+
+  const addDepartmentVolunteer = async (event) => {
+    event.preventDefault();
+    const cleanStudentId = studentIdToAdd.trim();
+    if (!cleanStudentId) return setMessage('请输入要添加的成员学号');
+    setLoading(true);
+    setMessage('');
+    try {
+      const res = await fetch(`${API_BASE}/hub/departments/${module.organization}/${module.key}/members`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ studentId: cleanStudentId })
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || '添加部门志愿者失败');
+      setStudentIdToAdd('');
+      setMessage(data.message || '已添加为本部门志愿者');
+      await refreshMembers();
+    } catch (error) {
+      setMessage(error.message || '添加部门志愿者失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteDepartmentVolunteer = async (member) => {
+    const targetId = member?.userId || member?.id || member?._id || member?.studentId;
+    if (!targetId) return setMessage('缺少要删除的成员标识');
+    const confirmed = window.confirm(`确认从本部门删除志愿者「${member?.name || member?.studentId || ''}」吗？该账号会降级为普通学生，历届归档不会被删除。`);
+    if (!confirmed) return;
+    setLoading(true);
+    setMessage('');
+    try {
+      const res = await fetch(`${API_BASE}/hub/departments/${module.organization}/${module.key}/members/${targetId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || '删除部门志愿者失败');
+      setMessage(data.message || '已删除本部门志愿者');
+      await refreshMembers();
+    } catch (error) {
+      setMessage(error.message || '删除部门志愿者失败');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!canManage) return null;
 
@@ -2049,25 +2143,53 @@ const DepartmentMemberWorkspace = ({ module, token, canManage, language = 'zh' }
         </div>
         <button type="button" onClick={refreshMembers} disabled={loading}>{loading ? '同步中' : '刷新'}</button>
       </div>
+      <form className="siehub-member-add-form" onSubmit={addDepartmentVolunteer}>
+        <label>
+          <span>添加本部门志愿者</span>
+          <input value={studentIdToAdd} onChange={event => setStudentIdToAdd(event.target.value)} placeholder="输入10位学号" inputMode="numeric" />
+        </label>
+        <button type="submit" disabled={loading || !studentIdToAdd.trim()}>添加</button>
+      </form>
+      {message && <div className="siehub-policy-message">{message}</div>}
       <section className="siehub-member-section">
         <div className="siehub-member-section-head">
           <strong>当前成员</strong>
           <span>{currentMembers.length} 人</span>
         </div>
-        <div className="siehub-member-grid">
-          {currentMembers.map(member => (
-            <article key={member.id || member.userId}>
-              <span className="siehub-avatar">{member.avatarUrl ? <img src={member.avatarUrl} alt="" /> : firstChar(member.name)}</span>
-              <div>
-                <strong>{member.name}</strong>
-                <small>{member.studentId}</small>
-                <small>{member.identityLabel || member.memberRoleLabel || '-'}</small>
-                {member.showPerformance && <small>绩效总成绩：{member.performanceSnapshot?.total ?? 0}</small>}
-              </div>
-            </article>
-          ))}
-          {currentMembers.length === 0 && <p className="siehub-empty-text">暂无当前成员。</p>}
-        </div>
+        {currentMembers.length === 0 ? (
+          <p className="siehub-empty-text">暂无当前成员。</p>
+        ) : (
+          <div className="siehub-member-tier-list">
+            {currentMemberGroups.map(group => group.members.length > 0 && (
+              <section key={group.key} className="siehub-member-tier-section" data-tier={group.rank}>
+                <div className="siehub-member-tier-head">
+                  <div>
+                    <strong>{getDepartmentTierLabel(group.rank, module.organization)}</strong>
+                    <small>{group.members.length} 人</small>
+                  </div>
+                </div>
+                <div className="siehub-member-grid compact">
+                  {group.members.map(member => (
+                    <article key={member.id || member.userId} className="siehub-member-tier-card" data-tier={group.rank}>
+                      <span className="siehub-avatar">{member.avatarUrl ? <img src={member.avatarUrl} alt="" /> : firstChar(member.name)}</span>
+                      <div>
+                        <strong>{member.name}</strong>
+                        <small>{member.studentId}</small>
+                        <small>{getDepartmentMemberRoleTitle(member)}</small>
+                        {member.showPerformance && <small>绩效总成绩：{member.performanceSnapshot?.total ?? 0}</small>}
+                      </div>
+                      {group.rank === 2 && (
+                        <button type="button" className="siehub-member-delete-button" onClick={() => deleteDepartmentVolunteer(member)} disabled={loading}>
+                          删除
+                        </button>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
       </section>
       <section className="siehub-member-section">
         <div className="siehub-member-section-head">
@@ -2075,7 +2197,7 @@ const DepartmentMemberWorkspace = ({ module, token, canManage, language = 'zh' }
           <span>{cohorts.reduce((total, group) => total + (group.members?.length || 0), 0)} 人</span>
         </div>
         <div className="siehub-cohort-list">
-          {cohorts.map(group => (
+          {cohortGroups.map(group => (
             <article key={group.cohort?.id || group.cohort?.name} className="siehub-cohort-card">
               <header>
                 <div>
@@ -2084,17 +2206,29 @@ const DepartmentMemberWorkspace = ({ module, token, canManage, language = 'zh' }
                 </div>
                 <span>{group.members?.length || 0} 人</span>
               </header>
-              <div className="siehub-member-grid compact">
-                {(group.members || []).map(member => (
-                  <article key={member.id || `${group.cohort?.id}-${member.studentId}`}>
-                    <span className="siehub-avatar">{member.avatarUrl ? <img src={member.avatarUrl} alt="" /> : firstChar(member.name)}</span>
-                    <div>
-                      <strong>{member.name}</strong>
-                      <small>{member.studentId}</small>
-                      <small>{member.identityLabel || member.memberRoleLabel || '-'}</small>
-                      {member.showPerformance && <small>绩效总成绩：{member.performanceSnapshot?.total ?? 0}</small>}
+              <div className="siehub-member-tier-list">
+                {group.tierGroups.map(tier => tier.members.length > 0 && (
+                  <section key={tier.key} className="siehub-member-tier-section" data-tier={tier.rank}>
+                    <div className="siehub-member-tier-head">
+                      <div>
+                        <strong>{getDepartmentTierLabel(tier.rank, module.organization)}</strong>
+                        <small>{tier.members.length} 人</small>
+                      </div>
                     </div>
-                  </article>
+                    <div className="siehub-member-grid compact">
+                      {tier.members.map(member => (
+                        <article key={member.id || `${group.cohort?.id}-${member.studentId}`} className="siehub-member-tier-card" data-tier={tier.rank}>
+                          <span className="siehub-avatar">{member.avatarUrl ? <img src={member.avatarUrl} alt="" /> : firstChar(member.name)}</span>
+                          <div>
+                            <strong>{member.name}</strong>
+                            <small>{member.studentId}</small>
+                            <small>{getDepartmentMemberRoleTitle(member)}</small>
+                            {member.showPerformance && <small>绩效总成绩：{member.performanceSnapshot?.total ?? 0}</small>}
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  </section>
                 ))}
               </div>
             </article>
@@ -2577,7 +2711,8 @@ const SIEHUBNoticePortal = ({ token, language = 'zh', fixedModule = null, user =
         <NoticeDateField value={filters.dateFrom} language={language} kind="start" onChange={dateFrom => setFilters(current => ({ ...current, dateFrom }))} />
         <NoticeDateField value={filters.dateTo} language={language} kind="end" onChange={dateTo => setFilters(current => ({ ...current, dateTo }))} />
         <label className="siehub-latest-filter">
-          <input type="checkbox" checked={filters.latestOnly} onChange={event => setFilters(current => ({ ...current, latestOnly: event.target.checked }))} />
+          <input className="siehub-checkbox" type="checkbox" checked={filters.latestOnly} onChange={event => setFilters(current => ({ ...current, latestOnly: event.target.checked }))} />
+          <i aria-hidden="true"></i>
           <span>{language === 'en' ? 'Latest only' : '仅看最新'}</span>
         </label>
       </div>
@@ -2707,7 +2842,8 @@ const HubNoticeCenter = ({ token, language = 'zh', fixedModule = null }) => {
         <NoticeDateField value={filters.dateFrom} language={language} kind="start" onChange={dateFrom => setFilters(current => ({ ...current, dateFrom }))} />
         <NoticeDateField value={filters.dateTo} language={language} kind="end" onChange={dateTo => setFilters(current => ({ ...current, dateTo }))} />
         <label className="siehub-latest-filter">
-          <input type="checkbox" checked={filters.latestOnly} onChange={event => setFilters(current => ({ ...current, latestOnly: event.target.checked }))} />
+          <input className="siehub-checkbox" type="checkbox" checked={filters.latestOnly} onChange={event => setFilters(current => ({ ...current, latestOnly: event.target.checked }))} />
+          <i aria-hidden="true"></i>
           <span>{language === 'en' ? 'Latest only' : '仅看最新'}</span>
         </label>
       </div>
@@ -3536,7 +3672,7 @@ const Sidebar = ({ user, activePage, setActivePage, openCompose, onLogout, onOpe
   </aside>
 );
 
-const Topbar = ({ pageTitle, theme, openPreview, notifications, unreadCount = 0, onToggleNotifications, showNotifications = true, onOpenMy, user, portalView, onPortalChange, onBackToHub, languageSwitcher = null }) => (
+const Topbar = ({ pageTitle, theme, notifications, unreadCount = 0, onToggleNotifications, showNotifications = true, onOpenMy, user, portalView, onPortalChange, onBackToHub, languageSwitcher = null }) => (
   <header className="topbar">
     <div className="breadcrumb"><span>国际教育学院</span><ChevronRight /><strong id="page-title">{pageTitle}</strong></div>
     <div className="topbar-actions">
@@ -3554,7 +3690,6 @@ const Topbar = ({ pageTitle, theme, openPreview, notifications, unreadCount = 0,
       </div>
       <ThemeModeButtons theme={theme} compact />
       <button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)}><Palette /></button>
-      {user?.isUltimateAdmin && <button className="outline-button" type="button" onClick={openPreview}><Smartphone />手机端预览</button>}
       <button className="icon-button" type="button" onClick={onOpenMy} title="账号设置"><Settings /></button>
       {showNotifications && <button className="icon-button" type="button" title="消息通知" onClick={onToggleNotifications}><Bell />{unreadCount > 0 && <span className="notification-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>}</button>}
       {languageSwitcher}
@@ -3859,7 +3994,6 @@ const DashboardPage = ({ user, token, onLogout, onRefreshUser, onOpenMy, theme, 
   const [mobileComposeOpen, setMobileComposeOpen] = useState(false);
   const [composeCategory, setComposeCategory] = useState('');
   const [selectedFeedback, setSelectedFeedback] = useState(null);
-  const [previewMobile, setPreviewMobile] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [loading, setLoading] = useState(false);
   const clock = usePlatformClock(language);
@@ -3919,11 +4053,6 @@ const DashboardPage = ({ user, token, onLogout, onRefreshUser, onOpenMy, theme, 
     }
     setShowNotifications(false);
   }, [feedbacks]);
-
-  useEffect(() => {
-    document.body.classList.toggle('preview-mobile', previewMobile);
-    return () => document.body.classList.remove('preview-mobile');
-  }, [previewMobile]);
 
   useEffect(() => {
     fetchFeedbacks();
@@ -4010,7 +4139,6 @@ const DashboardPage = ({ user, token, onLogout, onRefreshUser, onOpenMy, theme, 
           <Topbar
             pageTitle={pageTitle}
             theme={theme}
-          openPreview={() => setPreviewMobile(true)}
             notifications={enableNotifications ? notifications : []}
             unreadCount={enableNotifications ? unreadCount : 0}
             showNotifications={enableNotifications}
@@ -4025,7 +4153,6 @@ const DashboardPage = ({ user, token, onLogout, onRefreshUser, onOpenMy, theme, 
           <StudentDesktop user={user} stats={stats} feedbacks={feedbacks} activePage={activePage} setActivePage={setActivePage} openCompose={openCompose} onOpenFeedback={setSelectedFeedback} clock={clock} />
         </main>
       </div>
-      {user?.isUltimateAdmin && <button className="preview-exit icon-button" type="button" onClick={() => setPreviewMobile(false)}><X /></button>}
       <MobileShell user={user} feedbacks={feedbacks} stats={stats} page={mobilePage} setPage={setMobilePage} openCompose={openCompose} onOpenFeedback={setSelectedFeedback} onOpenMy={onOpenMy} theme={theme} clock={clock} unreadCount={enableNotifications ? unreadCount : 0} onToggleNotifications={() => setShowNotifications(current => !current)} showNotifications={enableNotifications} languageSwitcher={renderLanguageSwitcher?.()} />
       <div className={cls('drawer-backdrop', (composeOpen || mobileComposeOpen) && 'is-open')} onClick={() => { setComposeOpen(false); setMobileComposeOpen(false); }}></div>
       <ComposeDrawer open={composeOpen} category={composeCategory} setCategory={setComposeCategory} onClose={() => setComposeOpen(false)} onSubmit={submitFeedback} loading={loading} />

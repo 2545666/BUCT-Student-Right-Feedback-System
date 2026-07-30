@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SIEHUB</title>
+    <style>
+      html, body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        background: #0f172a;
+        color: #e2e8f0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      body {
+        display: grid;
+        place-items: center;
+      }
+      .box {
+        text-align: center;
+        padding: 24px;
+      }
+      .box h1 {
+        margin: 0 0 8px;
+        font-size: 24px;
+      }
+      .box p {
+        margin: 0;
+        opacity: 0.8;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="box">
+      <h1>SIEHUB</h1>
+      <p>Redirecting to SIEHUB</p>
+    </div>
+    <script>
+      const target = new URLSearchParams(window.location.search).get('target') || 'https://siehub.example.cn';
+      window.location.replace(target);
+    </script>
+  </body>
+</html>
