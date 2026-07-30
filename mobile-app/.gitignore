@@ -1,3 +1,8 @@
 node_modules/
 release/
 tools/
+android/.gradle/
+android/**/build/
+ios/**/Pods/
+ios/**/DerivedData/
+ios/**/build/
