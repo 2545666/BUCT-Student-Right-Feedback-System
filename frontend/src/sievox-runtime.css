@@ -529,6 +529,209 @@ th,
   margin-bottom: 18px;
 }
 
+.admin-demo-shell .feedback-archive-panel {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--ink);
+  background:
+    linear-gradient(135deg, rgba(var(--theme-rgb), .055), transparent 58%),
+    var(--paper);
+  box-shadow: 0 8px 24px rgba(15, 36, 58, .055);
+}
+
+.admin-demo-shell .feedback-archive-panel header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-demo-shell .feedback-archive-panel header p,
+.admin-demo-shell .feedback-archive-panel header h2,
+.admin-demo-shell .feedback-archive-panel header span {
+  margin: 0;
+}
+
+.admin-demo-shell .feedback-archive-panel header p {
+  color: var(--theme-primary);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.admin-demo-shell .feedback-archive-panel header h2 {
+  margin-top: 3px;
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.admin-demo-shell .feedback-archive-panel header span {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.admin-demo-shell .feedback-archive-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.admin-demo-shell .feedback-archive-current-semester {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 18%, var(--line));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--theme-primary) 7%, var(--canvas));
+}
+
+.admin-demo-shell .feedback-archive-current-semester span {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.admin-demo-shell .feedback-archive-current-semester strong {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.admin-demo-shell .feedback-archive-panel header button {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink);
+  background: var(--canvas);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.admin-demo-shell .feedback-archive-panel header button.feedback-archive-primary {
+  color: #fff;
+  background: var(--theme-primary);
+  border-color: var(--theme-primary);
+}
+
+html[data-theme="dark"] .admin-demo-shell .feedback-archive-current-semester {
+  background: color-mix(in srgb, var(--theme-primary) 14%, #0f172a);
+  border-color: color-mix(in srgb, var(--theme-primary) 28%, rgba(255,255,255,.18));
+}
+
+html[data-theme="dark"] .admin-demo-shell .feedback-archive-current-semester span,
+html[data-theme="dark"] .admin-demo-shell .feedback-archive-current-semester strong {
+  color: #fff !important;
+}
+
+html[data-theme="dark"] .admin-demo-shell .feedback-archive-panel header button.feedback-archive-primary {
+  color: #fff;
+}
+
+@media (max-width: 760px) {
+  .admin-demo-shell .feedback-archive-panel header {
+    flex-direction: column;
+  }
+
+  .admin-demo-shell .feedback-archive-panel-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+.admin-demo-shell .feedback-archive-years {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-demo-shell .feedback-archive-year {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-demo-shell .feedback-archive-year-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.admin-demo-shell .feedback-archive-year-head span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.admin-demo-shell .feedback-archive-semesters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-demo-shell .feedback-archive-semesters button {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 18%, var(--line));
+  border-radius: 7px;
+  color: #0f172a;
+  background: color-mix(in srgb, var(--theme-primary) 9%, #ffffff);
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-demo-shell .feedback-archive-semesters button.is-active {
+  color: #fff;
+  background: color-mix(in srgb, var(--theme-primary) 78%, #0f172a);
+  border-color: color-mix(in srgb, var(--theme-primary) 70%, #0f172a);
+}
+
+.admin-demo-shell .feedback-archive-semesters span,
+.admin-demo-shell .feedback-archive-semesters strong,
+.admin-demo-shell .feedback-archive-semesters small,
+.admin-demo-shell .feedback-archive-semesters em,
+.admin-demo-shell .feedback-archive-semesters i {
+  color: inherit;
+}
+
+.admin-demo-shell .feedback-archive-semesters span {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.admin-demo-shell .feedback-archive-semesters strong {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.admin-demo-shell .feedback-archive-semesters small,
+.admin-demo-shell .feedback-archive-semesters em,
+.admin-demo-shell .feedback-archive-semesters i {
+  font-size: 11px;
+  font-style: normal;
+  opacity: .78;
+}
+
+.admin-demo-shell .feedback-archive-empty {
+  min-height: 70px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  border: 1px dashed var(--line);
+  border-radius: 7px;
+  font-size: 13px;
+}
+
 .admin-demo-shell .business-feedback-redesign .queue-panel,
 .admin-demo-shell .business-feedback-redesign .case-inspector,
 .admin-demo-shell .people-management-panel .role-ledger,
@@ -976,8 +1179,8 @@ th,
   --muted: #697687;
   --line: #dfe4e8;
   --line-soft: #edf0f2;
-  --canvas: #f4f6f5;
-  --paper: #ffffff;
+  --canvas: color-mix(in srgb, rgb(var(--theme-rgb)) 6%, #ffffff);
+  --paper: color-mix(in srgb, rgb(var(--theme-rgb)) 2%, #ffffff);
   --warm: #fff9ef;
   --theme-primary: #1a6ce3;
   --theme-primary-hover: #155fc8;
@@ -1025,6 +1228,11 @@ th,
   --theme-container: #b8eeee;
   --theme-on-container: #002020;
   --theme-rgb: 0,123,123;
+}
+
+html:not([data-theme="dark"]),
+html:not([data-theme="dark"]) body {
+  background: var(--canvas) !important;
 }
 
 [data-theme="dark"] {
@@ -1120,6 +1328,7 @@ html[data-theme="dark"] .compose-drawer,
 html[data-theme="dark"] .mobile-sheet,
 html[data-theme="dark"] .admin-demo-shell .business-feedback-redesign .queue-panel,
 html[data-theme="dark"] .admin-demo-shell .business-feedback-redesign .case-inspector,
+html[data-theme="dark"] .admin-demo-shell .feedback-archive-panel,
 html[data-theme="dark"] .admin-demo-shell .people-management-panel .role-ledger,
 html[data-theme="dark"] .admin-demo-shell .people-management-panel .audit-inspector,
 html[data-theme="dark"] .admin-demo-shell .performance-redesign-panel > section,
@@ -1135,6 +1344,22 @@ html[data-theme="dark"] .admin-demo-shell .organization-framework-panel .rounded
     var(--paper) !important;
   border-color: var(--line) !important;
   box-shadow: var(--shadow) !important;
+}
+
+html[data-theme="dark"] .admin-demo-shell .feedback-archive-panel header h2,
+html[data-theme="dark"] .admin-demo-shell .feedback-archive-year-head,
+html[data-theme="dark"] .admin-demo-shell .feedback-archive-panel header button {
+  color: #fff !important;
+}
+
+html[data-theme="dark"] .admin-demo-shell .feedback-archive-semesters button {
+  color: #fff;
+  background: color-mix(in srgb, var(--theme-primary) 18%, #0f172a);
+  border-color: color-mix(in srgb, var(--theme-primary) 28%, rgba(255,255,255,.16));
+}
+
+html[data-theme="dark"] .admin-demo-shell .feedback-archive-semesters button.is-active {
+  background: color-mix(in srgb, var(--theme-primary) 46%, #0f172a);
 }
 
 html[data-theme="dark"] .admin-demo-shell,
@@ -1427,5 +1652,368 @@ html[data-theme="dark"] .topbar-user-chip {
 
   .admin-demo-shell .role-view {
     padding: 22px 14px 40px;
+  }
+}
+
+@media (max-width: 760px) {
+  .admin-demo-shell .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    background: color-mix(in srgb, var(--paper) 96%, transparent) !important;
+    backdrop-filter: blur(16px);
+  }
+
+  .admin-demo-shell .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .admin-demo-shell .breadcrumb strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .admin-demo-shell .topbar-actions {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    align-items: center;
+    overflow: visible;
+  }
+
+  .admin-demo-shell .topbar-actions .role-switch {
+    grid-column: 1 / -1;
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--canvas);
+  }
+
+  .admin-demo-shell .role-switch button {
+    min-height: 34px;
+    padding: 0 4px;
+    overflow: hidden;
+    border-radius: 6px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .admin-demo-shell .hub-inline-return {
+    min-width: 0;
+    justify-content: center;
+    padding: 0 8px;
+  }
+
+  .admin-demo-shell .hub-inline-return span,
+  .admin-demo-shell .theme-mode-icons.compact {
+    display: none;
+  }
+
+  .admin-demo-shell .role-view.superadmin-view,
+  .admin-demo-shell .role-view {
+    display: grid;
+    gap: 12px;
+    width: 100%;
+    padding: 16px 12px 72px;
+  }
+
+  .admin-demo-shell .superadmin-hero,
+  .admin-demo-shell .admin-heading {
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin: 0;
+    padding: 18px !important;
+    border-radius: 8px !important;
+  }
+
+  .admin-demo-shell .superadmin-hero h1,
+  .admin-demo-shell .admin-heading h1 {
+    max-width: 100%;
+    font-size: 25px !important;
+    line-height: 1.18;
+    overflow-wrap: anywhere;
+  }
+
+  .admin-demo-shell .superadmin-hero p:not(.eyebrow),
+  .admin-demo-shell .admin-heading p:not(.eyebrow) {
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .admin-demo-shell .superadmin-badge {
+    width: 100%;
+    min-height: 58px;
+    display: grid;
+    align-content: center;
+    gap: 3px;
+    padding: 11px 12px;
+    border-radius: 8px;
+  }
+
+  .admin-demo-shell .superadmin-badge strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 15px;
+  }
+
+  .admin-demo-shell .superadmin-metrics,
+  .admin-demo-shell .admin-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0;
+  }
+
+  .admin-demo-shell .superadmin-metrics > div,
+  .admin-demo-shell .admin-metrics > div {
+    min-height: 96px;
+    padding: 12px;
+    border-radius: 8px;
+  }
+
+  .admin-demo-shell .superadmin-metrics span,
+  .admin-demo-shell .admin-metrics span,
+  .admin-demo-shell .superadmin-metrics small,
+  .admin-demo-shell .admin-metrics small {
+    overflow-wrap: anywhere;
+    font-size: 10px;
+  }
+
+  .admin-demo-shell .superadmin-metrics strong,
+  .admin-demo-shell .admin-metrics strong {
+    font-size: 24px !important;
+    line-height: 1.05;
+  }
+
+  .admin-demo-shell .admin-module-tabs {
+    display: flex;
+    gap: 7px;
+    margin: 0;
+    padding: 2px 0 4px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+  }
+
+  .admin-demo-shell .admin-module-tabs button {
+    flex: 0 0 min(43vw, 168px);
+    min-height: 42px;
+    justify-content: center;
+    padding: 0 10px;
+    border-radius: 8px;
+    scroll-snap-align: start;
+    font-size: 11px;
+    line-height: 1.2;
+    white-space: normal;
+  }
+
+  .admin-demo-shell .business-feedback-redesign {
+    display: grid;
+    gap: 10px;
+  }
+
+  .admin-demo-shell .business-feedback-redesign .admin-tabs {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    margin: 0;
+  }
+
+  .admin-demo-shell .business-feedback-redesign .admin-tabs button {
+    min-height: 38px;
+    padding: 0 10px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .admin-demo-shell .business-feedback-redesign .admin-workspace {
+    display: grid;
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+  }
+
+  .admin-demo-shell .business-feedback-redesign .queue-panel,
+  .admin-demo-shell .business-feedback-redesign .case-inspector {
+    width: 100%;
+    padding: 12px !important;
+    overflow: visible;
+  }
+
+  .admin-demo-shell .queue-toolbar {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    align-items: start;
+  }
+
+  .admin-demo-shell .queue-toolbar > div {
+    min-width: 0;
+    grid-column: 1 / -1;
+  }
+
+  .admin-demo-shell .queue-toolbar h2 {
+    font-size: 18px;
+  }
+
+  .admin-demo-shell .queue-toolbar span {
+    display: block;
+    font-size: 10px;
+  }
+
+  .admin-demo-shell .business-feedback-redesign .search-field {
+    grid-column: 1;
+    width: 100%;
+    min-height: 36px;
+    grid-template-columns: 14px minmax(0, 1fr);
+    padding: 0 9px;
+  }
+
+  .admin-demo-shell .queue-toolbar > .icon-button {
+    grid-column: 2;
+    width: 36px;
+    height: 36px;
+  }
+
+  .admin-demo-shell .queue-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    margin: 10px 0;
+  }
+
+  .admin-demo-shell .queue-tabs button {
+    min-height: 36px;
+    justify-content: center;
+    padding: 0 8px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .admin-demo-shell .case-table {
+    display: grid;
+    gap: 8px;
+  }
+
+  .admin-demo-shell .case-tr {
+    min-height: 0;
+    display: grid !important;
+    grid-template-columns: 1fr auto !important;
+    align-items: start;
+    gap: 7px 10px !important;
+    padding: 12px !important;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--canvas) 72%, var(--paper));
+    text-align: left;
+  }
+
+  .admin-demo-shell .case-tr > span:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .admin-demo-shell .case-tr > span:nth-child(2),
+  .admin-demo-shell .case-tr > span:nth-child(3),
+  .admin-demo-shell .case-tr > span:nth-child(4),
+  .admin-demo-shell .case-tr > span:nth-child(5) {
+    display: grid;
+    gap: 2px;
+  }
+
+  .admin-demo-shell .case-tr > span:nth-child(3),
+  .admin-demo-shell .case-tr > span:nth-child(4),
+  .admin-demo-shell .case-tr > span:nth-child(5) {
+    justify-items: end;
+    text-align: right;
+  }
+
+  .admin-demo-shell .case-tr strong,
+  .admin-demo-shell .case-tr small {
+    white-space: normal;
+  }
+
+  .admin-demo-shell .case-tr .status,
+  .admin-demo-shell .case-tr .priority {
+    width: max-content;
+    max-width: 100%;
+  }
+
+  .admin-demo-shell .case-inspector {
+    position: static;
+    display: grid;
+    gap: 10px;
+  }
+
+  .admin-demo-shell .inspector-head {
+    align-items: flex-start;
+  }
+
+  .admin-demo-shell .case-inspector h2 {
+    font-size: 19px;
+    line-height: 1.3;
+  }
+
+  .admin-demo-shell .case-tags,
+  .admin-demo-shell .reply-box > div,
+  .admin-demo-shell .case-action-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+  }
+
+  .admin-demo-shell .reply-box input[type="file"],
+  .admin-demo-shell .reply-box button,
+  .admin-demo-shell .case-action-grid button {
+    width: 100%;
+  }
+
+  .admin-demo-shell .admin-flow-timeline {
+    max-height: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .admin-demo-shell .topbar-actions {
+    grid-template-columns: repeat(4, minmax(0, auto));
+  }
+
+  .admin-demo-shell .hub-inline-return,
+  .admin-demo-shell .topbar-actions > .icon-button,
+  .admin-demo-shell .topbar-actions > .outline-button,
+  .admin-demo-shell .language-switcher {
+    min-height: 34px;
+  }
+
+  .admin-demo-shell .superadmin-metrics,
+  .admin-demo-shell .admin-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-demo-shell .admin-module-tabs button {
+    flex-basis: 58vw;
+  }
+
+  .admin-demo-shell .queue-tabs {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-demo-shell .case-tr {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-demo-shell .case-tr > span:nth-child(3),
+  .admin-demo-shell .case-tr > span:nth-child(4),
+  .admin-demo-shell .case-tr > span:nth-child(5) {
+    justify-items: start;
+    text-align: left;
   }
 }

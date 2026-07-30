@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import sieLogo from './assets/LOGO_1.png';
 import siehubLogo from './assets/SIEHUB_LOGO.png';
+import siebridgeLogo from './assets/SIEBridge_LOGO.png';
 import beian from './assets/beian.png';
 import collegeLogo from './assets/SIE_LOGO.svg';
 import { API_BASE } from './api';
@@ -95,6 +96,143 @@ const ORGANIZATION_FRAMEWORK = [
   }
 ];
 
+const ORGANIZATION_ORDER = ['youth_league', 'student_union'];
+const DEPARTMENT_ARCHIVE_ORDER = [
+  { organization: 'youth_league', organizationLabel: '团委', department: 'organization', departmentLabel: '组织部', badgeTone: 'red' },
+  { organization: 'youth_league', organizationLabel: '团委', department: 'publicity', departmentLabel: '宣传部', badgeTone: 'orange' },
+  { organization: 'youth_league', organizationLabel: '团委', department: 'practice', departmentLabel: '实践部', badgeTone: 'green' },
+  { organization: 'youth_league', organizationLabel: '团委', department: 'volunteer_service', departmentLabel: '志愿者工作部', badgeTone: 'rose' },
+  { organization: 'student_union', organizationLabel: '学生会', department: 'general_office', departmentLabel: '综合办公室', badgeTone: 'slate' },
+  { organization: 'student_union', organizationLabel: '学生会', department: 'student_rights', departmentLabel: '学生权益部', badgeTone: 'blue', logo: sieLogo },
+  { organization: 'student_union', organizationLabel: '学生会', department: 'culture_sports_arts', departmentLabel: '文体艺术部', badgeTone: 'purple' },
+  { organization: 'student_union', organizationLabel: '学生会', department: 'academic_technology', departmentLabel: '学术科技部', badgeTone: 'teal', logo: siebridgeLogo },
+  { organization: 'student_union', organizationLabel: '学生会', department: 'new_media', departmentLabel: '新媒体工作部', badgeTone: 'pink' }
+];
+const DEPARTMENT_ORDER_INDEX = new Map(DEPARTMENT_ARCHIVE_ORDER.map((item, index) => [`${item.organization}:${item.department}`, index]));
+const ROLE_SORT_ORDER = {
+  presidium_member: 0,
+  youth_league_deputy_secretary: 0,
+  department_head: 1,
+  youth_league_cadre: 1,
+  volunteer: 2
+};
+const DEPARTMENT_MEMBER_TIERS = [
+  { key: 'presidium', rank: 0, label: '主席层级', shortLabel: '主席层级' },
+  { key: 'department_lead', rank: 1, label: '负责人层级', shortLabel: '负责人层级' },
+  { key: 'volunteer', rank: 2, label: '志愿者', shortLabel: '志愿者' }
+];
+const DEPARTMENT_BADGE_STYLE = {
+  red: { backgroundColor: 'rgba(248, 113, 113, 0.18)' },
+  orange: { backgroundColor: 'rgba(251, 146, 60, 0.18)' },
+  green: { backgroundColor: 'rgba(34, 197, 94, 0.18)' },
+  rose: { backgroundColor: 'rgba(244, 114, 182, 0.18)' },
+  slate: { backgroundColor: 'rgba(100, 116, 139, 0.18)' },
+  blue: { backgroundColor: 'rgba(59, 130, 246, 0.18)' },
+  purple: { backgroundColor: 'rgba(168, 85, 247, 0.18)' },
+  teal: { backgroundColor: 'rgba(20, 184, 166, 0.18)' },
+  pink: { backgroundColor: 'rgba(236, 72, 153, 0.18)' }
+};
+
+const normalizeSearch = value => String(value || '').trim().toLowerCase();
+const getDepartmentOrderIndex = member => DEPARTMENT_ORDER_INDEX.get(`${member.organization || ''}:${member.department || ''}`) ?? 999;
+const getMemberSortRank = (member = {}) => {
+  const positionTitle = member.positionTitle || member.user?.positionTitle || 'student';
+  const memberRole = member.memberRole || member.user?.memberRole || 'student';
+  if (ROLE_SORT_ORDER[positionTitle] !== undefined) return ROLE_SORT_ORDER[positionTitle];
+  if (memberRole === 'volunteer' || positionTitle === 'volunteer') return 2;
+  return 3;
+};
+const getMemberPerformanceTotal = member => Number(member?.performanceSnapshot?.total || 0);
+const getMemberTierRank = (member = {}) => {
+  const positionTitle = member.positionTitle || member.user?.positionTitle || 'student';
+  const memberRole = member.memberRole || member.user?.memberRole || 'student';
+  if (['presidium_member', 'youth_league_deputy_secretary'].includes(positionTitle) || memberRole === 'presidium') return 0;
+  if (['department_head', 'youth_league_cadre'].includes(positionTitle) || memberRole === 'department_lead') return 1;
+  return 2;
+};
+const groupMembersByTier = (members = []) => {
+  const groups = DEPARTMENT_MEMBER_TIERS.map(meta => ({ ...meta, members: [] }));
+  members.forEach(member => {
+    const target = groups.find(item => item.rank === getMemberTierRank(member));
+    if (target) target.members.push(member);
+  });
+  return groups;
+};
+const getGovernanceTierLabel = (rank, organization) => {
+  if (rank === 0) return organization === 'youth_league' ? '团委学生兼职副书记' : '主席团成员';
+  if (rank === 1) return organization === 'youth_league' ? '团委学生兼职团干部' : '部门负责人';
+  return '志愿者';
+};
+const getGovernanceMemberRoleTitle = (member = {}) => {
+  const positionTitle = member.positionTitle || member.user?.positionTitle || '';
+  if (positionTitle === 'presidium_member') return '主席团成员';
+  if (positionTitle === 'youth_league_deputy_secretary') return '团委学生兼职副书记';
+  if (positionTitle === 'department_head') return '部门负责人';
+  if (positionTitle === 'youth_league_cadre') return '团委学生兼职团干部';
+  if (positionTitle === 'volunteer' || member.memberRole === 'volunteer') return '志愿者';
+  return member.identityLabel || member.positionTitle || '-';
+};
+const getGovernanceTierVisualStyle = (rank) => {
+  if (rank === 0) {
+    return {
+      color: '#ffffff',
+      background: 'linear-gradient(135deg, color-mix(in srgb, var(--theme-primary) 82%, #0f172a), #0f172a)',
+      borderColor: 'color-mix(in srgb, var(--theme-primary) 62%, rgba(255,255,255,.24))'
+    };
+  }
+  if (rank === 1) {
+    return {
+      color: '#0f172a',
+      background: 'color-mix(in srgb, var(--theme-primary) 34%, #ffffff)',
+      borderColor: 'color-mix(in srgb, var(--theme-primary) 42%, rgba(15,23,42,.14))'
+    };
+  }
+  return {
+    color: '#0f172a',
+    background: 'color-mix(in srgb, var(--theme-primary) 14%, #ffffff)',
+    borderColor: 'color-mix(in srgb, var(--theme-primary) 24%, rgba(15,23,42,.12))'
+  };
+};
+const sortMembersForGovernance = (members = []) => [...members].sort((a, b) => {
+  const departmentDiff = getDepartmentOrderIndex(a) - getDepartmentOrderIndex(b);
+  if (departmentDiff !== 0) return departmentDiff;
+  const rankDiff = getMemberSortRank(a) - getMemberSortRank(b);
+  if (rankDiff !== 0) return rankDiff;
+  const performanceDiff = getMemberPerformanceTotal(b) - getMemberPerformanceTotal(a);
+  if (performanceDiff !== 0) return performanceDiff;
+  return String(a.studentId || a.accountSnapshot?.studentId || '').localeCompare(String(b.studentId || b.accountSnapshot?.studentId || ''), 'zh-Hans-CN');
+});
+const groupMembersByDepartment = (members = []) => {
+  const grouped = new Map(DEPARTMENT_ARCHIVE_ORDER.map(item => [`${item.organization}:${item.department}`, { ...item, members: [] }]));
+  members.forEach(member => {
+    const managedDepartments = Array.isArray(member.managedDepartments) ? member.managedDepartments : [];
+    const keys = member.memberRole === 'presidium' || ['presidium_member', 'youth_league_deputy_secretary'].includes(member.positionTitle)
+      ? managedDepartments.map(item => `${item.organization || ''}:${item.department || ''}`)
+      : [`${member.organization || ''}:${member.department || ''}`];
+    [...new Set(keys)].forEach(key => {
+      if (!grouped.has(key)) return;
+      grouped.get(key).members.push(member);
+    });
+  });
+  grouped.forEach(group => {
+    group.members = sortMembersForGovernance(group.members);
+  });
+  return ORGANIZATION_ORDER.map(org => ({
+    organization: org,
+    groups: DEPARTMENT_ARCHIVE_ORDER.filter(item => item.organization === org).map(item => grouped.get(`${item.organization}:${item.department}`) || { ...item, members: [] })
+  }));
+};
+const getDepartmentBadgeText = (departmentLabel = '') => {
+  const clean = String(departmentLabel).replace(/部门|工作部|办公室/g, '').trim();
+  return clean.slice(0, 2) || departmentLabel.slice(0, 2) || '部';
+};
+const DepartmentLogoMark = ({ item }) => {
+  if (item?.logo) {
+    return <img src={item.logo} alt={item.departmentLabel} className="h-full w-full object-contain p-1" />;
+  }
+  return <span className="text-[11px] font-black tracking-wide text-white">{getDepartmentBadgeText(item?.departmentLabel)}</span>;
+};
+
 const DEPARTMENT_OPTIONS = [
   { organization: 'youth_league', organizationLabel: '团委', department: 'organization', departmentLabel: '组织部' },
   { organization: 'youth_league', organizationLabel: '团委', department: 'publicity', departmentLabel: '宣传部' },
@@ -144,12 +282,30 @@ export const OrganizationFrameworkPanel = ({ token }) => {
   const [cohortForm, setCohortForm] = useState({ name: '2026届团委学生会', semesters: '', status: 'active' });
   const [memberForm, setMemberForm] = useState(emptyMemberForm);
   const [archivePreview, setArchivePreview] = useState(null);
+  const [memberSearchQuery, setMemberSearchQuery] = useState('');
   const [busy, setBusy] = useState(false);
 
   const titleOptions = TITLE_OPTIONS_BY_MEMBER_ROLE[memberForm.memberRole] || TITLE_OPTIONS_BY_MEMBER_ROLE.student;
   const selectedCohort = cohorts.find(c => (c.id || c._id) === selectedCohortId);
   const isArchivedCohort = selectedCohort?.status === 'archived';
   const visibleUsers = users.filter(item => item.isActive !== false);
+  const filteredUsers = useMemo(() => {
+    const query = normalizeSearch(memberSearchQuery);
+    const baseList = query
+      ? visibleUsers.filter(item => (
+        normalizeSearch(item.name).includes(query) ||
+        normalizeSearch(item.studentId).includes(query)
+      ))
+      : visibleUsers;
+    const selected = visibleUsers.find(item => (item.studentId || '') === memberForm.studentId);
+    if (selected && !baseList.some(item => (item.studentId || '') === selected.studentId)) {
+      return [selected, ...baseList];
+    }
+    return baseList;
+  }, [memberSearchQuery, memberForm.studentId, visibleUsers]);
+  const sortedMembers = useMemo(() => sortMembersForGovernance(members), [members]);
+  const archiveGroups = useMemo(() => groupMembersByDepartment(archivePreview?.members || []), [archivePreview]);
+  const memberTierGroups = useMemo(() => groupMembersByTier(sortedMembers), [sortedMembers]);
   const singleDepartmentOptions = memberForm.positionTitle === 'youth_league_cadre'
     ? DEPARTMENT_OPTIONS.filter(item => item.organization === 'youth_league')
     : memberForm.positionTitle === 'department_head'
@@ -267,8 +423,8 @@ export const OrganizationFrameworkPanel = ({ token }) => {
     if (!selectedCohortId) return alert('请先创建或选择届次');
     if (isArchivedCohort) return alert('已归档届次不可继续编辑成员');
     if (!memberForm.studentId) return alert('请选择成员账号');
-    if (memberForm.memberRole === 'department_lead' && (!memberForm.organization || !memberForm.department)) {
-      return alert('部门负责人层级需要选择所属组织和部门');
+    if (['department_lead', 'volunteer'].includes(memberForm.memberRole) && (!memberForm.organization || !memberForm.department)) {
+      return alert(memberForm.memberRole === 'volunteer' ? '志愿者需要选择所属组织和部门' : '部门负责人层级需要选择所属组织和部门');
     }
     setBusy(true);
     try {
@@ -288,6 +444,7 @@ export const OrganizationFrameworkPanel = ({ token }) => {
       const data = await res.json();
       if (!data.success) return alert(data.message || '保存成员失败');
       setMemberForm(emptyMemberForm);
+      setMemberSearchQuery('');
       await Promise.all([loadBase(), loadMembers(selectedCohortId)]);
       alert('成员身份与分管部门已保存');
     } catch (error) {
@@ -367,6 +524,7 @@ export const OrganizationFrameworkPanel = ({ token }) => {
 
   const handleEditMember = (member) => {
     if (isArchivedCohort) return;
+    setMemberSearchQuery(member.name || member.studentId || '');
     setMemberForm({
       studentId: member.studentId || member.accountSnapshot?.studentId || '',
       memberRole: member.memberRole || 'volunteer',
@@ -486,7 +644,14 @@ export const OrganizationFrameworkPanel = ({ token }) => {
             {cohorts.length === 0 && <div className="rounded-xl border border-dashed border-white/10 p-4 text-center text-sm text-purple-100/50">暂无届次，请先创建</div>}
           </div>
           {selectedCohort && (
-            <div className="org-delete-zone rounded-xl border border-red-300/25 bg-red-500/10 p-3">
+            <div
+              className="org-delete-zone rounded-xl border p-3"
+              style={{
+                color: '#ffffff',
+                background: 'linear-gradient(135deg, #dc2626, #7f1d1d)',
+                borderColor: 'rgba(254, 202, 202, .72)'
+              }}
+            >
               <p className="org-delete-warning text-xs leading-5">删除会移除当前届次及其成员归档记录，需输入完整届次名称和“确认删除”。</p>
               <button type="button" onClick={handleDeleteCohort} disabled={busy} className="org-action-danger mt-3 w-full rounded-lg border px-3 py-2 text-xs font-black disabled:opacity-50 transition-all">删除当前届次</button>
             </div>
@@ -508,9 +673,19 @@ export const OrganizationFrameworkPanel = ({ token }) => {
           </div>
 
           <form onSubmit={handleSaveMember} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label className="md:col-span-2">
+              <span className="mb-2 block text-xs font-bold text-purple-100/70">选择成员账号</span>
+              <input
+                value={memberSearchQuery}
+                onChange={e => setMemberSearchQuery(e.target.value)}
+                placeholder="输入学号或姓名筛选成员账号"
+                className="org-governance-field w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-purple-500"
+              />
+              <span className="mt-1 block text-[10px] text-purple-100/45">当前筛选到 {filteredUsers.length} 个可选账号</span>
+            </label>
             <select disabled={isArchivedCohort} value={memberForm.studentId} onChange={e => setMemberForm({ ...memberForm, studentId: e.target.value })} className="org-governance-field px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500 disabled:opacity-50">
               <option value="">选择成员账号</option>
-              {visibleUsers.map(item => <option key={item.id || item._id} value={item.studentId}>{item.name} · {item.studentId} · {item.identityLabel || item.role}</option>)}
+              {filteredUsers.map(item => <option key={item.id || item._id} value={item.studentId}>{item.name} · {item.studentId} · {item.identityLabel || item.role}</option>)}
             </select>
             <select disabled={isArchivedCohort} value={memberForm.memberRole} onChange={e => updateMemberRole(e.target.value)} className="org-governance-field px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500 disabled:opacity-50">
               {Object.entries(MEMBER_ROLE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
@@ -518,7 +693,7 @@ export const OrganizationFrameworkPanel = ({ token }) => {
             <select disabled={isArchivedCohort} value={memberForm.positionTitle} onChange={e => updatePositionTitle(e.target.value)} className="org-governance-field px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500 disabled:opacity-50">
               {titleOptions.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
             </select>
-            {memberForm.memberRole === 'department_lead' ? (
+            {['department_lead', 'volunteer'].includes(memberForm.memberRole) ? (
               <select disabled={isArchivedCohort} value={memberForm.organization && memberForm.department ? `${memberForm.organization}:${memberForm.department}` : ''} onChange={e => updateSingleDepartment(e.target.value)} className="org-governance-field px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white focus:outline-none focus:border-purple-500 disabled:opacity-50">
                 <option value="">选择所属组织与部门</option>
                 {singleDepartmentOptions.map(item => <option key={`${item.organization}:${item.department}`} value={`${item.organization}:${item.department}`}>{item.organizationLabel} · {item.departmentLabel}</option>)}
@@ -562,19 +737,29 @@ export const OrganizationFrameworkPanel = ({ token }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10">
-                {members.map(item => (
-                  <tr key={item.id || item._id} className="text-purple-50">
-                    <td className="px-4 py-3 font-bold">{item.name || item.accountSnapshot?.name}<div className="text-[10px] font-normal text-purple-200/50">{item.studentId || item.accountSnapshot?.studentId}</div></td>
-                    <td className="px-4 py-3">{item.identityLabel || item.positionTitle}</td>
-                    <td className="px-4 py-3">{item.departmentLabel || '-'}</td>
-                    <td className="px-4 py-3">{(item.managedDepartments || []).length > 0 ? item.managedDepartments.map(d => d.label || `${d.organizationLabel} · ${d.departmentLabel}`).join('、') : '-'}</td>
-                    <td className="px-4 py-3">{item.performanceSnapshot?.total ?? '-'}</td>
-                    <td className="px-4 py-3">
-                      <button disabled={isArchivedCohort} onClick={() => handleEditMember(item)} className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-purple-500/30 disabled:opacity-40 text-xs text-purple-100 transition-all">
-                        编辑
-                      </button>
-                    </td>
-                  </tr>
+                {memberTierGroups.map(group => group.members.length > 0 && (
+                  <React.Fragment key={group.key}>
+                    <tr className="org-member-tier-row" data-tier={group.rank}>
+                      <td colSpan={6} className="px-4 py-2">
+                        <span>{group.label}</span>
+                        <b>{group.members.length} 人</b>
+                      </td>
+                    </tr>
+                    {group.members.map(item => (
+                      <tr key={item.id || item._id} className="org-member-row text-purple-50" data-tier={group.rank}>
+                        <td className="px-4 py-3 font-bold">{item.name || item.accountSnapshot?.name}<div className="text-[10px] font-normal text-purple-200/50">{item.studentId || item.accountSnapshot?.studentId}</div></td>
+                        <td className="px-4 py-3">{getGovernanceMemberRoleTitle(item)}</td>
+                        <td className="px-4 py-3">{item.departmentLabel || '-'}</td>
+                        <td className="px-4 py-3">{(item.managedDepartments || []).length > 0 ? item.managedDepartments.map(d => d.label || `${d.organizationLabel} · ${d.departmentLabel}`).join('、') : '-'}</td>
+                        <td className="px-4 py-3">{getMemberTierRank(item) === 2 ? (item.performanceSnapshot?.total ?? 0) : '-'}</td>
+                        <td className="px-4 py-3">
+                          <button disabled={isArchivedCohort} onClick={() => handleEditMember(item)} className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-purple-500/30 disabled:opacity-40 text-xs text-purple-100 transition-all">
+                            编辑
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
@@ -584,7 +769,7 @@ export const OrganizationFrameworkPanel = ({ token }) => {
       </div>
 
       {archivePreview && (
-        <section className="rounded-2xl border border-blue-400/20 bg-blue-500/10 p-5 md:p-6">
+        <section className="org-archive-preview-panel rounded-2xl border border-blue-400/20 bg-blue-500/10 p-5 md:p-6 space-y-5">
           <div className="flex items-center justify-between gap-3 mb-4">
             <div>
               <p className="text-xs text-blue-100/60">Archive Preview</p>
@@ -592,21 +777,67 @@ export const OrganizationFrameworkPanel = ({ token }) => {
             </div>
             <span className="rounded-full border border-blue-300/30 px-3 py-1 text-xs text-blue-100">{archivePreview.members?.length || 0} 名成员</span>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-            {(archivePreview.members || []).map(item => (
-              <div key={item.id || item._id} className="rounded-xl border border-white/10 bg-slate-950/40 p-4">
-                <div className="flex items-start justify-between gap-3">
+          <div className="space-y-6">
+            {archiveGroups.map(section => (
+              <section key={section.organization} className="space-y-4">
+                <div className="flex items-center justify-between gap-3">
                   <div>
-                    <div className="font-bold text-white">{item.name}</div>
-                    <div className="text-xs text-purple-200/50">{item.studentId}</div>
+                    <p className="text-xs text-blue-100/60">{section.organization === 'youth_league' ? '团委' : '学生会'}</p>
+                    <h4 className="text-lg font-black text-white">{section.organization === 'youth_league' ? '团委成员归档' : '学生会成员归档'}</h4>
                   </div>
-                  <span className="rounded-full bg-blue-500/20 px-2 py-1 text-xs text-blue-100">第 {item.performanceSnapshot?.rank || '-'} 名</span>
                 </div>
-                <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                  <div className="rounded-lg bg-white/5 p-3 text-purple-100/70">身份<div className="mt-1 font-bold text-white">{item.identityLabel}</div></div>
-                  <div className="rounded-lg bg-white/5 p-3 text-purple-100/70">绩效<div className="mt-1 font-bold text-white">{item.performanceSnapshot?.total || 0}</div></div>
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                  {section.groups.map(item => (
+                    <article key={`${item.organization}:${item.department}`} className="org-archive-department-card rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+                      <header className="flex items-center gap-3">
+                        <div className="grid h-12 w-12 place-items-center overflow-hidden rounded-2xl border border-white/10 text-white" style={DEPARTMENT_BADGE_STYLE[item.badgeTone || 'slate'] || DEPARTMENT_BADGE_STYLE.slate}>
+                          <DepartmentLogoMark item={item} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] text-purple-200/50">{item.organizationLabel}</p>
+                          <h5 className="truncate text-base font-bold text-white">{item.departmentLabel}</h5>
+                        </div>
+                        <div className="ml-auto rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-purple-100/70">{item.members.length} 人</div>
+                      </header>
+                      <div className="mt-4 space-y-2">
+                        {item.members.length === 0 ? (
+                          <p className="rounded-xl border border-dashed border-white/10 bg-white/5 px-3 py-6 text-center text-xs text-purple-100/45">该部门暂无归档成员</p>
+                        ) : groupMembersByTier(item.members).map(group => group.members.length > 0 && (
+                          <section key={group.key} className="siehub-member-tier-section org-archive-tier-section" data-tier={group.rank} style={getGovernanceTierVisualStyle(group.rank)}>
+                            <div className="siehub-member-tier-head">
+                              <div>
+                                <strong>{getGovernanceTierLabel(group.rank, item.organization)}</strong>
+                                <small>{group.members.length} 人</small>
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              {group.members.map(member => {
+                                const canShowPerformance = member.memberRole === 'volunteer' || member.positionTitle === 'volunteer';
+                                return (
+                                  <div key={member.id || member._id} className="siehub-member-tier-card rounded-xl border px-3 py-2.5" data-tier={group.rank} style={getGovernanceTierVisualStyle(group.rank)}>
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div className="min-w-0">
+                                        <div className="truncate font-bold">{member.name}</div>
+                                        <div className="text-[10px] opacity-70">{member.studentId}</div>
+                                      </div>
+                                      {canShowPerformance ? (
+                                        <span className="rounded-full bg-emerald-500/15 px-2 py-1 text-[10px] font-bold text-emerald-100">绩效 {member.performanceSnapshot?.total ?? 0}</span>
+                                      ) : (
+                                        <span className="rounded-full bg-white/5 px-2 py-1 text-[10px] font-bold opacity-70">无绩效</span>
+                                      )}
+                                    </div>
+                                    <div className="mt-2 text-[10px] opacity-75">{getGovernanceMemberRoleTitle(member)}</div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </section>
+                        ))}
+                      </div>
+                    </article>
+                  ))}
                 </div>
-              </div>
+              </section>
             ))}
           </div>
         </section>
@@ -1100,6 +1331,7 @@ const AccountManagement = ({ token, user: currentUser }) => {
 
 const BusinessFeedbackWorkspace = ({
   feedbacks,
+  archives = [],
   selectedFeedback,
   setSelectedFeedback,
   responseText,
@@ -1112,7 +1344,14 @@ const BusinessFeedbackWorkspace = ({
   searchQuery,
   setSearchQuery,
   filters,
-  setFilters
+  setFilters,
+  isUltimatePortal = false,
+  currentSemester = '',
+  activeSemesterName,
+  onSelectArchive,
+  onClearArchive,
+  onArchiveSemester,
+  onExportReport
 }) => {
   const activeFeedback = selectedFeedback || feedbacks.find(item => !item.isRevoked) || feedbacks[0] || null;
   const counts = {
@@ -1123,13 +1362,71 @@ const BusinessFeedbackWorkspace = ({
   };
 
   const selectStatus = (status) => setFilters({ ...filters, status });
+  const formatArchiveHours = (hours) => {
+    if (!Number.isFinite(hours)) return '暂无';
+    if (hours < 1) return `${Math.max(1, Math.round(hours * 60))} 分钟`;
+    return `${hours < 10 ? hours.toFixed(1) : Math.round(hours)} 小时`;
+  };
 
   return (
     <div className="business-feedback-redesign">
       <div className="admin-tabs" aria-label="管理端功能切换">
         <button className="is-active" type="button">▦ 业务反馈处理</button>
         <button type="button" onClick={() => setFilters({ status: '', category: '', priority: '' })}>清空筛选</button>
+        <button type="button" onClick={onExportReport}>导出报表</button>
       </div>
+
+      <section className="feedback-archive-panel">
+        <header>
+          <div>
+            <p>SEMESTER ARCHIVE</p>
+            <h2>每学期问题归档</h2>
+            <span>{activeSemesterName ? `当前筛选：${activeSemesterName}` : '按学年统一归纳，点击学期卡片筛选该学期问题。'}</span>
+          </div>
+          <div className="feedback-archive-panel-actions">
+            {isUltimatePortal && (
+              <div className="feedback-archive-current-semester">
+                <span>当前学期</span>
+                <strong>{currentSemester || '加载中'}</strong>
+              </div>
+            )}
+            {activeSemesterName && <button type="button" onClick={onClearArchive}>查看全部学期</button>}
+            {isUltimatePortal && (
+              <button type="button" className="feedback-archive-primary" onClick={onArchiveSemester}>
+                归档并开启新学期
+              </button>
+            )}
+          </div>
+        </header>
+        <div className="feedback-archive-years">
+          {archives.length === 0 ? (
+            <div className="feedback-archive-empty">暂无可归档的问题数据</div>
+          ) : archives.map(year => (
+            <article key={year.academicYear} className="feedback-archive-year">
+              <div className="feedback-archive-year-head">
+                <strong>{year.academicYear}</strong>
+                <span>{year.total} 条问题</span>
+              </div>
+              <div className="feedback-archive-semesters">
+                {(year.semesters || []).map(semester => (
+                  <button
+                    key={semester.semester}
+                    type="button"
+                    className={activeSemesterName === semester.semester ? 'is-active' : ''}
+                    onClick={() => onSelectArchive?.(semester)}
+                  >
+                    <span>{semester.termLabel}</span>
+                    <strong>{semester.total}</strong>
+                    <small>{semester.startDate} 至 {semester.endDate}</small>
+                    <em>待受理 {semester.pending || 0} · 处理中 {semester.processing || 0} · 已解决 {semester.resolved || 0}</em>
+                    <i>平均首响 {formatArchiveHours(semester.averageFirstResponseHours)}</i>
+                  </button>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <div className="admin-workspace">
         <section className="queue-panel">
@@ -1267,6 +1564,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, o
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [semesterName, setSemesterName] = useState('');
+  const [feedbackArchives, setFeedbackArchives] = useState([]);
   const [loading, setLoading] = useState(false);
   const [resetStudentId, setResetStudentId] = useState('');
   const [resetNewPassword, setResetNewPassword] = useState('');
@@ -1620,6 +1918,23 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, o
     } catch (err) { console.error('获取统计数据失败:', err); }
   }, [token]);
 
+  const fetchFeedbackArchives = useCallback(async () => {
+    try {
+      const params = new URLSearchParams();
+      if (filters.status) params.append('status', filters.status);
+      if (filters.category) params.append('category', filters.category);
+      if (filters.priority) params.append('priority', filters.priority);
+      if (searchQuery) params.append('search', searchQuery);
+      const res = await fetch(`${API_BASE}/admin/feedback-archives?${params}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) setFeedbackArchives(data.academicYears || []);
+    } catch (err) {
+      console.error('获取反馈归档失败:', err);
+    }
+  }, [token, filters, searchQuery]);
+
   const fetchFeedbacks = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true); 
     try {
@@ -1643,14 +1958,71 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, o
   useEffect(() => {
     fetchStats();
     fetchFeedbacks(true); 
+    fetchFeedbackArchives();
     fetchNotifications(); 
     const interval = setInterval(() => {
       fetchStats();
       fetchFeedbacks(false); 
+      fetchFeedbackArchives();
       fetchNotifications(); 
     }, 15000);
     return () => clearInterval(interval);
-  }, [fetchStats, fetchFeedbacks, fetchNotifications]);
+  }, [fetchStats, fetchFeedbacks, fetchFeedbackArchives, fetchNotifications]);
+
+  useEffect(() => {
+    if (!showUltimatePortal || currentSemester || availableSemesters.length > 0) return;
+    fetchPerformanceAndUsers(selectedSemester);
+  }, [
+    showUltimatePortal,
+    currentSemester,
+    availableSemesters.length,
+    selectedSemester,
+    fetchPerformanceAndUsers
+  ]);
+
+  const selectFeedbackArchive = useCallback((semester) => {
+    if (!semester) return;
+    setSemesterName(semester.semester);
+    setDateRange({ start: semester.startDate || '', end: semester.endDate || '' });
+    setSelectedFeedback(null);
+  }, []);
+
+  const clearFeedbackArchive = useCallback(() => {
+    setSemesterName('');
+    setDateRange({ start: '', end: '' });
+    setSelectedFeedback(null);
+  }, []);
+
+  const exportFeedbackReport = useCallback(async () => {
+    try {
+      const params = new URLSearchParams();
+      if (filters.status) params.append('status', filters.status);
+      if (filters.category) params.append('category', filters.category);
+      if (filters.priority) params.append('priority', filters.priority);
+      if (searchQuery) params.append('search', searchQuery);
+      if (semesterName) params.append('semester', semesterName);
+      else {
+        if (dateRange.start) params.append('startDate', dateRange.start);
+        if (dateRange.end) params.append('endDate', dateRange.end);
+      }
+      const res = await fetch(`${API_BASE}/admin/feedbacks/export?${params}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('导出失败');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const suffix = semesterName || new Date().toISOString().slice(0, 10);
+      link.href = url;
+      link.download = `SIEVOX反馈报表-${suffix}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('导出报表失败，请稍后重试');
+    }
+  }, [token, filters, searchQuery, dateRange, semesterName]);
 
   const handleRecallMsg = async (feedbackId, replyId) => {
     if (!window.confirm('确定要撤回这条回复吗？（撤回后学生和普通管理员将无法查看具体内容）')) return;
@@ -1790,7 +2162,6 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, o
           </div>
           <AdminThemeModeButtons themeTools={themeTools} />
           <button className="icon-button theme-trigger" type="button" onClick={() => themeTools?.setOpen?.(true)} aria-label="外观设置">🎨</button>
-          {isUltimateAdmin && <button className="outline-button" type="button">▯ 手机端预览</button>}
           <button className="outline-button" type="button" onClick={onLogout}>退出</button>
           {languageSwitcher}
         </div>
@@ -1892,7 +2263,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, o
                 <p>2025–2026 学年第二学期 · 国际教育学院</p>
               </div>
               <div className="admin-actions">
-                <button className="outline-button">导出报表</button>
+                <button className="outline-button" type="button" onClick={exportFeedbackReport}>导出报表</button>
                 {showUltimatePortal && <button className="primary-button">账号管理</button>}
               </div>
             </div>
@@ -2238,6 +2609,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, o
           <>
             <BusinessFeedbackWorkspace
               feedbacks={feedbacks}
+              archives={feedbackArchives}
               selectedFeedback={selectedFeedback}
               setSelectedFeedback={setSelectedFeedback}
               responseText={responseText}
@@ -2251,6 +2623,13 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, o
               setSearchQuery={setSearchQuery}
               filters={filters}
               setFilters={setFilters}
+              isUltimatePortal={showUltimatePortal}
+              currentSemester={currentSemester}
+              activeSemesterName={semesterName}
+              onSelectArchive={selectFeedbackArchive}
+              onClearArchive={clearFeedbackArchive}
+              onArchiveSemester={handleArchiveSemester}
+              onExportReport={exportFeedbackReport}
             />
             <div className="legacy-feedback-content" hidden>
             {/* 统计模块 */}
