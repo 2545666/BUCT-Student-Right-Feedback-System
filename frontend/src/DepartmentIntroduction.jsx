@@ -16,10 +16,13 @@ import {
 import { API_BASE } from './api';
 
 const EXTERNAL_DEPARTMENT_INTRO_URLS = {
+  student_rights: '/student-rights/',
+  academic_technology: '/academic-technology/',
   culture_sports_arts: '/culture-sports-arts/'
 };
 
 const getExternalIntroductionUrl = (module) => EXTERNAL_DEPARTMENT_INTRO_URLS[module?.key] || '';
+const EXTERNAL_EDITOR_DISABLED_DEPARTMENTS = new Set(['culture_sports_arts']);
 
 const getText = (value, language = 'zh') => {
   if (!value) return '';
@@ -275,7 +278,8 @@ export const DepartmentIntroductionViewer = ({ module, token, language = 'zh' })
 export const DepartmentIntroductionEditor = ({ module, token, language = 'zh', onClose }) => {
   const isEnglish = language === 'en';
   const externalUrl = getExternalIntroductionUrl(module);
-  const [loading, setLoading] = useState(!externalUrl);
+  const externalEditorDisabled = EXTERNAL_EDITOR_DISABLED_DEPARTMENTS.has(module?.key);
+  const [loading, setLoading] = useState(!externalEditorDisabled);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [uploadingBlockId, setUploadingBlockId] = useState('');
@@ -286,7 +290,7 @@ export const DepartmentIntroductionEditor = ({ module, token, language = 'zh', o
   const [revisions, setRevisions] = useState([]);
 
   useEffect(() => {
-    if (externalUrl) {
+    if (externalEditorDisabled) {
       setLoading(false);
       return undefined;
     }
@@ -313,7 +317,7 @@ export const DepartmentIntroductionEditor = ({ module, token, language = 'zh', o
     return () => {
       cancelled = true;
     };
-  }, [externalUrl, module.organization, module.key, token]);
+  }, [externalEditorDisabled, module.organization, module.key, token]);
 
   const blocks = content.blocks || [];
   const selectedBlock = useMemo(() => blocks.find(block => block.id === selectedId) || blocks[0], [blocks, selectedId]);
@@ -417,7 +421,7 @@ export const DepartmentIntroductionEditor = ({ module, token, language = 'zh', o
     }
   };
 
-  if (externalUrl) {
+  if (externalEditorDisabled) {
     return (
       <section className="dept-intro-editor dept-intro-editor--external">
         <div className="dept-intro-status">

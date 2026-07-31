@@ -33,6 +33,23 @@
 .siehub-brand strong { font-size: 20px; line-height: 1; letter-spacing: .08em; }
 .siehub-brand small { margin-top: 4px; color: var(--muted); font-size: 9px; letter-spacing: .16em; font-weight: 800; }
 .siehub-topbar-actions { justify-content: flex-end; gap: 9px; }
+.siehub-topbar-link {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 22%, var(--line));
+  border-radius: 999px;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--theme-container) 20%, var(--paper));
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+.siehub-topbar-link svg { width: 15px; height: 15px; color: var(--theme-primary); }
+.siehub-topbar-link:hover,
+.siehub-topbar-link.is-active { border-color: var(--theme-primary); color: var(--theme-primary); }
 .siehub-user-chip { gap: 8px; padding: 5px 7px 5px 5px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); }
 .siehub-avatar { width: 31px; height: 31px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: var(--theme-primary); font-size: 13px; }
 .siehub-user-chip strong { max-width: 94px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
@@ -1077,10 +1094,213 @@ html[data-theme="dark"] .siehub-school-announcement-list article.is-unread time 
 .siehub-product-window.siebridge-window .siehub-product-window-mark { color: #0f766e; background: transparent; }
 .siehub-product-window.sievox-window { border-color: color-mix(in srgb, #2563eb 36%, var(--line)); }
 .siehub-product-window.sievox-window .siehub-product-window-mark { color: #1d4ed8; background: transparent; }
+.siehub-section-link {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 11px;
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 24%, var(--line));
+  border-radius: 999px;
+  color: var(--theme-primary);
+  background: color-mix(in srgb, var(--theme-container) 20%, transparent);
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+.siehub-section-link svg { width: 14px; height: 14px; }
+.siehub-department-strip {
+  margin-top: 30px;
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 18%, var(--line));
+  border-radius: 8px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--theme-container) 22%, var(--paper)), var(--paper));
+}
+.siehub-department-strip-row {
+  display: grid;
+  grid-template-columns: 34px 70px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 11px 0;
+  border-top: 1px solid color-mix(in srgb, var(--theme-primary) 12%, var(--line));
+}
+.siehub-department-strip-row:first-of-type { border-top: 0; padding-top: 2px; }
+.siehub-department-strip-row > span {
+  color: var(--theme-primary);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+.siehub-department-strip-row > strong {
+  color: var(--ink);
+  font-size: 14px;
+}
+.siehub-department-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+.siehub-department-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 6px 9px;
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 16%, var(--line));
+  border-radius: 999px;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--paper) 78%, var(--theme-container));
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+  transition: transform .2s ease, border-color .2s ease, color .2s ease;
+}
+.siehub-department-chip:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--theme-primary) 54%, var(--line));
+  color: var(--theme-primary);
+}
+.siehub-department-chip i {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  color: var(--theme-primary);
+  font-style: normal;
+}
+.siehub-department-chip svg { width: 14px; height: 14px; }
+.siehub-department-chip img { width: 20px; height: 20px; object-fit: contain; }
+.siehub-directory-hero {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: 20px;
+  padding: 28px;
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 24%, var(--line));
+  border-radius: 8px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--theme-primary) 18%, var(--paper)), var(--paper));
+}
+.siehub-directory-hero .siehub-module-icon { width: 58px; height: 58px; border-radius: 16px; }
+.siehub-directory-hero p { margin: 0; color: var(--theme-primary); font-size: 11px; font-weight: 900; letter-spacing: .12em; }
+.siehub-directory-hero h1 { margin: 4px 0; color: var(--ink); font-size: clamp(30px, 4vw, 46px); letter-spacing: 0; }
+.siehub-directory-hero span:last-child { color: var(--muted); font-size: 13px; line-height: 1.55; }
+.siehub-directory-group { margin-top: 30px; }
+.siehub-directory-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.siehub-directory-card {
+  min-height: 156px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px 14px;
+  align-items: start;
+  position: relative;
+  overflow: hidden;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: var(--paper);
+  text-align: left;
+  transition: transform .24s ease, border-color .24s ease, box-shadow .24s ease;
+}
+.siehub-directory-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: linear-gradient(90deg, var(--theme-primary), color-mix(in srgb, var(--theme-primary) 24%, transparent));
+}
+.siehub-directory-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--theme-primary) 45%, var(--line));
+  box-shadow: 0 18px 36px rgba(15, 36, 58, .1);
+}
+.siehub-directory-index {
+  grid-column: 1 / -1;
+  color: color-mix(in srgb, var(--theme-primary) 64%, var(--muted));
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+.siehub-directory-copy { display: grid; gap: 5px; min-width: 0; }
+.siehub-directory-copy small { color: var(--theme-primary); font-size: 10px; font-weight: 900; line-height: 1.35; }
+.siehub-directory-copy strong { color: var(--ink); font-size: 18px; letter-spacing: 0; }
+.siehub-directory-copy em { color: var(--muted); font-size: 12px; font-style: normal; line-height: 1.55; }
+.siehub-directory-action {
+  grid-column: 1 / -1;
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--theme-primary);
+  font-size: 12px;
+  font-weight: 900;
+}
+.siehub-directory-action svg { width: 14px; height: 14px; }
 @media (max-width: 820px) {
   .siehub-product-window-grid { grid-template-columns: 1fr; }
   .siehub-product-window { min-height: 148px; grid-template-columns: auto 1fr; padding: 18px; }
   .siehub-product-window-action { grid-column: 2; justify-self: start; }
+  .siehub-department-strip-row { grid-template-columns: 30px 56px minmax(0, 1fr); align-items: start; }
+  .siehub-directory-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .siehub-topbar-link { display: none; }
+  .siehub-product-windows { margin-top: 24px; }
+  .siehub-department-strip {
+    margin-top: 24px;
+    padding: 14px;
+  }
+  .siehub-department-strip .siehub-group-heading {
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .siehub-section-link {
+    padding: 7px 9px;
+    font-size: 11px;
+  }
+  .siehub-department-strip-row {
+    grid-template-columns: 26px minmax(0, 1fr);
+    gap: 6px 8px;
+  }
+  .siehub-department-strip-row > strong {
+    font-size: 13px;
+  }
+  .siehub-department-chip-grid {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+  .siehub-department-chip {
+    justify-content: space-between;
+    min-height: 36px;
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+  .siehub-directory-hero {
+    align-items: flex-start;
+    padding: 20px;
+  }
+  .siehub-directory-hero .siehub-module-icon {
+    width: 48px;
+    height: 48px;
+    flex: 0 0 auto;
+  }
+  .siehub-directory-hero h1 {
+    font-size: 30px;
+  }
+  .siehub-directory-grid {
+    grid-template-columns: 1fr;
+  }
+  .siehub-directory-card {
+    min-height: 134px;
+    padding: 16px;
+  }
 }
 .siehub-governance-note { gap: 13px; margin-top: 30px; padding: 17px 20px; background: color-mix(in srgb, var(--theme-container) 32%, var(--paper)); border: 1px solid color-mix(in srgb, var(--theme-primary) 20%, var(--line)); border-radius: 8px; }.siehub-governance-note > svg { color: var(--theme-primary); }.siehub-governance-note div { display: grid; gap: 3px; }.siehub-governance-note strong { font-size: 13px; }.siehub-governance-note span { color: var(--muted); font-size: 11px; }
 
@@ -4444,7 +4664,7 @@ html[data-theme="dark"] .org-archive-tier-section .siehub-member-tier-card[data-
     bottom: 12px;
     z-index: 70;
     display: flex;
-    width: min(240px, calc(100vw - 32px));
+    width: min(330px, calc(100vw - 32px));
     transform: translateX(-50%);
     padding: 6px;
     border: 1px solid var(--line);

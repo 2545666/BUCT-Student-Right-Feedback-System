@@ -113,11 +113,13 @@ const SIEBRIDGE_HOST = (() => {
 const currentHost = typeof window !== 'undefined' ? window.location.host.toLowerCase() : '';
 const isCurrentHost = (targetHost) => Boolean(targetHost && currentHost === targetHost);
 const SIEHUB_NAMED_PATHS = {
+  departments: '/departments',
   sievox: '/rights',
   siebridge: '/siebridge'
 };
 const getSurfaceFromPath = (pathname = '') => {
   const normalized = String(pathname || '').replace(/\/+$/, '').toLowerCase() || '/';
+  if (normalized === '/departments') return 'departments';
   if (normalized === '/rights') return 'sievox';
   if (normalized === '/siebridge') return 'siebridge';
   return '';
@@ -1426,7 +1428,7 @@ const SIEHUB_MODULES = [
 const CULTURE_SPORTS_ARTS_INTRO_URL = '/culture-sports-arts/';
 
 const SIEHUB_HISTORY_MARKER = 'siehub-navigation-v1';
-const SIEHUB_APP_SURFACES = new Set(['hub', 'ultimateOrganization', 'department', 'sievox', 'siebridge', 'my']);
+const SIEHUB_APP_SURFACES = new Set(['hub', 'departments', 'ultimateOrganization', 'department', 'sievox', 'siebridge', 'my']);
 const SIEHUB_PORTAL_VIEWS = new Set(['student', 'admin', 'superadmin']);
 
 const createSIEHUBHistoryState = (appSurface = 'hub', activeModule = null, portalView = 'superadmin') => ({
@@ -2252,14 +2254,15 @@ const canViewMySecurityTools = (user = {}) =>
     ['presidium_member', 'youth_league_deputy_secretary'].includes(user?.positionTitle)
   );
 
-const SIEHUBMobileDock = ({ active = 'home', onHome, onMy }) => (
+const SIEHUBMobileDock = ({ active = 'home', onHome, onDepartments = onHome, onMy }) => (
   <nav className="siehub-mobile-dock" aria-label="SIEHUB mobile navigation">
     <button type="button" className={active === 'home' ? 'is-active' : ''} onClick={onHome}><House /><span>首页</span></button>
+    <button type="button" className={active === 'departments' ? 'is-active' : ''} onClick={onDepartments}><Building2 /><span>部门</span></button>
     <button type="button" className={active === 'my' ? 'is-active' : ''} onClick={onMy}><UserRound /><span>账号设置</span></button>
   </nav>
 );
 
-const MyProfileWindow = ({ user, token, theme, onBack, onOpenMy = () => {}, onLogout, onRefreshUser, languageSwitcher = null }) => {
+const MyProfileWindow = ({ user, token, theme, onBack, onOpenDepartments, onOpenMy = () => {}, onLogout, onRefreshUser, languageSwitcher = null }) => {
   const [profile, setProfile] = useState({ name: user?.name || '', studentId: user?.studentId || '', email: user?.email || '', phone: user?.phone || '' });
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [resetForm, setResetForm] = useState({ studentId: '', newPassword: '', confirmPassword: '' });
@@ -2435,7 +2438,7 @@ const MyProfileWindow = ({ user, token, theme, onBack, onOpenMy = () => {}, onLo
         )}
       </div>
     </div>
-    <SIEHUBMobileDock active="my" onHome={onBack} onMy={() => {}} />
+    <SIEHUBMobileDock active="my" onHome={onBack} onDepartments={onOpenDepartments} onMy={() => {}} />
     <ThemePanel theme={theme} />
   </main>;
 };
@@ -3164,11 +3167,10 @@ const SIEHUBHomeNotificationCenter = ({ token, onOpenSIEVOX }) => {
   );
 };
 
-const SIEHUBHome = ({ user, token, theme, onOpenModule, onOpenSIEVOX, onOpenSIEBridge, onOpenMy, onLogout, language = 'zh', languageSwitcher = null }) => {
+const SIEHUBHome = ({ user, token, theme, onOpenModule, onOpenDepartments, onOpenSIEVOX, onOpenSIEBridge, onOpenMy, onLogout, language = 'zh', languageSwitcher = null }) => {
   const modules = getAccessibleModules(user);
   const clock = usePlatformClock(language);
   const serviceMetrics = useServiceMetrics(token);
-  const governanceModules = modules.filter(module => module.organization === 'hub');
   const youthLeague = modules.filter(module => module.organization === 'youth_league');
   const studentUnion = modules.filter(module => module.organization === 'student_union');
   const roleScope = user?.isUltimateAdmin ? '全平台治理范围' : `${user?.organizationLabel || '学生服务'} / ${user?.departmentLabel || '可访问模块'}`;
@@ -3197,25 +3199,26 @@ const SIEHUBHome = ({ user, token, theme, onOpenModule, onOpenSIEVOX, onOpenSIEB
     }
   ];
 
-  const renderGroup = (title, marker, items) => (
-    <section className="siehub-module-group">
-      <div className="siehub-group-heading"><span>{marker}</span><div><p>MODULE GROUP</p><h2>{title}</h2></div><b>{items.length}</b></div>
-      <div className="siehub-module-grid">
-        {items.map(module => {
-          return <button key={module.key} className={`siehub-module-card tone-${module.tone}`} type="button" onClick={() => onOpenModule(module)}>
-            <span className="siehub-module-icon"><DepartmentModuleMark module={module} /></span>
-            <span className="siehub-module-copy"><small className="siehub-module-entry-label">{module.entryLabel || 'SIEHUB MODULE'}</small><strong>{module.title}</strong><em>{module.summary}</em></span>
-            <span className="siehub-module-action"><ChevronRight /></span>
-          </button>;
-        })}
+  const renderDepartmentStrip = (title, marker, items) => (
+    <div className="siehub-department-strip-row">
+      <span>{marker}</span>
+      <strong>{title}</strong>
+      <div className="siehub-department-chip-grid">
+        {items.map(module => (
+          <button key={module.key} className={`siehub-department-chip tone-${module.tone}`} type="button" onClick={() => onOpenModule(module)}>
+            <i><DepartmentModuleMark module={module} /></i>
+            <span>{module.title}</span>
+            <ChevronRight />
+          </button>
+        ))}
       </div>
-    </section>
+    </div>
   );
 
   return <main className="siehub-shell">
     <header className="siehub-topbar">
       <div className="siehub-brand"><span className="siehub-brand-mark"><img src={siehubLogo} alt="SIEHUB" /><i></i></span><div><strong>SIEHUB</strong><small>SIE LIFE PLATFORM</small></div></div>
-      <div className="siehub-topbar-actions"><ThemeModeButtons theme={theme} compact /><button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)} title="外观设置"><Palette /></button><HubUserChip user={user} /><SIEHUBHomeNotificationCenter token={token} onOpenSIEVOX={onOpenSIEVOX} /><button className="icon-button" type="button" onClick={onOpenMy} title="账号设置"><UserRound /></button><button className="icon-button" type="button" onClick={onLogout} title="退出登录"><LogOut /></button>{languageSwitcher}</div>
+      <div className="siehub-topbar-actions"><ThemeModeButtons theme={theme} compact /><button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)} title="外观设置"><Palette /></button><HubUserChip user={user} /><SIEHUBHomeNotificationCenter token={token} onOpenSIEVOX={onOpenSIEVOX} /><button className="siehub-topbar-link" type="button" onClick={onOpenDepartments}><Building2 />部门</button><button className="icon-button" type="button" onClick={onOpenMy} title="账号设置"><UserRound /></button><button className="icon-button" type="button" onClick={onLogout} title="退出登录"><LogOut /></button>{languageSwitcher}</div>
     </header>
     <div className="siehub-content">
       <section className="siehub-hero">
@@ -3247,12 +3250,58 @@ const SIEHUBHome = ({ user, token, theme, onOpenModule, onOpenSIEVOX, onOpenSIEB
           ))}
         </div>
       </section>
-      {user?.isUltimateAdmin && governanceModules.length > 0 && renderGroup('平台治理', '00', governanceModules)}
-      {renderGroup('团委', '01', youthLeague)}
-      {renderGroup('学生会', '02', studentUnion)}
-      <section className="siehub-governance-note"><UsersRound /><div><strong>{user?.isUltimateAdmin ? '终极管理员已获得全部模块访问权限' : '部门工作台会按照当前身份与分管范围开放'}</strong><span>部门负责人及以上成员可在所属模块中维护志愿者绩效考核制度；具体业务能力将随模块逐步上线。</span></div></section>
+      <section className="siehub-department-strip" aria-label="部门宣传入口">
+        <div className="siehub-group-heading"><span>DEPT</span><div><p>SHOWCASE GATEWAY</p><h2>部门风采入口</h2></div><button className="siehub-section-link" type="button" onClick={onOpenDepartments}>全部部门 <ArrowRight /></button></div>
+        {renderDepartmentStrip('团委', '01', youthLeague)}
+        {renderDepartmentStrip('学生会', '02', studentUnion)}
+      </section>
     </div>
-    <SIEHUBMobileDock active="home" onHome={() => {}} onMy={onOpenMy} />
+    <SIEHUBMobileDock active="home" onHome={() => {}} onDepartments={onOpenDepartments} onMy={onOpenMy} />
+    <ThemePanel theme={theme} />
+  </main>;
+};
+
+const SIEHUBDepartmentDirectory = ({ user, theme, onBack, onOpenModule, onOpenMy, onLogout, languageSwitcher = null }) => {
+  const modules = getAccessibleModules(user);
+  const governanceModules = modules.filter(module => module.organization === 'hub');
+  const youthLeague = modules.filter(module => module.organization === 'youth_league');
+  const studentUnion = modules.filter(module => module.organization === 'student_union');
+  const renderDirectoryGroup = (title, eyebrow, items) => (
+    <section className="siehub-directory-group">
+      <div className="siehub-group-heading"><span>{eyebrow}</span><div><p>DEPARTMENT ORDER</p><h2>{title}</h2></div><b>{items.length}</b></div>
+      <div className="siehub-directory-grid">
+        {items.map((module, index) => (
+          <button key={module.key} className={`siehub-directory-card tone-${module.tone}`} type="button" onClick={() => onOpenModule(module)}>
+            <span className="siehub-directory-index">{String(index + 1).padStart(2, '0')}</span>
+            <span className="siehub-module-icon"><DepartmentModuleMark module={module} /></span>
+            <span className="siehub-directory-copy">
+              <small>{module.entryLabel || (module.organization === 'youth_league' ? '团委部门宣传页' : '学生会部门宣传页')}</small>
+              <strong>{module.title}</strong>
+              <em>{module.summary}</em>
+            </span>
+            <span className="siehub-directory-action">进入 <ArrowUpRight /></span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+
+  return <main className="siehub-shell">
+    <header className="siehub-topbar">
+      <div className="siehub-brand"><span className="siehub-brand-mark"><img src={siehubLogo} alt="SIEHUB" /><i></i></span><div><strong>SIEHUB</strong><small>DEPARTMENT DIRECTORY</small></div></div>
+      <div className="siehub-topbar-actions"><ThemeModeButtons theme={theme} compact /><button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)} title="外观设置"><Palette /></button><HubUserChip user={user} /><button className="siehub-topbar-link is-active" type="button"><Building2 />部门</button><button className="icon-button" type="button" onClick={onOpenMy} title="账号设置"><UserRound /></button><button className="icon-button" type="button" onClick={onLogout} title="退出登录"><LogOut /></button>{languageSwitcher}</div>
+    </header>
+    <div className="siehub-content">
+      <button className="siehub-back" type="button" onClick={onBack}><ArrowLeft /> 返回首页</button>
+      <section className="siehub-directory-hero">
+        <span className="siehub-module-icon tone-indigo"><Building2 /></span>
+        <div><p>SIEHUB / DEPARTMENT SHOWCASE</p><h1>部门矩阵</h1><span>按团委学生会组织架构排序，集中进入各部门宣传页、部门服务与管理工作台。</span></div>
+      </section>
+      {user?.isUltimateAdmin && governanceModules.length > 0 && renderDirectoryGroup('平台治理', '00', governanceModules)}
+      {renderDirectoryGroup('团委', '01', youthLeague)}
+      {renderDirectoryGroup('学生会', '02', studentUnion)}
+    </div>
+    <SIEHUBMobileDock active="departments" onHome={onBack} onDepartments={() => {}} onMy={onOpenMy} />
     <ThemePanel theme={theme} />
   </main>;
 };
@@ -4240,6 +4289,7 @@ export default function App() {
     }
     setAppSurface('department');
   };
+  const openDepartments = () => setAppSurface('departments');
   const openMy = () => setAppSurface('my');
   const openSIEVOX = () => {
     setActiveModule(SIEHUB_MODULES.find(module => module.key === 'student_rights'));
@@ -4254,8 +4304,9 @@ export default function App() {
 
   let content;
   if (!user) content = <LoginPage onLogin={login} onRegister={register} theme={theme} language={languageTools.language} languageSwitcher={renderLanguageSwitcher()} />;
-  else if (appSurface === 'hub') content = <SIEHUBHome user={user} token={token} theme={theme} onOpenModule={openModule} onOpenSIEVOX={openSIEVOX} onOpenSIEBridge={openSIEBridge} onOpenMy={openMy} onLogout={logout} language={languageTools.language} languageSwitcher={renderLanguageSwitcher()} />;
-  else if (appSurface === 'my') content = <MyProfileWindow user={user} token={token} theme={theme} onBack={() => setAppSurface('hub')} onOpenMy={openMy} onLogout={logout} onRefreshUser={refreshUser} languageSwitcher={renderLanguageSwitcher()} />;
+  else if (appSurface === 'hub') content = <SIEHUBHome user={user} token={token} theme={theme} onOpenModule={openModule} onOpenDepartments={openDepartments} onOpenSIEVOX={openSIEVOX} onOpenSIEBridge={openSIEBridge} onOpenMy={openMy} onLogout={logout} language={languageTools.language} languageSwitcher={renderLanguageSwitcher()} />;
+  else if (appSurface === 'departments') content = <SIEHUBDepartmentDirectory user={user} theme={theme} onBack={() => setAppSurface('hub')} onOpenModule={openModule} onOpenMy={openMy} onLogout={logout} languageSwitcher={renderLanguageSwitcher()} />;
+  else if (appSurface === 'my') content = <MyProfileWindow user={user} token={token} theme={theme} onBack={() => setAppSurface('hub')} onOpenDepartments={openDepartments} onOpenMy={openMy} onLogout={logout} onRefreshUser={refreshUser} languageSwitcher={renderLanguageSwitcher()} />;
   else if (appSurface === 'ultimateOrganization') content = <UltimateOrganizationWindow user={user} token={token} theme={theme} onBack={() => setAppSurface('hub')} onOpenMy={openMy} onLogout={logout} languageSwitcher={renderLanguageSwitcher()} />;
   else if (appSurface === 'sievox') {
     content = sievoxPortalView === 'student'
