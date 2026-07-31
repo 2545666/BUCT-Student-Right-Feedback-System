@@ -39,6 +39,7 @@ const RECEIPT_BASE_HEIGHT = 1754;
 const RECEIPT_MARGIN = 96;
 const RECEIPT_LINE_HEIGHT = 48;
 const RECEIPT_ISSUER = '北京化工大学国际教育学院学术科技部';
+const RECEIPT_ISSUER_LINES = ['北京化工大学国际教育学院', '学术科技部'];
 
 const loadReceiptImage = (() => {
   let promise = null;
@@ -93,19 +94,19 @@ const renderReceiptPdfBlob = async (receipt) => {
 
   try {
     const watermark = await loadReceiptImage();
-    const wmWidth = width * 0.88;
+    const wmWidth = width * 0.96;
     const wmHeight = wmWidth * (watermark.naturalHeight / watermark.naturalWidth || 1);
     const wmX = (width - wmWidth) / 2;
     const wmY = Math.max(110, (height - wmHeight) / 2);
     ctx.save();
-    ctx.globalAlpha = 0.07;
+    ctx.globalAlpha = 0.14;
     ctx.drawImage(watermark, wmX, wmY, wmWidth, wmHeight);
     ctx.restore();
   } catch {
     // 水印图加载失败时，仍然保留纯白证书。
   }
 
-  ctx.fillStyle = 'rgba(255,255,255,0.72)';
+  ctx.fillStyle = 'rgba(255,255,255,0.62)';
   ctx.fillRect(0, 0, width, height);
 
   ctx.strokeStyle = '#0f4c81';
@@ -173,7 +174,7 @@ const renderReceiptPdfBlob = async (receipt) => {
     contentY += 34;
   }
 
-  const footerY = height - 220;
+  const footerY = height - 260;
   ctx.strokeStyle = '#cbd5e1';
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -183,9 +184,10 @@ const renderReceiptPdfBlob = async (receipt) => {
 
   ctx.fillStyle = '#0f172a';
   ctx.font = '700 22px "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif';
-  ctx.fillText(RECEIPT_ISSUER, RECEIPT_MARGIN, footerY + 24);
+  ctx.fillText(RECEIPT_ISSUER_LINES[0], RECEIPT_MARGIN, footerY + 28);
+  ctx.fillText(RECEIPT_ISSUER_LINES[1], RECEIPT_MARGIN, footerY + 66);
   ctx.font = '500 18px "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif';
-  ctx.fillText(formatReceiptDate(receipt.issuedAt || receipt.createdAt), RECEIPT_MARGIN, footerY + 62);
+  ctx.fillText(formatReceiptDate(receipt.issuedAt || receipt.createdAt), RECEIPT_MARGIN, footerY + 106);
 
   const pdf = new jsPDF({ unit: 'px', format: [width, height], compress: true });
   pdf.addImage(canvas, 'PNG', 0, 0, width, height);

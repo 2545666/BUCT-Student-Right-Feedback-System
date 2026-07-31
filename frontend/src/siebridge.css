@@ -786,14 +786,18 @@ html[data-theme="dark"] .siebridge-file-select input:checked {
   position: fixed;
   z-index: 95;
   inset: 0;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 20px;
   background: rgba(6, 18, 30, .44);
 }
 
 .siebridge-receipt-prompt dialog {
+  position: relative;
+  inset: auto;
   width: min(560px, 92vw);
+  max-height: calc(100vh - 40px);
   margin: 0;
   padding: 20px;
   border: 0;
@@ -952,7 +956,7 @@ html[data-theme="dark"] .siebridge-file-select input:checked {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: rgba(255, 255, 255, .72);
+  background: rgba(255, 255, 255, .62);
   pointer-events: none;
 }
 
@@ -961,9 +965,9 @@ html[data-theme="dark"] .siebridge-file-select input:checked {
   z-index: 0;
   top: 50%;
   left: 50%;
-  width: min(92%, 560px);
+  width: min(100%, 640px);
   max-width: none;
-  opacity: .2;
+  opacity: .3;
   transform: translate(-50%, -50%);
   pointer-events: none;
   user-select: none;
