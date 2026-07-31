@@ -40,6 +40,8 @@ const RECEIPT_MARGIN = 96;
 const RECEIPT_LINE_HEIGHT = 48;
 const RECEIPT_ISSUER = '北京化工大学国际教育学院学术科技部';
 const RECEIPT_ISSUER_LINES = ['北京化工大学国际教育学院', '学术科技部'];
+const RECEIPT_FONT_FAMILY = '"方正大标宋简体", "Source Han Serif SC", "Noto Serif SC", "Songti SC", Georgia, serif';
+const receiptFont = (weight, size) => `${weight} ${size}px ${RECEIPT_FONT_FAMILY}`;
 
 const loadReceiptImage = (() => {
   let promise = null;
@@ -115,18 +117,18 @@ const renderReceiptPdfBlob = async (receipt) => {
 
   ctx.fillStyle = '#0f172a';
   ctx.textBaseline = 'top';
-  ctx.font = '900 38px "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif';
+  ctx.font = receiptFont(900, 38);
   ctx.fillText('上传凭证', RECEIPT_MARGIN, 86);
-  ctx.font = '700 16px "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif';
+  ctx.font = receiptFont(700, 16);
   ctx.fillStyle = '#2563eb';
   ctx.fillText('SIEBridge Upload Certificate', RECEIPT_MARGIN, 136);
 
   ctx.fillStyle = '#0f172a';
-  ctx.font = '700 24px "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif';
+  ctx.font = receiptFont(700, 24);
   ctx.fillText(receipt.courseName || '课程资料上传凭证', RECEIPT_MARGIN, 210);
 
-  const labelFont = '700 18px "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif';
-  const valueFont = '500 22px "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif';
+  const labelFont = receiptFont(700, 18);
+  const valueFont = receiptFont(500, 22);
   const labelColor = '#475569';
   const valueColor = '#0f172a';
   const rightX = 620;
@@ -183,11 +185,13 @@ const renderReceiptPdfBlob = async (receipt) => {
   ctx.stroke();
 
   ctx.fillStyle = '#0f172a';
-  ctx.font = '700 22px "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif';
-  ctx.fillText(RECEIPT_ISSUER_LINES[0], RECEIPT_MARGIN, footerY + 28);
-  ctx.fillText(RECEIPT_ISSUER_LINES[1], RECEIPT_MARGIN, footerY + 66);
-  ctx.font = '500 18px "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif';
-  ctx.fillText(formatReceiptDate(receipt.issuedAt || receipt.createdAt), RECEIPT_MARGIN, footerY + 106);
+  ctx.textAlign = 'right';
+  ctx.font = receiptFont(700, 22);
+  ctx.fillText(RECEIPT_ISSUER_LINES[0], width - RECEIPT_MARGIN, footerY + 28);
+  ctx.fillText(RECEIPT_ISSUER_LINES[1], width - RECEIPT_MARGIN, footerY + 66);
+  ctx.font = receiptFont(500, 18);
+  ctx.fillText(formatReceiptDate(receipt.issuedAt || receipt.createdAt), width - RECEIPT_MARGIN, footerY + 106);
+  ctx.textAlign = 'left';
 
   const pdf = new jsPDF({ unit: 'px', format: [width, height], compress: true });
   pdf.addImage(canvas, 'PNG', 0, 0, width, height);
