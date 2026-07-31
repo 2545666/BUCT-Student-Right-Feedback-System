@@ -1060,6 +1060,20 @@ html[data-theme="dark"] .siebridge-file-select input:checked {
   font-weight: 900;
 }
 
+.siebridge-receipt-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.siebridge-receipt-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+}
+
 .siebridge-panel footer {
   display: flex;
   justify-content: flex-end;

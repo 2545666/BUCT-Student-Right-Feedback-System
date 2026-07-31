@@ -663,7 +663,7 @@ const installSieBridgeRoutes = ({ app, authenticate, logAction, Notification }) 
         if (nextStatus === 'approved') {
           const approvedResources = await populateResource(SiebridgeResource.find({ course: course._id, status: 'approved' }));
           await Promise.all(approvedResources.map(resource => ensureUploadReceipt({
-            kind: 'course',
+            kind: 'resource',
             course,
             resource
           })));
