@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { jsPDF } from 'jspdf';
 import {
   BookOpen, Check, Clock3, Download, Eye, FileText,
   Filter, Folder, FolderOpen, Plus, Search, Send, Trash2, Upload, X
@@ -32,6 +33,160 @@ const getSectionLabel = (section) => DEFAULT_SECTIONS.find(item => item.key === 
 const formatReceiptDate = (value) => value
   ? new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(value))
   : '暂无日期';
+
+const RECEIPT_PAGE_WIDTH = 1240;
+const RECEIPT_BASE_HEIGHT = 1754;
+const RECEIPT_MARGIN = 96;
+const RECEIPT_LINE_HEIGHT = 48;
+
+const loadReceiptImage = (() => {
+  let promise = null;
+  return () => {
+    if (!promise) {
+      promise = new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = siebridgeLogo;
+      });
+    }
+    return promise;
+  };
+})();
+
+const wrapCanvasText = (ctx, text, maxWidth) => {
+  const source = String(text || '');
+  if (!source) return [''];
+  const lines = [];
+  let current = '';
+  for (const char of source) {
+    const next = current + char;
+    if (ctx.measureText(next).width > maxWidth && current) {
+      lines.push(current);
+      current = char;
+    } else {
+      current = next;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+};
+
+const renderReceiptPdfBlob = async (receipt) => {
+  const files = receipt?.files || [];
+  const extraHeight = Math.max(0, (files.length - 4) * 78);
+  const width = RECEIPT_PAGE_WIDTH;
+  const height = RECEIPT_BASE_HEIGHT + extraHeight;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('无法生成上传凭证');
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, height);
+
+  try {
+    const watermark = await loadReceiptImage();
+    const wmWidth = width * 0.88;
+    const wmHeight = wmWidth * (watermark.naturalHeight / watermark.naturalWidth || 1);
+    const wmX = (width - wmWidth) / 2;
+    const wmY = Math.max(110, (height - wmHeight) / 2);
+    ctx.save();
+    ctx.globalAlpha = 0.07;
+    ctx.drawImage(watermark, wmX, wmY, wmWidth, wmHeight);
+    ctx.restore();
+  } catch {
+    // 水印图加载失败时，仍然保留纯白证书。
+  }
+
+  ctx.fillStyle = 'rgba(255,255,255,0.72)';
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.strokeStyle = '#0f4c81';
+  ctx.lineWidth = 8;
+  ctx.strokeRect(36, 36, width - 72, height - 72);
+
+  ctx.fillStyle = '#0f172a';
+  ctx.textBaseline = 'top';
+  ctx.font = '900 38px "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif';
+  ctx.fillText('上传凭证', RECEIPT_MARGIN, 86);
+  ctx.font = '700 16px "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif';
+  ctx.fillStyle = '#2563eb';
+  ctx.fillText('SIEBridge Upload Certificate', RECEIPT_MARGIN, 136);
+
+  ctx.fillStyle = '#0f172a';
+  ctx.font = '700 24px "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif';
+  ctx.fillText(receipt.courseName || '课程资料上传凭证', RECEIPT_MARGIN, 210);
+
+  const labelFont = '700 18px "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif';
+  const valueFont = '500 22px "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif';
+  const labelColor = '#475569';
+  const valueColor = '#0f172a';
+  const rightX = 620;
+  let leftY = 310;
+  let rightY = 310;
+  const leftFieldWidth = 470;
+  const rightFieldWidth = 470;
+
+  const drawField = (x, y, label, value, maxWidth) => {
+    ctx.fillStyle = labelColor;
+    ctx.font = labelFont;
+    ctx.fillText(label, x, y);
+    ctx.fillStyle = valueColor;
+    ctx.font = valueFont;
+    const lines = wrapCanvasText(ctx, value || '未填写', maxWidth);
+    lines.forEach((line, index) => ctx.fillText(line, x, y + 30 + index * 30));
+    return y + 30 + lines.length * 30 + 18;
+  };
+
+  leftY = drawField(RECEIPT_MARGIN, leftY, '姓名', receipt.uploaderName, leftFieldWidth);
+  leftY = drawField(RECEIPT_MARGIN, leftY, '上传者学号', receipt.uploaderStudentId, leftFieldWidth);
+  rightY = drawField(rightX, rightY, '上传课程信息', [receipt.courseCode, receipt.courseName, receipt.courseNature].filter(Boolean).join(' · '), rightFieldWidth);
+  rightY = drawField(rightX, rightY, '上传日期', formatReceiptDate(receipt.uploadedAt), rightFieldWidth);
+
+  const contentTop = Math.max(leftY, rightY) + 18;
+  ctx.fillStyle = labelColor;
+  ctx.font = labelFont;
+  ctx.fillText('上传内容', RECEIPT_MARGIN, contentTop);
+
+  ctx.fillStyle = valueColor;
+  ctx.font = valueFont;
+  let contentY = contentTop + 34;
+  if (files.length) {
+    files.forEach((file, index) => {
+      const content = `${file.typeLabel || receipt.sectionLabel || '资料'} · ${file.relativePath || file.name || 'resource-file'}`;
+      const lines = wrapCanvasText(ctx, content, width - RECEIPT_MARGIN * 2 - 12);
+      ctx.fillStyle = '#1d4ed8';
+      ctx.fillText(`${index + 1}.`, RECEIPT_MARGIN, contentY);
+      ctx.fillStyle = valueColor;
+      lines.forEach((line, lineIndex) => ctx.fillText(line, RECEIPT_MARGIN + 40, contentY + lineIndex * 28));
+      contentY += lines.length * 28 + 18;
+    });
+  } else {
+    ctx.fillText('暂无文件记录', RECEIPT_MARGIN, contentY);
+    contentY += 34;
+  }
+
+  const footerY = height - 220;
+  ctx.strokeStyle = '#cbd5e1';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(RECEIPT_MARGIN, footerY);
+  ctx.lineTo(width - RECEIPT_MARGIN, footerY);
+  ctx.stroke();
+
+  ctx.fillStyle = '#0f172a';
+  ctx.font = '700 22px "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif';
+  ctx.fillText(SIEBRIDGE_RECEIPT_ISSUER, RECEIPT_MARGIN, footerY + 24);
+  ctx.font = '500 18px "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif';
+  ctx.fillText(formatReceiptDate(receipt.issuedAt || receipt.createdAt), RECEIPT_MARGIN, footerY + 62);
+
+  const pdf = new jsPDF({ unit: 'px', format: [width, height], compress: true });
+  pdf.addImage(canvas, 'PNG', 0, 0, width, height);
+  return pdf.output('blob');
+};
 
 const getEntityId = getSieBridgeEntityId;
 const isMarkdownFile = (file = {}) => ['.md', '.markdown'].includes(String(file.extension || '').toLowerCase()) || /markdown|text\/plain/i.test(file.mimetype || '');
@@ -639,7 +794,7 @@ const ResourceForm = ({ course, meta, onClose, onSubmit, submitting, error, uplo
 
 const getReceiptId = (receipt = {}) => String(receipt.id || receipt._id || '');
 
-const SIEBridgeReceiptCard = ({ receipt }) => {
+const SIEBridgeReceiptCard = ({ receipt, onPreviewPdf, onDownloadPdf }) => {
   if (!receipt) return <p className="siebridge-muted">暂无上传凭证</p>;
   return (
     <article className="siebridge-receipt-card">
@@ -668,6 +823,10 @@ const SIEBridgeReceiptCard = ({ receipt }) => {
         <strong>{receipt.issuer || '北京化工大学国际教育学院学术科技部'}</strong>
         <time>{formatReceiptDate(receipt.issuedAt || receipt.createdAt)}</time>
       </footer>
+      <div className="siebridge-receipt-actions">
+        <button type="button" className="outline-button" onClick={() => onPreviewPdf?.(receipt)}><Eye />在线预览</button>
+        <button type="button" className="primary-button" onClick={() => onDownloadPdf?.(receipt)}><Download />下载 PDF</button>
+      </div>
     </article>
   );
 };
@@ -694,7 +853,9 @@ const SIEBridgeMyWindow = ({
   onSelectReceipt,
   onClose,
   onPreview,
-  onDownload
+  onDownload,
+  onPreviewPdf,
+  onDownloadPdf
 }) => {
   const uploadItems = useMemo(() => (submissions.resources || [])
     .map(item => ({
@@ -759,7 +920,7 @@ const SIEBridgeMyWindow = ({
                 </button>
               )) : <p className="siebridge-muted">暂无上传凭证</p>}
             </div>
-            <SIEBridgeReceiptCard receipt={activeReceipt} />
+            <SIEBridgeReceiptCard receipt={activeReceipt} onPreviewPdf={onPreviewPdf} onDownloadPdf={onDownloadPdf} />
           </section>
         </div>
       </section>
@@ -975,6 +1136,35 @@ export const SIEBridgeStudentPortal = ({ token }) => {
     }
   };
 
+  const openReceiptPdfPreview = useCallback(async (receipt) => {
+    try {
+      const blob = await renderReceiptPdfBlob(receipt);
+      if (preview?.url) URL.revokeObjectURL(preview.url);
+      const url = URL.createObjectURL(blob);
+      setPreview({
+        title: `${receipt.courseName || receipt.resourceTitle || '上传凭证'} / PDF`,
+        type: 'pdf',
+        url
+      });
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }, [preview?.url]);
+
+  const downloadReceiptPdf = useCallback(async (receipt) => {
+    try {
+      const blob = await renderReceiptPdfBlob(receipt);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${receipt.courseCode || 'SIEBridge'}-${receipt.courseName || receipt.resourceTitle || 'upload-receipt'}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }, []);
+
   const submissionItems = [
     ...submissions.courses.map(item => ({ ...item, kind: '课程' })),
     ...submissions.resources.map(item => ({ ...item, kind: '资料', courseName: item.course?.name }))
@@ -1046,6 +1236,8 @@ export const SIEBridgeStudentPortal = ({ token }) => {
           onClose={() => setMyWindowOpen(false)}
           onPreview={openPreview}
           onDownload={downloadResource}
+          onPreviewPdf={openReceiptPdfPreview}
+          onDownloadPdf={downloadReceiptPdf}
         />
       )}
       <SIEBridgePreviewDialog preview={preview} onClose={() => { if (preview?.url) URL.revokeObjectURL(preview.url); setPreview(null); }} />
