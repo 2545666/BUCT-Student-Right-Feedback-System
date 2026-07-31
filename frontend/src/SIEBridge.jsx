@@ -47,7 +47,10 @@ const loadReceiptImage = (() => {
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => resolve(img);
-        img.onerror = reject;
+        img.onerror = (error) => {
+          promise = null;
+          reject(error);
+        };
         img.src = siebridgeLogo;
       });
     }
@@ -1155,9 +1158,11 @@ export const SIEBridgeStudentPortal = ({ token }) => {
     try {
       const blob = await renderReceiptPdfBlob(receipt);
       const url = URL.createObjectURL(blob);
+      const safeName = String(`${receipt.courseCode || 'SIEBridge'}-${receipt.courseName || receipt.resourceTitle || 'upload-receipt'}`)
+        .replace(/[\\/:*?"<>|]/g, '_');
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${receipt.courseCode || 'SIEBridge'}-${receipt.courseName || receipt.resourceTitle || 'upload-receipt'}.pdf`;
+      link.download = `${safeName}.pdf`;
       link.click();
       URL.revokeObjectURL(url);
     } catch (error) {
