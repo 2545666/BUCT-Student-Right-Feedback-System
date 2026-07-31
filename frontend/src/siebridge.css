@@ -16,6 +16,13 @@
     var(--paper);
 }
 
+.siebridge-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .siebridge-toolbar p,
 .siebridge-submissions header p,
 .siebridge-panel-head span {
@@ -552,6 +559,10 @@ html[data-theme="dark"] .siebridge-file-select input:checked {
   width: min(560px, 100%);
 }
 
+.siebridge-panel.wide {
+  width: min(1120px, 100%);
+}
+
 .siebridge-panel-head {
   display: flex;
   align-items: flex-start;
@@ -769,6 +780,254 @@ html[data-theme="dark"] .siebridge-file-select input:checked {
   color: var(--ink);
   font-size: 12px;
   font-weight: 800;
+}
+
+.siebridge-receipt-prompt {
+  position: fixed;
+  z-index: 95;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(6, 18, 30, .44);
+}
+
+.siebridge-receipt-prompt dialog {
+  width: min(560px, 92vw);
+  margin: 0;
+  padding: 20px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--paper);
+  box-shadow: 0 26px 80px rgba(8, 15, 29, .28);
+}
+
+.siebridge-receipt-prompt dialog header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.siebridge-receipt-prompt dialog header svg {
+  width: 20px;
+  height: 20px;
+  color: var(--theme-primary);
+}
+
+.siebridge-receipt-prompt dialog h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 18px;
+}
+
+.siebridge-receipt-prompt dialog p {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.siebridge-receipt-prompt dialog footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.siebridge-my-window .siebridge-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.siebridge-my-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.siebridge-my-block {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--canvas) 38%, var(--paper));
+}
+
+.siebridge-my-block > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.siebridge-my-block > header p {
+  margin: 0;
+  color: var(--theme-primary);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+
+.siebridge-my-block > header h4 {
+  margin: 5px 0 0;
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.siebridge-my-list {
+  display: grid;
+  gap: 8px;
+  max-height: 240px;
+  overflow: auto;
+}
+
+.siebridge-my-list button {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.siebridge-my-list button.is-active {
+  border-color: var(--theme-primary);
+  background: color-mix(in srgb, var(--theme-primary) 10%, var(--paper));
+}
+
+.siebridge-my-list button span {
+  color: var(--theme-primary);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+.siebridge-my-list button strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.siebridge-my-list button small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.siebridge-upload-detail {
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 18%, var(--line));
+  border-radius: 8px;
+  background: var(--paper);
+}
+
+.siebridge-upload-detail h5 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.siebridge-upload-detail p {
+  margin: 4px 0 10px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.siebridge-receipt-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 18%, var(--line));
+  border-radius: 8px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--theme-primary) 5%, var(--paper)), var(--paper));
+}
+
+.siebridge-receipt-card header {
+  display: grid;
+  gap: 5px;
+}
+
+.siebridge-receipt-card header span {
+  color: var(--theme-primary);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .14em;
+}
+
+.siebridge-receipt-card header h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 18px;
+}
+
+.siebridge-receipt-card dl {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.siebridge-receipt-card dl > div {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.siebridge-receipt-card dl > div.wide {
+  grid-template-columns: 120px minmax(0, 1fr);
+}
+
+.siebridge-receipt-card dt {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.siebridge-receipt-card dd {
+  margin: 0;
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.siebridge-receipt-card ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.siebridge-receipt-card li {
+  display: grid;
+  gap: 2px;
+}
+
+.siebridge-receipt-card li strong {
+  color: var(--theme-primary);
+  font-size: 11px;
+}
+
+.siebridge-receipt-card li span {
+  color: var(--ink);
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.siebridge-receipt-card footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.siebridge-receipt-card footer strong,
+.siebridge-receipt-card footer time {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 900;
 }
 
 .siebridge-panel footer {
@@ -1067,6 +1326,10 @@ html[data-theme="dark"] .siebridge-status.rejected {
   .siebridge-form-grid {
     grid-template-columns: 1fr;
   }
+
+  .siebridge-my-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 640px) {
@@ -1116,6 +1379,12 @@ html[data-theme="dark"] .siebridge-status.rejected {
   .siebridge-drawer,
   .siebridge-preview {
     padding: 12px;
+  }
+
+  .siebridge-receipt-card dl > div,
+  .siebridge-receipt-card dl > div.wide {
+    grid-template-columns: 1fr;
+    gap: 4px;
   }
 }
 

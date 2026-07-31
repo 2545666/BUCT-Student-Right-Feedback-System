@@ -8,7 +8,8 @@ const {
   formatSiebridgeUploadError,
   isAllowedSiebridgeUploadFile,
   isValidFileDeleteConfirmation,
-  normalizeRelativePath
+  normalizeRelativePath,
+  serializeUploadReceipt
 } = require('./siebridge');
 
 test('SIEBridge folder uploads accept mixed ordinary file types', () => {
@@ -55,4 +56,25 @@ test('SIEBridge resource file deletion requires file-specific confirmation', () 
   assert.equal(isValidFileDeleteConfirmation(file, '课程/资料.md'), true);
   assert.equal(isValidFileDeleteConfirmation(file, '确认删除'), true);
   assert.equal(isValidFileDeleteConfirmation(file, '其他资料.md'), false);
+});
+
+test('SIEBridge upload receipts serialize course and file details', () => {
+  const receipt = serializeUploadReceipt({
+    _id: 'receipt-1',
+    uploaderName: '张三',
+    uploaderStudentId: '2024090101',
+    courseCode: 'MECH101',
+    courseName: '工程制图',
+    courseNature: '专业必修',
+    section: 'notes',
+    sectionLabel: '笔记整理',
+    uploadedAt: new Date('2026-07-31T08:00:00Z'),
+    files: [{ name: '复习笔记.md', relativePath: '资料/复习笔记.md', typeLabel: '笔记整理', size: 1024 }]
+  });
+
+  assert.equal(receipt.issuer, '北京化工大学国际教育学院学术科技部');
+  assert.equal(receipt.uploaderName, '张三');
+  assert.equal(receipt.courseCode, 'MECH101');
+  assert.equal(receipt.files[0].relativePath, '资料/复习笔记.md');
+  assert.equal(receipt.files[0].typeLabel, '笔记整理');
 });

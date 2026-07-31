@@ -26,6 +26,7 @@ const SIEBRIDGE_SECTIONS = Object.freeze([
 
 const MAX_FILE_SIZE = 200 * 1024 * 1024;
 const MAX_FILE_COUNT = 100;
+const SIEBRIDGE_RECEIPT_ISSUER = '北京化工大学国际教育学院学术科技部';
 
 const cleanText = (value, max = 160) => String(value || '').trim().replace(/<[^>]*>/g, '').slice(0, max);
 const normalizeCourseCode = (value) => cleanText(value, 40).replace(/\s+/g, '').toUpperCase();
@@ -177,8 +178,34 @@ const resourceSchema = new mongoose.Schema({
 
 resourceSchema.index({ status: 1, updatedAt: -1 });
 
+const receiptSchema = new mongoose.Schema({
+  owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  kind: { type: String, enum: ['course', 'resource'], required: true },
+  course: { type: mongoose.Schema.Types.ObjectId, ref: 'SiebridgeCourse', required: true, index: true },
+  resource: { type: mongoose.Schema.Types.ObjectId, ref: 'SiebridgeResource', required: true, index: true },
+  uploaderName: { type: String, default: '' },
+  uploaderStudentId: { type: String, default: '' },
+  courseCode: { type: String, default: '' },
+  courseName: { type: String, default: '' },
+  courseNature: { type: String, default: '' },
+  resourceTitle: { type: String, default: '' },
+  section: { type: String, default: '' },
+  sectionLabel: { type: String, default: '' },
+  uploadedAt: { type: Date, default: Date.now, index: true },
+  files: [{
+    name: String,
+    relativePath: String,
+    typeLabel: String,
+    size: Number
+  }],
+  issuer: { type: String, default: SIEBRIDGE_RECEIPT_ISSUER }
+}, { timestamps: true });
+
+receiptSchema.index({ owner: 1, uploadedAt: -1 });
+
 const SiebridgeCourse = mongoose.models.SiebridgeCourse || mongoose.model('SiebridgeCourse', courseSchema);
 const SiebridgeResource = mongoose.models.SiebridgeResource || mongoose.model('SiebridgeResource', resourceSchema);
+const SiebridgeUploadReceipt = mongoose.models.SiebridgeUploadReceipt || mongoose.model('SiebridgeUploadReceipt', receiptSchema);
 
 const serializeUserBrief = (user) => user ? ({
   id: user._id || user.id,
@@ -238,6 +265,42 @@ const serializeResource = (resource, exposeFiles = true) => {
     reviewedBy: serializeUserBrief(item.reviewedBy),
     reviewedAt: item.reviewedAt || null,
     reviewComment: item.reviewComment || '',
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt
+  };
+};
+
+const getSectionLabel = (section) => SIEBRIDGE_SECTIONS.find(item => item.key === section)?.label || '其他资料';
+
+const serializeUploadReceipt = (receipt) => {
+  const item = receipt?.toObject ? receipt.toObject() : receipt;
+  if (!item) return null;
+  const uploadedAt = item.uploadedAt || item.createdAt;
+  const issuedAt = item.createdAt || uploadedAt;
+  return {
+    id: item._id,
+    _id: item._id,
+    owner: item.owner,
+    kind: item.kind,
+    course: item.course,
+    resource: item.resource,
+    uploaderName: item.uploaderName || '',
+    uploaderStudentId: item.uploaderStudentId || '',
+    courseCode: item.courseCode || '',
+    courseName: item.courseName || '',
+    courseNature: item.courseNature || '',
+    resourceTitle: item.resourceTitle || '',
+    section: item.section || '',
+    sectionLabel: item.sectionLabel || getSectionLabel(item.section),
+    uploadedAt,
+    files: (item.files || []).map(file => ({
+      name: file.name || '',
+      relativePath: file.relativePath || file.name || '',
+      typeLabel: file.typeLabel || item.sectionLabel || getSectionLabel(item.section),
+      size: file.size || 0
+    })),
+    issuer: item.issuer || SIEBRIDGE_RECEIPT_ISSUER,
+    issuedAt,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt
   };
@@ -329,6 +392,37 @@ const populateResource = (query) => query
   .populate('course')
   .populate('submittedBy', 'name studentId')
   .populate('reviewedBy', 'name studentId');
+
+const createUploadReceipt = async ({ user, kind, course, resource }) => {
+  const courseItem = course?.toObject ? course.toObject() : course;
+  const resourceItem = resource?.toObject ? resource.toObject() : resource;
+  const sectionLabel = getSectionLabel(resourceItem.section);
+  return SiebridgeUploadReceipt.create({
+    owner: user._id,
+    kind,
+    course: courseItem._id,
+    resource: resourceItem._id,
+    uploaderName: user.name || '',
+    uploaderStudentId: user.studentId || '',
+    courseCode: courseItem.code || '',
+    courseName: courseItem.name || '',
+    courseNature: courseItem.courseNature || '',
+    resourceTitle: resourceItem.title || '',
+    section: resourceItem.section || '',
+    sectionLabel,
+    uploadedAt: resourceItem.createdAt || new Date(),
+    files: (resourceItem.files || []).map(file => {
+      const originalName = decodeOriginalName(file.originalName);
+      return {
+        name: originalName,
+        relativePath: displayStoredRelativePath(file.relativePath, originalName),
+        typeLabel: sectionLabel,
+        size: file.size || 0
+      };
+    }),
+    issuer: SIEBRIDGE_RECEIPT_ISSUER
+  });
+};
 
 const createNotification = async (Notification, user, type, content) => {
   if (!Notification || !user) return;
@@ -439,8 +533,9 @@ const installSieBridgeRoutes = ({ app, authenticate, logAction, Notification }) 
         files: await toStoredFiles(files, parseFilePaths(req.body.filePaths)),
         submittedBy: req.user._id
       });
+      const receipt = await createUploadReceipt({ user: req.user, kind: 'course', course, resource });
       await logAction(req.user._id, 'submit_siebridge_course', 'siebridgeCourse', course._id, { code: course.code, resource: resource._id }, req);
-      res.status(201).json({ success: true, message: '课程与资料已提交审核', course: serializeCourse(course), resource: serializeResource(resource) });
+      res.status(201).json({ success: true, message: '课程与资料已提交审核', course: serializeCourse(course), resource: serializeResource(resource), receipt: serializeUploadReceipt(receipt) });
     } catch (error) {
       cleanupFiles(files);
       const duplicate = error?.code === 11000;
@@ -467,8 +562,9 @@ const installSieBridgeRoutes = ({ app, authenticate, logAction, Notification }) 
         files: await toStoredFiles(files, parseFilePaths(req.body.filePaths)),
         submittedBy: req.user._id
       });
+      const receipt = await createUploadReceipt({ user: req.user, kind: 'resource', course, resource });
       await logAction(req.user._id, 'submit_siebridge_resource', 'siebridgeResource', resource._id, { course: course._id }, req);
-      res.status(201).json({ success: true, message: '资料已提交审核', resource: serializeResource(resource) });
+      res.status(201).json({ success: true, message: '资料已提交审核', resource: serializeResource(resource), receipt: serializeUploadReceipt(receipt) });
     } catch (error) {
       cleanupFiles(files);
       res.status(500).json({ success: false, message: '提交资料失败' });
@@ -488,6 +584,27 @@ const installSieBridgeRoutes = ({ app, authenticate, logAction, Notification }) 
       });
     } catch (error) {
       res.status(500).json({ success: false, message: '获取提交记录失败' });
+    }
+  });
+
+  app.get('/api/siebridge/receipts/mine', authenticate, async (req, res) => {
+    try {
+      const receipts = await SiebridgeUploadReceipt.find({ owner: req.user._id }).sort({ uploadedAt: -1, createdAt: -1 });
+      res.json({ success: true, receipts: receipts.map(serializeUploadReceipt) });
+    } catch (error) {
+      res.status(500).json({ success: false, message: '获取上传凭证失败' });
+    }
+  });
+
+  app.get('/api/siebridge/receipts/:id', authenticate, async (req, res) => {
+    try {
+      const receipt = await SiebridgeUploadReceipt.findById(req.params.id);
+      if (!receipt) return res.status(404).json({ success: false, message: '上传凭证不存在' });
+      const isOwner = String(receipt.owner) === String(req.user._id);
+      if (!isOwner && !canReviewSieBridge(req.user)) return res.status(403).json({ success: false, message: '无权查看该上传凭证' });
+      res.json({ success: true, receipt: serializeUploadReceipt(receipt) });
+    } catch (error) {
+      res.status(500).json({ success: false, message: '获取上传凭证失败' });
     }
   });
 
@@ -733,5 +850,6 @@ module.exports = {
   isValidFileDeleteConfirmation,
   isValidDeleteConfirmation,
   normalizeRelativePath,
+  serializeUploadReceipt,
   installSieBridgeRoutes
 };

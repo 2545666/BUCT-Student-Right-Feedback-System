@@ -27,6 +27,10 @@ const formatFileSize = (size = 0) => {
 };
 
 const joinLabels = (items = []) => items.length ? items.join(' / ') : '未分类';
+const getSectionLabel = (section) => DEFAULT_SECTIONS.find(item => item.key === section)?.label || '其他资料';
+const formatReceiptDate = (value) => value
+  ? new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(value))
+  : '暂无日期';
 
 const getEntityId = getSieBridgeEntityId;
 const isMarkdownFile = (file = {}) => ['.md', '.markdown'].includes(String(file.extension || '').toLowerCase()) || /markdown|text\/plain/i.test(file.mimetype || '');
@@ -632,6 +636,136 @@ const ResourceForm = ({ course, meta, onClose, onSubmit, submitting, error, uplo
   );
 };
 
+const getReceiptId = (receipt = {}) => String(receipt.id || receipt._id || '');
+
+const SIEBridgeReceiptCard = ({ receipt }) => {
+  if (!receipt) return <p className="siebridge-muted">暂无上传凭证</p>;
+  return (
+    <article className="siebridge-receipt-card">
+      <header>
+        <span>SIEBRIDGE UPLOAD CERTIFICATE</span>
+        <h3>上传凭证</h3>
+      </header>
+      <dl>
+        <div><dt>姓名</dt><dd>{receipt.uploaderName || '未填写'}</dd></div>
+        <div><dt>上传者学号</dt><dd>{receipt.uploaderStudentId || '未填写'}</dd></div>
+        <div><dt>上传课程信息</dt><dd>{[receipt.courseCode, receipt.courseName, receipt.courseNature].filter(Boolean).join(' · ') || '未填写'}</dd></div>
+        <div><dt>上传日期</dt><dd>{formatReceiptDate(receipt.uploadedAt)}</dd></div>
+        <div className="wide"><dt>上传内容</dt><dd>{(receipt.files || []).length ? (
+          <ul>
+            {receipt.files.map((file, index) => (
+              <li key={`${file.relativePath || file.name}-${index}`}>
+                <strong>{file.typeLabel || receipt.sectionLabel || '资料'}</strong>
+                <span>{file.relativePath || file.name}</span>
+              </li>
+            ))}
+          </ul>
+        ) : '暂无文件记录'}</dd></div>
+      </dl>
+      <footer>
+        <strong>{receipt.issuer || '北京化工大学国际教育学院学术科技部'}</strong>
+        <time>{formatReceiptDate(receipt.issuedAt || receipt.createdAt)}</time>
+      </footer>
+    </article>
+  );
+};
+
+const SIEBridgeReceiptPrompt = ({ receipt, onCancel, onView }) => {
+  if (!receipt) return null;
+  return (
+    <div className="siebridge-receipt-prompt">
+      <dialog open>
+        <header><FileText /><h3>感谢您的分享，请领取您的上传凭证</h3></header>
+        <p>{receipt.courseName || '课程资料'} 已提交审核，上传凭证已同步保存到 SIEBridge「我的」。</p>
+        <footer>
+          <button type="button" className="text-button" onClick={onCancel}>取消</button>
+          <button type="button" className="primary-button" onClick={() => onView(receipt)}><Eye />查看</button>
+        </footer>
+      </dialog>
+    </div>
+  );
+};
+
+const SIEBridgeMyWindow = ({
+  submissions,
+  receipts,
+  selectedReceiptId,
+  onSelectReceipt,
+  onClose,
+  onPreview,
+  onDownload
+}) => {
+  const uploadItems = useMemo(() => (submissions.resources || [])
+    .map(item => ({
+      ...item,
+      kind: '资料',
+      sectionLabel: getSectionLabel(item.section),
+      courseName: item.course?.name,
+      courseCode: item.course?.code
+    }))
+    .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)), [submissions.resources]);
+  const [activeUploadId, setActiveUploadId] = useState('');
+  const activeUpload = uploadItems.find(item => getEntityId(item) === activeUploadId) || uploadItems[0] || null;
+  const activeReceipt = receipts.find(item => getReceiptId(item) === selectedReceiptId) || receipts[0] || null;
+
+  useEffect(() => {
+    if (!uploadItems.length) return;
+    if (!activeUploadId || !uploadItems.some(item => getEntityId(item) === activeUploadId)) {
+      setActiveUploadId(getEntityId(uploadItems[0]));
+    }
+  }, [activeUploadId, uploadItems]);
+
+  useEffect(() => {
+    if (!selectedReceiptId && receipts[0]) onSelectReceipt(getReceiptId(receipts[0]));
+  }, [onSelectReceipt, receipts, selectedReceiptId]);
+
+  return (
+    <div className="siebridge-drawer siebridge-my-window">
+      <section className="siebridge-panel wide">
+        <header className="siebridge-panel-head">
+          <div><span>MY SIEBRIDGE</span><h3>我的</h3></div>
+          <button type="button" className="icon-button" onClick={onClose}><X /></button>
+        </header>
+        <div className="siebridge-my-grid">
+          <section className="siebridge-my-block">
+            <header><div><p>MY UPLOADS</p><h4>我的上传资料</h4></div><Clock3 /></header>
+            <div className="siebridge-my-list">
+              {uploadItems.length ? uploadItems.map(item => (
+                <button key={getEntityId(item)} type="button" className={getEntityId(activeUpload) === getEntityId(item) ? 'is-active' : ''} onClick={() => setActiveUploadId(getEntityId(item))}>
+                  <span>{item.kind}</span>
+                  <strong>{item.title}</strong>
+                  <small>{[item.courseCode, item.courseName].filter(Boolean).join(' · ')}</small>
+                  <StatusBadge status={item.status} />
+                </button>
+              )) : <p className="siebridge-muted">暂无上传资料</p>}
+            </div>
+            {activeUpload && (
+              <div className="siebridge-upload-detail">
+                <h5>{activeUpload.title}</h5>
+                <p>{[activeUpload.courseCode, activeUpload.courseName, activeUpload.sectionLabel].filter(Boolean).join(' · ')}</p>
+                <ResourceFileBrowser resource={activeUpload} onPreview={onPreview} onDownload={onDownload} />
+              </div>
+            )}
+          </section>
+          <section className="siebridge-my-block">
+            <header><div><p>UPLOAD CERTIFICATES</p><h4>我的上传凭证</h4></div><FileText /></header>
+            <div className="siebridge-my-list receipts">
+              {receipts.length ? receipts.map(receipt => (
+                <button key={getReceiptId(receipt)} type="button" className={getReceiptId(activeReceipt) === getReceiptId(receipt) ? 'is-active' : ''} onClick={() => onSelectReceipt(getReceiptId(receipt))}>
+                  <span>{formatReceiptDate(receipt.uploadedAt)}</span>
+                  <strong>{receipt.courseName || receipt.resourceTitle || '上传凭证'}</strong>
+                  <small>{(receipt.files || []).length} 个文件 · {receipt.sectionLabel || '资料'}</small>
+                </button>
+              )) : <p className="siebridge-muted">暂无上传凭证</p>}
+            </div>
+            <SIEBridgeReceiptCard receipt={activeReceipt} />
+          </section>
+        </div>
+      </section>
+    </div>
+  );
+};
+
 export const SIEBridgeStudentPortal = ({ token }) => {
   const [meta, setMeta] = useState({ majors: [], gradeLevels: [], sections: DEFAULT_SECTIONS });
   const [courses, setCourses] = useState([]);
@@ -639,9 +773,13 @@ export const SIEBridgeStudentPortal = ({ token }) => {
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [resources, setResources] = useState([]);
   const [submissions, setSubmissions] = useState({ courses: [], resources: [] });
+  const [receipts, setReceipts] = useState([]);
   const [filters, setFilters] = useState({ search: '', major: '', grade: '' });
   const [courseFormOpen, setCourseFormOpen] = useState(false);
   const [resourceFormCourse, setResourceFormCourse] = useState(null);
+  const [myWindowOpen, setMyWindowOpen] = useState(false);
+  const [receiptPrompt, setReceiptPrompt] = useState(null);
+  const [selectedReceiptId, setSelectedReceiptId] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -673,6 +811,11 @@ export const SIEBridgeStudentPortal = ({ token }) => {
   const loadSubmissions = useCallback(async () => {
     const data = await apiJson('/siebridge/submissions/mine', token);
     setSubmissions({ courses: data.courses || [], resources: data.resources || [] });
+  }, [token]);
+
+  const loadReceipts = useCallback(async () => {
+    const data = await apiJson('/siebridge/receipts/mine', token);
+    setReceipts(data.receipts || []);
   }, [token]);
 
   const loadCourseDetail = useCallback(async (course) => {
@@ -715,6 +858,7 @@ export const SIEBridgeStudentPortal = ({ token }) => {
   useEffect(() => { loadMeta().catch(error => setMessage(error.message)); }, [loadMeta]);
   useEffect(() => { loadCourses().catch(error => setMessage(error.message)); }, [loadCourses]);
   useEffect(() => { loadSubmissions().catch(() => {}); }, [loadSubmissions]);
+  useEffect(() => { loadReceipts().catch(() => {}); }, [loadReceipts]);
   useEffect(() => {
     if (!selectedCourseId) return;
     if (courses.length && courses.every(course => getEntityId(course) !== selectedCourseId)) {
@@ -730,6 +874,19 @@ export const SIEBridgeStudentPortal = ({ token }) => {
     return groups;
   }, [meta.sections, resources]);
 
+  const upsertReceipt = useCallback((receipt) => {
+    if (!receipt) return;
+    const receiptId = getReceiptId(receipt);
+    setReceipts(prev => [receipt, ...prev.filter(item => getReceiptId(item) !== receiptId)]);
+    setSelectedReceiptId(receiptId);
+  }, []);
+
+  const openReceipt = useCallback((receipt) => {
+    upsertReceipt(receipt);
+    setReceiptPrompt(null);
+    setMyWindowOpen(true);
+  }, [upsertReceipt]);
+
   const submitCourse = async (form, files) => {
     if (!files.length) return setMessage('请上传至少一份课程资料');
     const validationMessage = validateUploadFiles(files, meta);
@@ -741,15 +898,19 @@ export const SIEBridgeStudentPortal = ({ token }) => {
       const body = new FormData();
       Object.entries(form).forEach(([key, value]) => body.append(key, Array.isArray(value) ? JSON.stringify(value) : value));
       appendFilesToBody(body, files);
-      await uploadSieBridgeForm('/siebridge/courses', token, body, {
+      const data = await uploadSieBridgeForm('/siebridge/courses', token, body, {
         onProgress: (progress) => setUploadProgress(progress ? {
           ...progress,
           total: progress.total || getFilesTotalSize(files)
         } : null)
       });
+      if (data.receipt) {
+        upsertReceipt(data.receipt);
+        setReceiptPrompt(data.receipt);
+      }
       setCourseFormOpen(false);
       setMessage('课程与资料已提交审核');
-      await Promise.all([loadCourses(), loadSubmissions()]);
+      await Promise.all([loadCourses(), loadSubmissions(), loadReceipts()]);
     } catch (error) {
       setMessage(error.message);
     } finally {
@@ -769,15 +930,19 @@ export const SIEBridgeStudentPortal = ({ token }) => {
       const body = new FormData();
       Object.entries(form).forEach(([key, value]) => body.append(key, value));
       appendFilesToBody(body, files);
-      await uploadSieBridgeForm(`/siebridge/courses/${courseId}/resources`, token, body, {
+      const data = await uploadSieBridgeForm(`/siebridge/courses/${courseId}/resources`, token, body, {
         onProgress: (progress) => setUploadProgress(progress ? {
           ...progress,
           total: progress.total || getFilesTotalSize(files)
         } : null)
       });
+      if (data.receipt) {
+        upsertReceipt(data.receipt);
+        setReceiptPrompt(data.receipt);
+      }
       setResourceFormCourse(null);
       setMessage('资料已提交审核');
-      await Promise.all([loadCourseDetail(courseId), loadSubmissions()]);
+      await Promise.all([loadCourseDetail(courseId), loadSubmissions(), loadReceipts()]);
     } catch (error) {
       setMessage(error.message);
     } finally {
@@ -835,7 +1000,10 @@ export const SIEBridgeStudentPortal = ({ token }) => {
           <p>SIEBRIDGE RESOURCE PLATFORM</p>
           <h2>SIEBridge 课程资源共享平台</h2>
         </div>
-        <button className="primary-button" type="button" onClick={() => setCourseFormOpen(true)}><Plus />添加课程</button>
+        <div className="siebridge-toolbar-actions">
+          <button className="outline-button" type="button" onClick={() => setMyWindowOpen(true)}><FileText />我的</button>
+          <button className="primary-button" type="button" onClick={() => setCourseFormOpen(true)}><Plus />添加课程</button>
+        </div>
       </div>
       <div className="siebridge-searchbar">
         <label><Search /><input value={filters.search} onChange={e => setFilters({ ...filters, search: e.target.value })} placeholder="输入课程代码或课程名称" /></label>
@@ -881,6 +1049,18 @@ export const SIEBridgeStudentPortal = ({ token }) => {
       </section>
       {courseFormOpen && <CourseForm meta={meta} onClose={() => setCourseFormOpen(false)} onSubmit={submitCourse} submitting={submitting} error={message} uploadProgress={uploadProgress} />}
       {resourceFormCourse && <ResourceForm course={resourceFormCourse} meta={meta} onClose={() => setResourceFormCourse(null)} onSubmit={submitResource} submitting={submitting} error={message} uploadProgress={uploadProgress} />}
+      <SIEBridgeReceiptPrompt receipt={receiptPrompt} onCancel={() => setReceiptPrompt(null)} onView={openReceipt} />
+      {myWindowOpen && (
+        <SIEBridgeMyWindow
+          submissions={submissions}
+          receipts={receipts}
+          selectedReceiptId={selectedReceiptId}
+          onSelectReceipt={setSelectedReceiptId}
+          onClose={() => setMyWindowOpen(false)}
+          onPreview={openPreview}
+          onDownload={downloadResource}
+        />
+      )}
       <SIEBridgePreviewDialog preview={preview} onClose={() => { if (preview?.url) URL.revokeObjectURL(preview.url); setPreview(null); }} />
     </section>
   );
