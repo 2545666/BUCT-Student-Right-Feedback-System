@@ -38,6 +38,7 @@ const RECEIPT_PAGE_WIDTH = 1240;
 const RECEIPT_BASE_HEIGHT = 1754;
 const RECEIPT_MARGIN = 96;
 const RECEIPT_LINE_HEIGHT = 48;
+const RECEIPT_ISSUER = '北京化工大学国际教育学院学术科技部';
 
 const loadReceiptImage = (() => {
   let promise = null;
@@ -182,7 +183,7 @@ const renderReceiptPdfBlob = async (receipt) => {
 
   ctx.fillStyle = '#0f172a';
   ctx.font = '700 22px "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif';
-  ctx.fillText(SIEBRIDGE_RECEIPT_ISSUER, RECEIPT_MARGIN, footerY + 24);
+  ctx.fillText(RECEIPT_ISSUER, RECEIPT_MARGIN, footerY + 24);
   ctx.font = '500 18px "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif';
   ctx.fillText(formatReceiptDate(receipt.issuedAt || receipt.createdAt), RECEIPT_MARGIN, footerY + 62);
 
@@ -797,7 +798,7 @@ const ResourceForm = ({ course, meta, onClose, onSubmit, submitting, error, uplo
 
 const getReceiptId = (receipt = {}) => String(receipt.id || receipt._id || '');
 
-const SIEBridgeReceiptCard = ({ receipt, onPreviewPdf, onDownloadPdf }) => {
+const SIEBridgeReceiptCard = ({ receipt, onDownloadPdf }) => {
   if (!receipt) return <p className="siebridge-muted">暂无上传凭证</p>;
   return (
     <article className="siebridge-receipt-card">
@@ -827,7 +828,6 @@ const SIEBridgeReceiptCard = ({ receipt, onPreviewPdf, onDownloadPdf }) => {
         <time>{formatReceiptDate(receipt.issuedAt || receipt.createdAt)}</time>
       </footer>
       <div className="siebridge-receipt-actions">
-        <button type="button" className="outline-button" onClick={() => onPreviewPdf?.(receipt)}><Eye />在线预览</button>
         <button type="button" className="primary-button" onClick={() => onDownloadPdf?.(receipt)}><Download />下载 PDF</button>
       </div>
     </article>
@@ -857,7 +857,6 @@ const SIEBridgeMyWindow = ({
   onClose,
   onPreview,
   onDownload,
-  onPreviewPdf,
   onDownloadPdf
 }) => {
   const uploadItems = useMemo(() => (submissions.resources || [])
@@ -923,7 +922,7 @@ const SIEBridgeMyWindow = ({
                 </button>
               )) : <p className="siebridge-muted">暂无上传凭证</p>}
             </div>
-            <SIEBridgeReceiptCard receipt={activeReceipt} onPreviewPdf={onPreviewPdf} onDownloadPdf={onDownloadPdf} />
+            <SIEBridgeReceiptCard receipt={activeReceipt} onDownloadPdf={onDownloadPdf} />
           </section>
         </div>
       </section>
@@ -1139,21 +1138,6 @@ export const SIEBridgeStudentPortal = ({ token }) => {
     }
   };
 
-  const openReceiptPdfPreview = useCallback(async (receipt) => {
-    try {
-      const blob = await renderReceiptPdfBlob(receipt);
-      if (preview?.url) URL.revokeObjectURL(preview.url);
-      const url = URL.createObjectURL(blob);
-      setPreview({
-        title: `${receipt.courseName || receipt.resourceTitle || '上传凭证'} / PDF`,
-        type: 'pdf',
-        url
-      });
-    } catch (error) {
-      setMessage(error.message);
-    }
-  }, [preview?.url]);
-
   const downloadReceiptPdf = useCallback(async (receipt) => {
     try {
       const blob = await renderReceiptPdfBlob(receipt);
@@ -1241,7 +1225,6 @@ export const SIEBridgeStudentPortal = ({ token }) => {
           onClose={() => setMyWindowOpen(false)}
           onPreview={openPreview}
           onDownload={downloadResource}
-          onPreviewPdf={openReceiptPdfPreview}
           onDownloadPdf={downloadReceiptPdf}
         />
       )}
