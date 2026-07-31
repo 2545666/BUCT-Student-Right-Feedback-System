@@ -4,6 +4,7 @@ import {
   Filter, Folder, FolderOpen, Plus, Search, Send, Trash2, Upload, X
 } from 'lucide-react';
 import { API_BASE } from './api';
+import siebridgeLogo from './assets/SIEBridge_LOGO.png';
 import { getSieBridgeEntityId, shouldApplyCourseDetailResponse } from './siebridgeSelection';
 import './siebridge.css';
 
@@ -642,6 +643,7 @@ const SIEBridgeReceiptCard = ({ receipt }) => {
   if (!receipt) return <p className="siebridge-muted">暂无上传凭证</p>;
   return (
     <article className="siebridge-receipt-card">
+      <img className="siebridge-receipt-watermark" src={siebridgeLogo} alt="" aria-hidden="true" />
       <header>
         <span>SIEBRIDGE UPLOAD CERTIFICATE</span>
         <h3>上传凭证</h3>
@@ -670,16 +672,15 @@ const SIEBridgeReceiptCard = ({ receipt }) => {
   );
 };
 
-const SIEBridgeReceiptPrompt = ({ receipt, onCancel, onView }) => {
-  if (!receipt) return null;
+const SIEBridgeReceiptPrompt = ({ open, onClose }) => {
+  if (!open) return null;
   return (
     <div className="siebridge-receipt-prompt">
       <dialog open>
-        <header><FileText /><h3>感谢您的分享，请领取您的上传凭证</h3></header>
-        <p>{receipt.courseName || '课程资料'} 已提交审核，上传凭证已同步保存到 SIEBridge「我的」。</p>
+        <header><FileText /><h3>感谢您的分享，审核通过后请领取您的上传凭证</h3></header>
+        <p>资料已进入审核队列，审核通过后会自动生成凭证并保存在 SIEBridge「我的」中。</p>
         <footer>
-          <button type="button" className="text-button" onClick={onCancel}>取消</button>
-          <button type="button" className="primary-button" onClick={() => onView(receipt)}><Eye />查看</button>
+          <button type="button" className="primary-button" onClick={onClose}>我知道了</button>
         </footer>
       </dialog>
     </div>
@@ -778,7 +779,7 @@ export const SIEBridgeStudentPortal = ({ token }) => {
   const [courseFormOpen, setCourseFormOpen] = useState(false);
   const [resourceFormCourse, setResourceFormCourse] = useState(null);
   const [myWindowOpen, setMyWindowOpen] = useState(false);
-  const [receiptPrompt, setReceiptPrompt] = useState(null);
+  const [receiptPromptOpen, setReceiptPromptOpen] = useState(false);
   const [selectedReceiptId, setSelectedReceiptId] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(null);
@@ -874,18 +875,10 @@ export const SIEBridgeStudentPortal = ({ token }) => {
     return groups;
   }, [meta.sections, resources]);
 
-  const upsertReceipt = useCallback((receipt) => {
-    if (!receipt) return;
-    const receiptId = getReceiptId(receipt);
-    setReceipts(prev => [receipt, ...prev.filter(item => getReceiptId(item) !== receiptId)]);
-    setSelectedReceiptId(receiptId);
-  }, []);
-
-  const openReceipt = useCallback((receipt) => {
-    upsertReceipt(receipt);
-    setReceiptPrompt(null);
+  const openMyWindow = useCallback(async () => {
     setMyWindowOpen(true);
-  }, [upsertReceipt]);
+    await Promise.all([loadSubmissions(), loadReceipts()]).catch(() => {});
+  }, [loadReceipts, loadSubmissions]);
 
   const submitCourse = async (form, files) => {
     if (!files.length) return setMessage('请上传至少一份课程资料');
@@ -898,19 +891,16 @@ export const SIEBridgeStudentPortal = ({ token }) => {
       const body = new FormData();
       Object.entries(form).forEach(([key, value]) => body.append(key, Array.isArray(value) ? JSON.stringify(value) : value));
       appendFilesToBody(body, files);
-      const data = await uploadSieBridgeForm('/siebridge/courses', token, body, {
+      await uploadSieBridgeForm('/siebridge/courses', token, body, {
         onProgress: (progress) => setUploadProgress(progress ? {
           ...progress,
           total: progress.total || getFilesTotalSize(files)
         } : null)
       });
-      if (data.receipt) {
-        upsertReceipt(data.receipt);
-        setReceiptPrompt(data.receipt);
-      }
       setCourseFormOpen(false);
       setMessage('课程与资料已提交审核');
-      await Promise.all([loadCourses(), loadSubmissions(), loadReceipts()]);
+      setReceiptPromptOpen(true);
+      await Promise.all([loadCourses(), loadSubmissions()]);
     } catch (error) {
       setMessage(error.message);
     } finally {
@@ -930,19 +920,16 @@ export const SIEBridgeStudentPortal = ({ token }) => {
       const body = new FormData();
       Object.entries(form).forEach(([key, value]) => body.append(key, value));
       appendFilesToBody(body, files);
-      const data = await uploadSieBridgeForm(`/siebridge/courses/${courseId}/resources`, token, body, {
+      await uploadSieBridgeForm(`/siebridge/courses/${courseId}/resources`, token, body, {
         onProgress: (progress) => setUploadProgress(progress ? {
           ...progress,
           total: progress.total || getFilesTotalSize(files)
         } : null)
       });
-      if (data.receipt) {
-        upsertReceipt(data.receipt);
-        setReceiptPrompt(data.receipt);
-      }
       setResourceFormCourse(null);
       setMessage('资料已提交审核');
-      await Promise.all([loadCourseDetail(courseId), loadSubmissions(), loadReceipts()]);
+      setReceiptPromptOpen(true);
+      await Promise.all([loadCourseDetail(courseId), loadSubmissions()]);
     } catch (error) {
       setMessage(error.message);
     } finally {
@@ -1001,7 +988,7 @@ export const SIEBridgeStudentPortal = ({ token }) => {
           <h2>SIEBridge 课程资源共享平台</h2>
         </div>
         <div className="siebridge-toolbar-actions">
-          <button className="outline-button" type="button" onClick={() => setMyWindowOpen(true)}><FileText />我的</button>
+          <button className="outline-button" type="button" onClick={openMyWindow}><FileText />我的</button>
           <button className="primary-button" type="button" onClick={() => setCourseFormOpen(true)}><Plus />添加课程</button>
         </div>
       </div>
@@ -1049,7 +1036,7 @@ export const SIEBridgeStudentPortal = ({ token }) => {
       </section>
       {courseFormOpen && <CourseForm meta={meta} onClose={() => setCourseFormOpen(false)} onSubmit={submitCourse} submitting={submitting} error={message} uploadProgress={uploadProgress} />}
       {resourceFormCourse && <ResourceForm course={resourceFormCourse} meta={meta} onClose={() => setResourceFormCourse(null)} onSubmit={submitResource} submitting={submitting} error={message} uploadProgress={uploadProgress} />}
-      <SIEBridgeReceiptPrompt receipt={receiptPrompt} onCancel={() => setReceiptPrompt(null)} onView={openReceipt} />
+      <SIEBridgeReceiptPrompt open={receiptPromptOpen} onClose={() => setReceiptPromptOpen(false)} />
       {myWindowOpen && (
         <SIEBridgeMyWindow
           submissions={submissions}

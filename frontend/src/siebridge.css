@@ -936,12 +936,42 @@ html[data-theme="dark"] .siebridge-file-select input:checked {
 }
 
 .siebridge-receipt-card {
+  position: relative;
   display: grid;
   gap: 14px;
   padding: 16px;
   border: 1px solid color-mix(in srgb, var(--theme-primary) 18%, var(--line));
   border-radius: 8px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--theme-primary) 5%, var(--paper)), var(--paper));
+  overflow: hidden;
+  background: #fff;
+  color: #111827;
+}
+
+.siebridge-receipt-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: rgba(255, 255, 255, .72);
+  pointer-events: none;
+}
+
+.siebridge-receipt-watermark {
+  position: absolute;
+  z-index: 0;
+  top: 50%;
+  left: 50%;
+  width: min(92%, 560px);
+  max-width: none;
+  opacity: .2;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  user-select: none;
+}
+
+.siebridge-receipt-card > :not(.siebridge-receipt-watermark) {
+  position: relative;
+  z-index: 2;
 }
 
 .siebridge-receipt-card header {
@@ -950,7 +980,7 @@ html[data-theme="dark"] .siebridge-file-select input:checked {
 }
 
 .siebridge-receipt-card header span {
-  color: var(--theme-primary);
+  color: color-mix(in srgb, var(--theme-primary) 85%, #111827);
   font-size: 10px;
   font-weight: 900;
   letter-spacing: .14em;
@@ -958,7 +988,7 @@ html[data-theme="dark"] .siebridge-file-select input:checked {
 
 .siebridge-receipt-card header h3 {
   margin: 0;
-  color: var(--ink);
+  color: #111827;
   font-size: 18px;
 }
 
@@ -979,14 +1009,14 @@ html[data-theme="dark"] .siebridge-file-select input:checked {
 }
 
 .siebridge-receipt-card dt {
-  color: var(--muted);
+  color: #4b5563;
   font-size: 12px;
   font-weight: 900;
 }
 
 .siebridge-receipt-card dd {
   margin: 0;
-  color: var(--ink);
+  color: #111827;
   font-size: 12px;
   line-height: 1.7;
 }
@@ -1005,12 +1035,12 @@ html[data-theme="dark"] .siebridge-file-select input:checked {
 }
 
 .siebridge-receipt-card li strong {
-  color: var(--theme-primary);
+  color: color-mix(in srgb, var(--theme-primary) 85%, #111827);
   font-size: 11px;
 }
 
 .siebridge-receipt-card li span {
-  color: var(--ink);
+  color: #111827;
   font-size: 12px;
   word-break: break-all;
 }
@@ -1025,7 +1055,7 @@ html[data-theme="dark"] .siebridge-file-select input:checked {
 
 .siebridge-receipt-card footer strong,
 .siebridge-receipt-card footer time {
-  color: var(--ink);
+  color: #111827;
   font-size: 12px;
   font-weight: 900;
 }

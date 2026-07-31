@@ -202,6 +202,7 @@ const receiptSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 receiptSchema.index({ owner: 1, uploadedAt: -1 });
+receiptSchema.index({ owner: 1, resource: 1 }, { unique: true });
 
 const SiebridgeCourse = mongoose.models.SiebridgeCourse || mongoose.model('SiebridgeCourse', courseSchema);
 const SiebridgeResource = mongoose.models.SiebridgeResource || mongoose.model('SiebridgeResource', resourceSchema);
@@ -393,17 +394,26 @@ const populateResource = (query) => query
   .populate('submittedBy', 'name studentId')
   .populate('reviewedBy', 'name studentId');
 
-const createUploadReceipt = async ({ user, kind, course, resource }) => {
+const resolveReceiptOwner = async (submittedBy) => {
+  if (!submittedBy) return null;
+  if (submittedBy.name || submittedBy.studentId) return submittedBy;
+  const User = mongoose.models.User;
+  return User ? User.findById(submittedBy).select('name studentId').lean() : null;
+};
+
+const ensureUploadReceipt = async ({ kind, course, resource }) => {
   const courseItem = course?.toObject ? course.toObject() : course;
   const resourceItem = resource?.toObject ? resource.toObject() : resource;
+  const owner = await resolveReceiptOwner(resourceItem.submittedBy);
+  if (!owner?._id || !courseItem?._id || !resourceItem?._id) return null;
   const sectionLabel = getSectionLabel(resourceItem.section);
-  return SiebridgeUploadReceipt.create({
-    owner: user._id,
+  const payload = {
+    owner: owner._id,
     kind,
     course: courseItem._id,
     resource: resourceItem._id,
-    uploaderName: user.name || '',
-    uploaderStudentId: user.studentId || '',
+    uploaderName: owner.name || '',
+    uploaderStudentId: owner.studentId || '',
     courseCode: courseItem.code || '',
     courseName: courseItem.name || '',
     courseNature: courseItem.courseNature || '',
@@ -421,7 +431,12 @@ const createUploadReceipt = async ({ user, kind, course, resource }) => {
       };
     }),
     issuer: SIEBRIDGE_RECEIPT_ISSUER
-  });
+  };
+  return SiebridgeUploadReceipt.findOneAndUpdate(
+    { owner: owner._id, resource: resourceItem._id },
+    { $setOnInsert: payload },
+    { new: true, upsert: true, setDefaultsOnInsert: true }
+  );
 };
 
 const createNotification = async (Notification, user, type, content) => {
@@ -533,9 +548,8 @@ const installSieBridgeRoutes = ({ app, authenticate, logAction, Notification }) 
         files: await toStoredFiles(files, parseFilePaths(req.body.filePaths)),
         submittedBy: req.user._id
       });
-      const receipt = await createUploadReceipt({ user: req.user, kind: 'course', course, resource });
       await logAction(req.user._id, 'submit_siebridge_course', 'siebridgeCourse', course._id, { code: course.code, resource: resource._id }, req);
-      res.status(201).json({ success: true, message: '课程与资料已提交审核', course: serializeCourse(course), resource: serializeResource(resource), receipt: serializeUploadReceipt(receipt) });
+      res.status(201).json({ success: true, message: '课程与资料已提交审核', course: serializeCourse(course), resource: serializeResource(resource) });
     } catch (error) {
       cleanupFiles(files);
       const duplicate = error?.code === 11000;
@@ -562,9 +576,8 @@ const installSieBridgeRoutes = ({ app, authenticate, logAction, Notification }) 
         files: await toStoredFiles(files, parseFilePaths(req.body.filePaths)),
         submittedBy: req.user._id
       });
-      const receipt = await createUploadReceipt({ user: req.user, kind: 'resource', course, resource });
       await logAction(req.user._id, 'submit_siebridge_resource', 'siebridgeResource', resource._id, { course: course._id }, req);
-      res.status(201).json({ success: true, message: '资料已提交审核', resource: serializeResource(resource), receipt: serializeUploadReceipt(receipt) });
+      res.status(201).json({ success: true, message: '资料已提交审核', resource: serializeResource(resource) });
     } catch (error) {
       cleanupFiles(files);
       res.status(500).json({ success: false, message: '提交资料失败' });
@@ -647,6 +660,14 @@ const installSieBridgeRoutes = ({ app, authenticate, logAction, Notification }) 
           { course: course._id, status: 'pending' },
           { status: nextStatus, reviewedBy: req.user._id, reviewedAt: new Date(), reviewComment }
         );
+        if (nextStatus === 'approved') {
+          const approvedResources = await populateResource(SiebridgeResource.find({ course: course._id, status: 'approved' }));
+          await Promise.all(approvedResources.map(resource => ensureUploadReceipt({
+            kind: 'course',
+            course,
+            resource
+          })));
+        }
         await createNotification(Notification, course.submittedBy, 'siebridge_course_review', `SIEBridge 课程「${course.name}」审核${nextStatus === 'approved' ? '通过' : '被驳回'}。`);
         await logAction(req.user._id, 'review_siebridge_course', 'siebridgeCourse', course._id, { status: nextStatus }, req);
         return res.json({ success: true, course: serializeCourse(course) });
@@ -660,6 +681,13 @@ const installSieBridgeRoutes = ({ app, authenticate, logAction, Notification }) 
         resource.reviewedAt = new Date();
         resource.reviewComment = reviewComment;
         await resource.save();
+        if (nextStatus === 'approved') {
+          await ensureUploadReceipt({
+            kind: 'resource',
+            course: resource.course,
+            resource
+          });
+        }
         await createNotification(Notification, resource.submittedBy, 'siebridge_resource_review', `SIEBridge 资料「${resource.title}」审核${nextStatus === 'approved' ? '通过' : '被驳回'}。`);
         await logAction(req.user._id, 'review_siebridge_resource', 'siebridgeResource', resource._id, { status: nextStatus }, req);
         return res.json({ success: true, resource: serializeResource(resource) });
