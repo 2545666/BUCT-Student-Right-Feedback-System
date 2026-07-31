@@ -35,9 +35,8 @@ const formatReceiptDate = (value) => value
   : '暂无日期';
 
 const RECEIPT_PAGE_WIDTH = 1240;
-const RECEIPT_BASE_HEIGHT = 1754;
+const RECEIPT_PAGE_HEIGHT = 1754;
 const RECEIPT_MARGIN = 96;
-const RECEIPT_LINE_HEIGHT = 48;
 const RECEIPT_ISSUER = '北京化工大学国际教育学院学术科技部';
 const RECEIPT_ISSUER_LINES = ['北京化工大学国际教育学院', '学术科技部'];
 const RECEIPT_FONT_FAMILY = '"方正大标宋简体", "Source Han Serif SC", "Noto Serif SC", "Songti SC", Georgia, serif';
@@ -82,41 +81,53 @@ const wrapCanvasText = (ctx, text, maxWidth) => {
 
 const renderReceiptPdfBlob = async (receipt) => {
   const files = receipt?.files || [];
-  const extraHeight = Math.max(0, (files.length - 4) * 78);
   const width = RECEIPT_PAGE_WIDTH;
-  const height = RECEIPT_BASE_HEIGHT + extraHeight;
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('无法生成上传凭证');
-
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, width, height);
+  const height = RECEIPT_PAGE_HEIGHT;
+  const pages = [];
+  let watermark = null;
 
   try {
-    const watermark = await loadReceiptImage();
-    const wmWidth = width * 0.96;
-    const wmHeight = wmWidth * (watermark.naturalHeight / watermark.naturalWidth || 1);
-    const wmX = (width - wmWidth) / 2;
-    const wmY = Math.max(110, (height - wmHeight) / 2);
-    ctx.save();
-    ctx.globalAlpha = 0.14;
-    ctx.drawImage(watermark, wmX, wmY, wmWidth, wmHeight);
-    ctx.restore();
+    watermark = await loadReceiptImage();
   } catch {
-    // 水印图加载失败时，仍然保留纯白证书。
+    watermark = null;
   }
 
-  ctx.fillStyle = 'rgba(255,255,255,0.62)';
-  ctx.fillRect(0, 0, width, height);
+  const createPage = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('无法生成上传凭证');
 
-  ctx.strokeStyle = '#0f4c81';
-  ctx.lineWidth = 8;
-  ctx.strokeRect(36, 36, width - 72, height - 72);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+
+    if (watermark) {
+      const wmWidth = width * 0.96;
+      const wmHeight = wmWidth * (watermark.naturalHeight / watermark.naturalWidth || 1);
+      const wmX = (width - wmWidth) / 2;
+      const wmY = Math.max(110, (height - wmHeight) / 2);
+      ctx.save();
+      ctx.globalAlpha = 0.14;
+      ctx.drawImage(watermark, wmX, wmY, wmWidth, wmHeight);
+      ctx.restore();
+    }
+
+    ctx.fillStyle = 'rgba(255,255,255,0.62)';
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.strokeStyle = '#0f4c81';
+    ctx.lineWidth = 8;
+    ctx.strokeRect(36, 36, width - 72, height - 72);
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'left';
+    pages.push({ canvas, ctx });
+    return ctx;
+  };
+
+  let ctx = createPage();
 
   ctx.fillStyle = '#0f172a';
-  ctx.textBaseline = 'top';
   ctx.font = receiptFont(900, 38);
   ctx.fillText('上传凭证', RECEIPT_MARGIN, 86);
   ctx.font = receiptFont(700, 16);
@@ -134,8 +145,11 @@ const renderReceiptPdfBlob = async (receipt) => {
   const rightX = 620;
   let leftY = 310;
   let rightY = 310;
+  let contentY = 0;
   const leftFieldWidth = 470;
   const rightFieldWidth = 470;
+  const contentBottom = height - 140;
+  const signatureTop = height - 260;
 
   const drawField = (x, y, label, value, maxWidth) => {
     ctx.fillStyle = labelColor;
@@ -148,53 +162,94 @@ const renderReceiptPdfBlob = async (receipt) => {
     return y + 30 + lines.length * 30 + 18;
   };
 
+  const drawContentHeading = (label = '上传内容') => {
+    ctx.fillStyle = labelColor;
+    ctx.font = labelFont;
+    ctx.fillText(label, RECEIPT_MARGIN, contentY);
+    contentY += 34;
+  };
+
+  const ensureContentSpace = (blockHeight) => {
+    if (contentY + blockHeight <= contentBottom) return;
+    ctx = createPage();
+    contentY = 110;
+    drawContentHeading('上传内容（续）');
+  };
+
+  const drawSignature = () => {
+    const footerY = height - 260;
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(RECEIPT_MARGIN, footerY);
+    ctx.lineTo(width - RECEIPT_MARGIN, footerY);
+    ctx.stroke();
+
+    ctx.fillStyle = '#0f172a';
+    ctx.textAlign = 'right';
+    ctx.font = receiptFont(700, 22);
+    ctx.fillText(RECEIPT_ISSUER_LINES[0], width - RECEIPT_MARGIN, footerY + 28);
+    ctx.fillText(RECEIPT_ISSUER_LINES[1], width - RECEIPT_MARGIN, footerY + 66);
+    ctx.font = receiptFont(500, 18);
+    ctx.fillText(formatReceiptDate(receipt.issuedAt || receipt.createdAt), width - RECEIPT_MARGIN, footerY + 106);
+    ctx.textAlign = 'left';
+  };
+
   leftY = drawField(RECEIPT_MARGIN, leftY, '姓名', receipt.uploaderName, leftFieldWidth);
   leftY = drawField(RECEIPT_MARGIN, leftY, '上传者学号', receipt.uploaderStudentId, leftFieldWidth);
   rightY = drawField(rightX, rightY, '上传课程信息', [receipt.courseCode, receipt.courseName, receipt.courseNature].filter(Boolean).join(' · '), rightFieldWidth);
   rightY = drawField(rightX, rightY, '上传日期', formatReceiptDate(receipt.uploadedAt), rightFieldWidth);
 
-  const contentTop = Math.max(leftY, rightY) + 18;
-  ctx.fillStyle = labelColor;
-  ctx.font = labelFont;
-  ctx.fillText('上传内容', RECEIPT_MARGIN, contentTop);
+  contentY = Math.max(leftY, rightY) + 18;
+  drawContentHeading();
 
   ctx.fillStyle = valueColor;
   ctx.font = valueFont;
-  let contentY = contentTop + 34;
   if (files.length) {
     files.forEach((file, index) => {
       const content = `${file.typeLabel || receipt.sectionLabel || '资料'} · ${file.relativePath || file.name || 'resource-file'}`;
       const lines = wrapCanvasText(ctx, content, width - RECEIPT_MARGIN * 2 - 12);
-      ctx.fillStyle = '#1d4ed8';
-      ctx.fillText(`${index + 1}.`, RECEIPT_MARGIN, contentY);
-      ctx.fillStyle = valueColor;
-      lines.forEach((line, lineIndex) => ctx.fillText(line, RECEIPT_MARGIN + 40, contentY + lineIndex * 28));
-      contentY += lines.length * 28 + 18;
+      lines.forEach((line, lineIndex) => {
+        ensureContentSpace(28 + (lineIndex === lines.length - 1 ? 18 : 0));
+        ctx.font = valueFont;
+        if (lineIndex === 0) {
+          ctx.fillStyle = '#1d4ed8';
+          ctx.fillText(`${index + 1}.`, RECEIPT_MARGIN, contentY);
+        }
+        ctx.fillStyle = valueColor;
+        ctx.fillText(line, RECEIPT_MARGIN + 40, contentY);
+        contentY += 28;
+      });
+      contentY += 18;
     });
   } else {
+    ensureContentSpace(34);
+    ctx.font = valueFont;
+    ctx.fillStyle = valueColor;
     ctx.fillText('暂无文件记录', RECEIPT_MARGIN, contentY);
     contentY += 34;
   }
 
-  const footerY = height - 260;
-  ctx.strokeStyle = '#cbd5e1';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(RECEIPT_MARGIN, footerY);
-  ctx.lineTo(width - RECEIPT_MARGIN, footerY);
-  ctx.stroke();
+  if (contentY > signatureTop - 24) {
+    ctx = createPage();
+  }
+  drawSignature();
 
-  ctx.fillStyle = '#0f172a';
-  ctx.textAlign = 'right';
-  ctx.font = receiptFont(700, 22);
-  ctx.fillText(RECEIPT_ISSUER_LINES[0], width - RECEIPT_MARGIN, footerY + 28);
-  ctx.fillText(RECEIPT_ISSUER_LINES[1], width - RECEIPT_MARGIN, footerY + 66);
-  ctx.font = receiptFont(500, 18);
-  ctx.fillText(formatReceiptDate(receipt.issuedAt || receipt.createdAt), width - RECEIPT_MARGIN, footerY + 106);
-  ctx.textAlign = 'left';
+  pages.forEach(({ ctx: pageCtx }, index) => {
+    pageCtx.fillStyle = '#64748b';
+    pageCtx.textAlign = 'center';
+    pageCtx.font = receiptFont(500, 16);
+    pageCtx.fillText(`第 ${index + 1} / ${pages.length} 页`, width / 2, height - 92);
+    pageCtx.textAlign = 'left';
+  });
 
-  const pdf = new jsPDF({ unit: 'px', format: [width, height], compress: true });
-  pdf.addImage(canvas, 'PNG', 0, 0, width, height);
+  const pdf = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'portrait', compress: true });
+  const pdfWidth = pdf.internal.pageSize.getWidth();
+  const pdfHeight = pdf.internal.pageSize.getHeight();
+  pages.forEach(({ canvas }, index) => {
+    if (index) pdf.addPage('a4', 'portrait');
+    pdf.addImage(canvas, 'PNG', 0, 0, pdfWidth, pdfHeight);
+  });
   return pdf.output('blob');
 };
 
