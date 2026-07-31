@@ -3124,34 +3124,6 @@ app.get('/api/hub/departments/:organization/:department/accounts', authenticate,
   }
 });
 
-app.patch('/api/hub/departments/:organization/:department/accounts/:id/status', authenticate, async (req, res) => {
-  const assignment = {
-    organization: req.params.organization,
-    department: req.params.department
-  };
-  if (!isValidManagedDepartment(assignment)) {
-    return res.status(404).json({ success: false, message: '部门模块不存在' });
-  }
-  if (!hasDepartmentCapability(req.user, assignment, 'manage_department_accounts')) {
-    return res.status(403).json({ success: false, message: '当前身份不能管理该部门账号' });
-  }
-
-  try {
-    const target = await User.findById(req.params.id);
-    if (!target) return res.status(404).json({ success: false, message: '用户不存在' });
-    if (target.organization !== assignment.organization || target.department !== assignment.department) {
-      return res.status(403).json({ success: false, message: '目标账号不属于该部门' });
-    }
-    const nextStatus = typeof req.body.isActive === 'boolean' ? req.body.isActive : !target.isActive;
-    target.isActive = nextStatus;
-    await target.save();
-    await logAction(req.user._id, 'toggle_department_account', 'user', target._id, { ...assignment, isActive: nextStatus }, req);
-    res.json({ success: true, user: serializeUser(target) });
-  } catch (error) {
-    res.status(500).json({ success: false, message: '更新账号状态失败' });
-  }
-});
-
 app.get('/api/ultimate/overview', authenticate, ultimateOnly, async (req, res) => {
   try {
     const [cohortCount, archivedCount, memberCount, userCount] = await Promise.all([

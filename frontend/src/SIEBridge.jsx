@@ -40,6 +40,17 @@ const appendFilesToBody = (body, files = []) => {
   files.forEach(file => body.append('files', file));
 };
 
+const getFilesTotalSize = (files = []) => files.reduce((sum, file) => sum + Number(file.size || 0), 0);
+
+const validateUploadFiles = (files = [], meta = {}) => {
+  const maxFileSize = Number(meta.maxFileSize || 200 * 1024 * 1024);
+  const maxFileCount = Number(meta.maxFileCount || 100);
+  if (files.length > maxFileCount) return `单次最多上传 ${maxFileCount} 个文件，请分批上传`;
+  const oversized = files.find(file => Number(file.size || 0) > maxFileSize);
+  if (oversized) return `「${getFilePath(oversized) || oversized.name}」超过 ${formatFileSize(maxFileSize)}，请压缩后上传`;
+  return '';
+};
+
 const buildFileTree = (files = []) => {
   const root = { folders: new Map(), files: [] };
   files.forEach((file, index) => {
@@ -273,6 +284,55 @@ const apiJson = async (path, token, options = {}) => {
   return data;
 };
 
+const uploadSieBridgeForm = (path, token, body, { onProgress } = {}) => new Promise((resolve, reject) => {
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', `${API_BASE}${path}`);
+  xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+  xhr.timeout = 20 * 60 * 1000;
+
+  xhr.upload.onprogress = (event) => {
+    if (!event.lengthComputable || !onProgress) return;
+    const uploaded = event.loaded >= event.total;
+    onProgress({
+      phase: uploaded ? 'processing' : 'uploading',
+      loaded: event.loaded,
+      total: event.total,
+      percent: uploaded ? 99 : Math.min(98, Math.round((event.loaded / event.total) * 100))
+    });
+  };
+
+  xhr.onload = () => {
+    const contentType = xhr.getResponseHeader('content-type') || '';
+    const data = contentType.includes('application/json')
+      ? (() => { try { return JSON.parse(xhr.responseText || '{}'); } catch { return {}; } })()
+      : {};
+    if (xhr.status >= 200 && xhr.status < 300 && data.success) {
+      onProgress?.({ phase: 'done', loaded: 1, total: 1, percent: 100 });
+      resolve(data);
+      return;
+    }
+    if (xhr.status === 413) {
+      reject(new Error(data.message || '上传文件过大，请压缩后重试或减少单次上传文件数量'));
+      return;
+    }
+    if (xhr.status >= 500) {
+      reject(new Error(data.message || '服务器暂时无法处理，请稍后重试'));
+      return;
+    }
+    reject(new Error(data.message || '上传失败，请检查网络后重试'));
+  };
+
+  xhr.onerror = () => reject(new Error('上传连接中断，请检查网络后重试'));
+  xhr.ontimeout = () => reject(new Error('上传耗时过长，请减少单次文件数量后重试'));
+  xhr.onloadend = () => {
+    if (xhr.status >= 200 && xhr.status < 300) return;
+    onProgress?.(null);
+  };
+
+  onProgress?.({ phase: 'uploading', loaded: 0, total: 0, percent: 0 });
+  xhr.send(body);
+});
+
 const StatusBadge = ({ status }) => {
   const meta = STATUS_META[status] || STATUS_META.pending;
   return <span className={`siebridge-status ${meta.tone}`}>{meta.label}</span>;
@@ -436,7 +496,7 @@ const ResourceFileBrowser = ({
   );
 };
 
-const SIEBridgeUploadPicker = ({ files, onChange, title }) => {
+const SIEBridgeUploadPicker = ({ files, onChange, title, maxFileSize, maxFileCount }) => {
   const applySelection = (fileList) => onChange(Array.from(fileList || []));
   return (
     <div className="siebridge-upload-group">
@@ -444,7 +504,7 @@ const SIEBridgeUploadPicker = ({ files, onChange, title }) => {
         <Upload />
         <div>
           <strong>{files.length ? `已选择 ${files.length} 个文件` : title}</strong>
-          <p>支持上传单个文件、多个文件或整个文件夹，单个不超过 200MB，文件夹内部层级会保留</p>
+          <p>支持上传单个文件、多个文件或整个文件夹，单个不超过 {formatFileSize(maxFileSize || 200 * 1024 * 1024)}，单次最多 {maxFileCount || 100} 个文件，文件夹内部层级会保留</p>
           <FileSelectionSummary files={files} />
         </div>
         <input type="file" multiple onChange={e => applySelection(e.target.files)} />
@@ -458,7 +518,30 @@ const SIEBridgeUploadPicker = ({ files, onChange, title }) => {
   );
 };
 
-const CourseForm = ({ meta, onClose, onSubmit, submitting, error }) => {
+const UploadProgress = ({ progress }) => {
+  if (!progress) return null;
+  const percent = Math.max(0, Math.min(100, Number(progress.percent || 0)));
+  const label = progress.phase === 'processing'
+    ? '文件已上传，服务器正在整理资料...'
+    : progress.phase === 'done'
+      ? '上传完成'
+      : `正在上传 ${percent}%`;
+  return (
+    <div className="siebridge-upload-progress" aria-live="polite">
+      <div><span style={{ width: `${percent}%` }} /></div>
+      <p>{label}{progress.total ? ` · ${formatFileSize(progress.loaded)} / ${formatFileSize(progress.total)}` : ''}</p>
+    </div>
+  );
+};
+
+const getSubmitLabel = (submitting, uploadProgress) => {
+  if (!submitting) return '提交审核';
+  if (uploadProgress?.phase === 'processing') return '服务器处理中...';
+  if (uploadProgress?.phase === 'uploading') return `上传中 ${uploadProgress.percent || 0}%`;
+  return '提交中...';
+};
+
+const CourseForm = ({ meta, onClose, onSubmit, submitting, error, uploadProgress }) => {
   const [form, setForm] = useState({
     code: '',
     name: '',
@@ -511,15 +594,16 @@ const CourseForm = ({ meta, onClose, onSubmit, submitting, error }) => {
           {(meta.sections || DEFAULT_SECTIONS).map(item => <button key={item.key} type="button" className={form.section === item.key ? 'is-active' : ''} onClick={() => setForm({ ...form, section: item.key })}>{item.label}</button>)}
         </div>
         <label className="siebridge-wide-field"><span>说明</span><textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="可补充课程教师、考试年份、资料来源说明等" /></label>
-        <SIEBridgeUploadPicker files={files} onChange={setFiles} title="上传课程资料" />
+        <SIEBridgeUploadPicker files={files} onChange={setFiles} title="上传课程资料" maxFileSize={meta.maxFileSize} maxFileCount={meta.maxFileCount} />
+        <UploadProgress progress={uploadProgress} />
         {error && <div className="siebridge-form-error">{error}</div>}
-        <footer><button type="button" className="text-button" onClick={onClose}>取消</button><button className="primary-button" disabled={submitting} type="submit">{submitting ? '提交中...' : '提交审核'} <Send /></button></footer>
+        <footer><button type="button" className="text-button" onClick={onClose} disabled={submitting}>取消</button><button className="primary-button" disabled={submitting} type="submit">{getSubmitLabel(submitting, uploadProgress)} <Send /></button></footer>
       </form>
     </div>
   );
 };
 
-const ResourceForm = ({ course, meta, onClose, onSubmit, submitting, error }) => {
+const ResourceForm = ({ course, meta, onClose, onSubmit, submitting, error, uploadProgress }) => {
   const [form, setForm] = useState({ section: 'past_exams', title: '', description: '' });
   const [files, setFiles] = useState([]);
   const submit = (event) => {
@@ -539,9 +623,10 @@ const ResourceForm = ({ course, meta, onClose, onSubmit, submitting, error }) =>
         </div>
         <label><span>资料标题</span><input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="请输入资料标题" required /></label>
         <label className="siebridge-wide-field"><span>说明</span><textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="可补充年份、版本、适用范围等" /></label>
-        <SIEBridgeUploadPicker files={files} onChange={setFiles} title="选择资料文件" />
+        <SIEBridgeUploadPicker files={files} onChange={setFiles} title="选择资料文件" maxFileSize={meta.maxFileSize} maxFileCount={meta.maxFileCount} />
+        <UploadProgress progress={uploadProgress} />
         {error && <div className="siebridge-form-error">{error}</div>}
-        <footer><button type="button" className="text-button" onClick={onClose}>取消</button><button className="primary-button" disabled={submitting} type="submit">{submitting ? '提交中...' : '提交审核'} <Send /></button></footer>
+        <footer><button type="button" className="text-button" onClick={onClose} disabled={submitting}>取消</button><button className="primary-button" disabled={submitting} type="submit">{getSubmitLabel(submitting, uploadProgress)} <Send /></button></footer>
       </form>
     </div>
   );
@@ -558,6 +643,7 @@ export const SIEBridgeStudentPortal = ({ token }) => {
   const [courseFormOpen, setCourseFormOpen] = useState(false);
   const [resourceFormCourse, setResourceFormCourse] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [preview, setPreview] = useState(null);
   const [message, setMessage] = useState('');
@@ -566,7 +652,13 @@ export const SIEBridgeStudentPortal = ({ token }) => {
 
   const loadMeta = useCallback(async () => {
     const data = await apiJson('/siebridge/meta', token);
-    setMeta({ majors: data.majors || [], gradeLevels: data.gradeLevels || [], sections: data.sections || DEFAULT_SECTIONS });
+    setMeta({
+      majors: data.majors || [],
+      gradeLevels: data.gradeLevels || [],
+      sections: data.sections || DEFAULT_SECTIONS,
+      maxFileSize: data.maxFileSize,
+      maxFileCount: data.maxFileCount
+    });
   }, [token]);
 
   const loadCourses = useCallback(async () => {
@@ -640,12 +732,21 @@ export const SIEBridgeStudentPortal = ({ token }) => {
 
   const submitCourse = async (form, files) => {
     if (!files.length) return setMessage('请上传至少一份课程资料');
+    const validationMessage = validateUploadFiles(files, meta);
+    if (validationMessage) return setMessage(validationMessage);
     setSubmitting(true);
+    setMessage('');
+    setUploadProgress({ phase: 'uploading', loaded: 0, total: getFilesTotalSize(files), percent: 0 });
     try {
       const body = new FormData();
       Object.entries(form).forEach(([key, value]) => body.append(key, Array.isArray(value) ? JSON.stringify(value) : value));
       appendFilesToBody(body, files);
-      await apiJson('/siebridge/courses', token, { method: 'POST', body });
+      await uploadSieBridgeForm('/siebridge/courses', token, body, {
+        onProgress: (progress) => setUploadProgress(progress ? {
+          ...progress,
+          total: progress.total || getFilesTotalSize(files)
+        } : null)
+      });
       setCourseFormOpen(false);
       setMessage('课程与资料已提交审核');
       await Promise.all([loadCourses(), loadSubmissions()]);
@@ -653,17 +754,27 @@ export const SIEBridgeStudentPortal = ({ token }) => {
       setMessage(error.message);
     } finally {
       setSubmitting(false);
+      setUploadProgress(null);
     }
   };
 
   const submitResource = async (courseId, form, files) => {
     if (!files.length) return setMessage('请上传至少一份资料');
+    const validationMessage = validateUploadFiles(files, meta);
+    if (validationMessage) return setMessage(validationMessage);
     setSubmitting(true);
+    setMessage('');
+    setUploadProgress({ phase: 'uploading', loaded: 0, total: getFilesTotalSize(files), percent: 0 });
     try {
       const body = new FormData();
       Object.entries(form).forEach(([key, value]) => body.append(key, value));
       appendFilesToBody(body, files);
-      await apiJson(`/siebridge/courses/${courseId}/resources`, token, { method: 'POST', body });
+      await uploadSieBridgeForm(`/siebridge/courses/${courseId}/resources`, token, body, {
+        onProgress: (progress) => setUploadProgress(progress ? {
+          ...progress,
+          total: progress.total || getFilesTotalSize(files)
+        } : null)
+      });
       setResourceFormCourse(null);
       setMessage('资料已提交审核');
       await Promise.all([loadCourseDetail(courseId), loadSubmissions()]);
@@ -671,6 +782,7 @@ export const SIEBridgeStudentPortal = ({ token }) => {
       setMessage(error.message);
     } finally {
       setSubmitting(false);
+      setUploadProgress(null);
     }
   };
 
@@ -767,8 +879,8 @@ export const SIEBridgeStudentPortal = ({ token }) => {
         <header><div><p>MY SUBMISSIONS</p><h3>我的上传审核情况</h3></div><Clock3 /></header>
         <div>{submissionItems.length ? submissionItems.slice(0, 8).map(item => <article key={`${item.kind}-${item.id || item._id}`}><span>{item.kind}</span><strong>{item.name || item.title}</strong><small>{item.courseName || item.code || ''}</small><StatusBadge status={item.status} />{item.reviewComment && <em>{item.reviewComment}</em>}</article>) : <p className="siebridge-muted">暂无提交记录</p>}</div>
       </section>
-      {courseFormOpen && <CourseForm meta={meta} onClose={() => setCourseFormOpen(false)} onSubmit={submitCourse} submitting={submitting} error={message} />}
-      {resourceFormCourse && <ResourceForm course={resourceFormCourse} meta={meta} onClose={() => setResourceFormCourse(null)} onSubmit={submitResource} submitting={submitting} error={message} />}
+      {courseFormOpen && <CourseForm meta={meta} onClose={() => setCourseFormOpen(false)} onSubmit={submitCourse} submitting={submitting} error={message} uploadProgress={uploadProgress} />}
+      {resourceFormCourse && <ResourceForm course={resourceFormCourse} meta={meta} onClose={() => setResourceFormCourse(null)} onSubmit={submitResource} submitting={submitting} error={message} uploadProgress={uploadProgress} />}
       <SIEBridgePreviewDialog preview={preview} onClose={() => { if (preview?.url) URL.revokeObjectURL(preview.url); setPreview(null); }} />
     </section>
   );

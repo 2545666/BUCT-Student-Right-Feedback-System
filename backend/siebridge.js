@@ -304,8 +304,15 @@ const getResourceFileByIndex = (resource, value) => {
   return files[index];
 };
 
+const createFileChecksum = (filePath) => new Promise((resolve, reject) => {
+  const hash = crypto.createHash('sha256');
+  const stream = fs.createReadStream(filePath);
+  stream.on('data', chunk => hash.update(chunk));
+  stream.on('error', reject);
+  stream.on('end', () => resolve(hash.digest('hex')));
+});
+
 const toStoredFiles = async (files = [], relativePaths = []) => Promise.all(files.map(async (file, index) => {
-  const buffer = await fs.promises.readFile(file.path);
   const originalName = decodeOriginalName(file.originalname);
   return {
     storedName: file.filename,
@@ -314,7 +321,7 @@ const toStoredFiles = async (files = [], relativePaths = []) => Promise.all(file
     mimetype: file.mimetype,
     size: file.size,
     extension: path.extname(file.originalname || file.filename || '').toLowerCase(),
-    checksum: crypto.createHash('sha256').update(buffer).digest('hex')
+    checksum: await createFileChecksum(file.path)
   };
 }));
 
@@ -367,6 +374,7 @@ const installSieBridgeRoutes = ({ app, authenticate, logAction, Notification }) 
       gradeLevels: SIEBRIDGE_GRADES,
       sections: SIEBRIDGE_SECTIONS,
       maxFileSize: MAX_FILE_SIZE,
+      maxFileCount: MAX_FILE_COUNT,
       canReview: canReviewSieBridge(req.user)
     });
   });

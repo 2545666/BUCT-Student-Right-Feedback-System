@@ -1963,21 +1963,6 @@ const DepartmentAccountWorkspace = ({ module, token, canManage, language = 'zh' 
 
   useEffect(() => { refreshAccounts(); }, [refreshAccounts]);
 
-  const toggleActive = async (account) => {
-    try {
-      const res = await fetch(`${API_BASE}/hub/departments/${module.organization}/${module.key}/accounts/${account._id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ isActive: !account.isActive })
-      });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.message || '更新账号状态失败');
-      await refreshAccounts();
-    } catch (error) {
-      setMessage(error.message || '更新账号状态失败');
-    }
-  };
-
   if (!canManage) return null;
 
   return (
@@ -1986,7 +1971,7 @@ const DepartmentAccountWorkspace = ({ module, token, canManage, language = 'zh' 
         <div>
           <p>DEPARTMENT ACCOUNTS</p>
           <h2>账号管理</h2>
-          <span>仅显示本部门账号，可在此启停账号。</span>
+          <span>仅显示本部门账号与身份信息。</span>
         </div>
         <button type="button" onClick={refreshAccounts} disabled={loading}>{loading ? '同步中' : '刷新'}</button>
       </div>
@@ -1998,10 +1983,7 @@ const DepartmentAccountWorkspace = ({ module, token, canManage, language = 'zh' 
             <div>
               <strong>{account.name}</strong>
               <small>{account.studentId} · {account.identityLabel || '-'}</small>
-              <small>{account.departmentLabel || '-'} · {account.isActive ? '启用' : '停用'}</small>
-            </div>
-            <div className="siehub-account-actions">
-              <button type="button" className="outline-button" onClick={() => toggleActive(account)}>{account.isActive ? '停用' : '启用'}</button>
+              <small>{account.departmentLabel || '-'}</small>
             </div>
           </article>
         ))}
