@@ -3869,6 +3869,10 @@ html[data-language="en"] .organization-framework-panel button {
   animation-name: deptIntroPageEnter;
 }
 
+.dept-intro-slide-page.transition-none {
+  animation: none;
+}
+
 .dept-intro-slide-overlay {
   position: absolute;
   inset: 0;
@@ -4009,7 +4013,8 @@ html[data-language="en"] .organization-framework-panel button {
 }
 
 .dept-intro-field input,
-.dept-intro-field textarea {
+.dept-intro-field textarea,
+.dept-intro-field select {
   width: 100%;
   min-width: 0;
   border: 1px solid var(--line);
@@ -4026,6 +4031,22 @@ html[data-language="en"] .organization-framework-panel button {
 .dept-intro-field input[type="range"] {
   padding: 0;
   accent-color: var(--theme-primary);
+}
+
+.dept-intro-field select {
+  appearance: auto;
+}
+
+.dept-intro-inline-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.dept-intro-inline-actions button {
+  min-height: 34px;
+  padding-inline: 8px;
+  font-size: 11px;
 }
 
 .dept-intro-background-editor {

@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowUpRight,
-  ChevronDown,
-  ChevronUp,
+  Copy,
   Eye,
   ImagePlus,
   Plus,
@@ -22,7 +21,7 @@ const EXTERNAL_DEPARTMENT_INTRO_URLS = {
 };
 
 const getExternalIntroductionUrl = (module) => EXTERNAL_DEPARTMENT_INTRO_URLS[module?.key] || '';
-const EXTERNAL_EDITOR_DISABLED_DEPARTMENTS = new Set(['culture_sports_arts']);
+const EXTERNAL_EDITOR_DISABLED_DEPARTMENTS = new Set();
 
 const getText = (value, language = 'zh') => {
   if (!value) return '';
@@ -299,33 +298,131 @@ const createCanvasPage = (module, index = 0) => ({
   title: makeLocalized(index === 0 ? `${module?.title || '部门'}首页` : `页面 ${index + 1}`, index === 0 ? `${getModuleTitle(module, 'en')} Home` : `Page ${index + 1}`),
   width: 1440,
   height: 900,
-  backgroundColor: '#f7fafc',
+  backgroundColor: departmentCanvasPalette(module).background,
   backgroundImageUrl: '',
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
   overlayColor: '#0f172a',
   overlayOpacity: 0,
   transition: 'rise',
-  elements: [
-    createCanvasElement('text', {
-      id: newId('title'),
-      content: { text: makeLocalized(module?.title || '部门介绍', getModuleTitle(module, 'en')) },
-      style: { x: 88, y: 88, width: 720, height: 140, fontSize: 72, zIndex: 3 }
-    }),
-    createCanvasElement('card', {
-      id: newId('intro-card'),
-      content: { title: makeLocalized('部门简介', 'Department Profile'), body: makeLocalized(module?.summary || '在这里编辑部门职责、成员风采、服务流程与活动展示。', module?.summary || 'Edit department profile here.') },
-      style: { x: 92, y: 310, width: 500, height: 260, zIndex: 4 }
-    }),
-    createCanvasElement('image', {
-      id: newId('hero-image'),
-      content: { title: makeLocalized('展示图片', 'Showcase image'), alt: makeLocalized('部门展示图片', 'Department showcase image') },
-      style: { x: 760, y: 118, width: 560, height: 500, zIndex: 2, backgroundColor: '#e2e8f0' }
-    })
-  ]
+  elements: (() => {
+    const palette = departmentCanvasPalette(module);
+    const baseElements = [
+      createCanvasElement('shape', {
+        id: newId('background-band'),
+        style: { x: 870, y: -120, width: 430, height: 1040, zIndex: 1, backgroundColor: palette.primary, borderRadius: 0, opacity: 0.92 }
+      }),
+      createCanvasElement('image', {
+        id: newId('school-logo'),
+        content: { title: makeLocalized('校徽', 'University logo'), alt: makeLocalized('北京化工大学校徽', 'BUCT logo'), url: '/BUCT_LOGO_blue.png' },
+        style: { x: 78, y: 58, width: 58, height: 58, zIndex: 5, backgroundColor: 'transparent', borderRadius: 0, padding: 0, objectFit: 'contain' }
+      }),
+      createCanvasElement('image', {
+        id: newId('college-logo'),
+        content: { title: makeLocalized('院徽', 'College logo'), alt: makeLocalized('国际教育学院院徽', 'SIE logo'), url: '/SIE_LOGO.svg' },
+        style: { x: 150, y: 58, width: 58, height: 58, zIndex: 5, backgroundColor: 'transparent', borderRadius: 0, padding: 0, objectFit: 'contain' }
+      }),
+      createCanvasElement('image', {
+        id: newId('department-logo'),
+        content: { title: makeLocalized('部门标志', 'Department logo'), alt: makeLocalized('部门标志', 'Department logo'), url: palette.logo },
+        style: { x: 222, y: 52, width: 70, height: 70, zIndex: 5, backgroundColor: 'transparent', borderRadius: 0, padding: 0, objectFit: 'contain' }
+      }),
+      createCanvasElement('text', {
+        id: newId('kicker'),
+        content: { text: makeLocalized(palette.label, palette.label) },
+        style: { x: 78, y: 172, width: 560, height: 42, zIndex: 5, fontFamily: 'Noto Sans SC', fontSize: 20, fontWeight: 900, color: palette.primary, lineHeight: 1.1 }
+      }),
+      createCanvasElement('text', {
+        id: newId('title'),
+        content: { text: palette.headline },
+        style: { x: 72, y: 220, width: 670, height: 260, zIndex: 5, fontFamily: 'Noto Serif SC', fontSize: 76, fontWeight: 900, lineHeight: 1.08, color: palette.ink, padding: 0 }
+      }),
+      createCanvasElement('card', {
+        id: newId('intro-card'),
+        content: { title: makeLocalized('部门简介', 'Department Profile'), body: palette.body },
+        style: { x: 82, y: 538, width: 500, height: 210, zIndex: 6, fontFamily: 'Noto Sans SC', fontSize: 22, color: palette.ink, backgroundColor: '#ffffff', borderColor: 'rgba(15, 23, 42, .12)', borderWidth: 1, borderRadius: 18, padding: 24 }
+      }),
+      createCanvasElement('image', {
+        id: newId('hero-image'),
+        content: { title: makeLocalized('主视觉图片', 'Hero image'), alt: makeLocalized('部门展示图片', 'Department showcase image'), url: '' },
+        style: { x: 790, y: 112, width: 530, height: 430, zIndex: 4, backgroundColor: palette.accent, borderRadius: 26, overlayColor: palette.ink, overlayOpacity: 0.18 }
+      }),
+      createCanvasElement('activity', {
+        id: newId('activity-card'),
+        content: { kicker: makeLocalized('ACTIVITY', 'ACTIVITY'), title: palette.activityTitle, body: makeLocalized('这里可插入新活动、替换背景图，并调整蒙版颜色与透明度。', 'Insert new activities, replace background images, and tune overlay color and opacity.'), date: makeLocalized('2026', '2026') },
+        style: { x: 760, y: 588, width: 330, height: 220, zIndex: 6, backgroundColor: palette.ink, color: '#ffffff', borderRadius: 22, overlayColor: palette.primary, overlayOpacity: 0.22 }
+      }),
+      createCanvasElement('card', {
+        id: newId('gallery-card'),
+        content: { title: makeLocalized('图片展示台', 'Gallery Stage'), body: makeLocalized('为活动照片、成员风采和项目成果预留展示位。', 'Reserve space for activity photos, member stories and project outcomes.') },
+        style: { x: 1120, y: 588, width: 220, height: 220, zIndex: 6, backgroundColor: palette.warm, color: palette.ink, borderRadius: 22, padding: 20 }
+      })
+    ];
+    if (index > 0) {
+      return [
+        createCanvasElement('text', {
+          content: { text: makeLocalized(`页面 ${index + 1}`, `Page ${index + 1}`) },
+          style: { x: 88, y: 88, width: 520, height: 120, fontSize: 64, fontFamily: 'Noto Serif SC', color: palette.ink, zIndex: 4 }
+        }),
+        createCanvasElement('activity', {
+          content: { kicker: makeLocalized('NEW PAGE', 'NEW PAGE'), title: makeLocalized('新活动', 'New Activity'), body: makeLocalized('在这里继续添加活动、图片和说明。', 'Add activities, images and notes here.'), date: makeLocalized('2026', '2026') },
+          style: { x: 92, y: 270, width: 460, height: 260, backgroundColor: palette.primary, color: '#ffffff', zIndex: 4 }
+        })
+      ];
+    }
+    return baseElements;
+  })()
 });
 
 const ensureCanvasContent = (content, module) => {
   if (Array.isArray(content?.pages) && content.pages.length) return content;
   return { ...content, pages: [createCanvasPage(module, 0)] };
+};
+
+const departmentCanvasPalette = (module) => {
+  if (module?.key === 'student_rights') {
+    return {
+      background: '#fffaf1',
+      ink: '#1e2925',
+      muted: '#59675f',
+      primary: '#174c41',
+      accent: '#d9553f',
+      warm: '#f0c96a',
+      logo: '/LOGO_1.png',
+      label: 'SIEVOX / STUDENT SERVICE DESK',
+      headline: makeLocalized('一张反馈单，\n一条看得见的改善路径。', 'One feedback ticket,\none visible path to change.'),
+      body: makeLocalized('学生权益部把同学的日常体验带到可以行动的地方。反馈、跟进、回访与归档，都在 SIEHUB 中留下清楚节点。', 'Student Rights turns everyday experiences into clear action, follow-up and visible records.'),
+      activityTitle: makeLocalized('权益反馈回访', 'Feedback Follow-up')
+    };
+  }
+  if (module?.key === 'academic_technology') {
+    return {
+      background: '#f8faf7',
+      ink: '#152239',
+      muted: '#5c6a79',
+      primary: '#4379ff',
+      accent: '#65d7df',
+      warm: '#e5bd51',
+      logo: '/SIEBridge_LOGO.png',
+      label: 'SIEBRIDGE / ACADEMIC TECHNOLOGY',
+      headline: makeLocalized('好问题\n值得有\n下一步。', 'Good questions\ndeserve\na next step.'),
+      body: makeLocalized('学术科技部把课程、竞赛、表达与升学资源组织起来，让资料、经验和机会在同学之间流动。', 'Academic Technology organizes courses, competitions, expression and future pathways into a shared resource flow.'),
+      activityTitle: makeLocalized('SIE 学辅课堂', 'SIE Academic Lab')
+    };
+  }
+  return {
+    background: '#f7fafc',
+    ink: '#132033',
+    muted: '#64748b',
+    primary: '#2563eb',
+    accent: '#14b8a6',
+    warm: '#facc15',
+    logo: '',
+    label: 'SIEHUB / DEPARTMENT',
+    headline: makeLocalized(`${module?.title || '部门'}\n宣传展示台`, `${getModuleTitle(module, 'en')}\nShowcase`),
+    body: makeLocalized(module?.summary || '在这里编辑部门职责、成员风采、服务流程与活动展示。', module?.summary || 'Edit department profile here.'),
+    activityTitle: makeLocalized('部门活动展示', 'Department Activity')
+  };
 };
 
 const canvasElementStyle = (element, scale = 1) => {
@@ -392,8 +489,8 @@ const CanvasPagePreview = ({ page, language = 'zh', scale = 1, selectedElementId
     height: `${page.height * scale}px`,
     backgroundColor: page.backgroundColor || '#f8fafc',
     backgroundImage: page.backgroundImageUrl ? `url("${page.backgroundImageUrl}")` : undefined,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center'
+    backgroundSize: page.backgroundSize || 'cover',
+    backgroundPosition: page.backgroundPosition || 'center'
   };
   return (
     <section className={`dept-intro-slide-page transition-${page.transition || 'rise'}`} style={pageStyle}>
@@ -541,7 +638,10 @@ export const DepartmentIntroductionEditor = ({ module, token, language = 'zh', o
   const selectedBlock = useMemo(() => blocks.find(block => block.id === selectedId) || blocks[0], [blocks, selectedId]);
   const pages = content.pages || [];
   const selectedPage = useMemo(() => pages.find(page => page.id === selectedPageId) || pages[0], [pages, selectedPageId]);
-  const selectedElement = useMemo(() => selectedPage?.elements?.find(element => element.id === selectedElementId) || selectedPage?.elements?.[0], [selectedElementId, selectedPage]);
+  const selectedElement = useMemo(() => {
+    if (!selectedElementId) return null;
+    return selectedPage?.elements?.find(element => element.id === selectedElementId) || null;
+  }, [selectedElementId, selectedPage]);
 
   const setBlocks = (nextBlocks) => {
     setContent({ blocks: nextBlocks });
@@ -670,6 +770,23 @@ export const DepartmentIntroductionEditor = ({ module, token, language = 'zh', o
     setPageList(pages.filter(page => page.id !== pageId));
   };
 
+  const duplicateCanvasPage = (pageId) => {
+    const page = pages.find(item => item.id === pageId);
+    if (!page) return;
+    const copy = {
+      ...page,
+      id: newId('page'),
+      title: {
+        zh: `${getText(page.title, 'zh') || '页面'} 副本`,
+        en: `${getText(page.title, 'en') || 'Page'} Copy`
+      },
+      elements: (page.elements || []).map(element => ({ ...element, id: newId(element.type), style: { ...element.style } }))
+    };
+    setPageList([...pages, copy]);
+    setSelectedPageId(copy.id);
+    setSelectedElementId(copy.elements?.[0]?.id || '');
+  };
+
   const updateElement = (pageId, elementId, updater) => {
     updatePage(pageId, page => ({
       ...page,
@@ -690,6 +807,31 @@ export const DepartmentIntroductionEditor = ({ module, token, language = 'zh', o
       elements: (page.elements || []).filter(element => element.id !== elementId)
     }));
     setSelectedElementId('');
+  };
+
+  const duplicateCanvasElement = (pageId, elementId) => {
+    const page = pages.find(item => item.id === pageId);
+    const element = page?.elements?.find(item => item.id === elementId);
+    if (!page || !element) return;
+    const copy = {
+      ...element,
+      id: newId(element.type),
+      style: {
+        ...element.style,
+        x: (Number(element.style?.x) || 0) + 32,
+        y: (Number(element.style?.y) || 0) + 32,
+        zIndex: (Number(element.style?.zIndex) || 1) + 1
+      }
+    };
+    updatePage(pageId, current => ({ ...current, elements: [...(current.elements || []), copy] }));
+    setSelectedElementId(copy.id);
+  };
+
+  const shiftCanvasElementLayer = (pageId, elementId, delta) => {
+    updateElement(pageId, elementId, element => ({
+      ...element,
+      style: { ...element.style, zIndex: Math.max(0, (Number(element.style?.zIndex) || 0) + delta) }
+    }));
   };
 
   const uploadCanvasMedia = async (element, file, targetField = 'url') => {
@@ -737,7 +879,7 @@ export const DepartmentIntroductionEditor = ({ module, token, language = 'zh', o
 
   if (Array.isArray(content.pages) && content.pages.length) {
     const currentPage = selectedPage || content.pages[0];
-    const currentElement = selectedElement || currentPage?.elements?.[0] || null;
+    const currentElement = selectedElement || null;
     const patchPage = (patch) => currentPage && updatePage(currentPage.id, page => ({ ...page, ...patch }));
     const patchPageStyle = (patch) => currentPage && updatePage(currentPage.id, page => ({ ...page, ...patch }));
     const patchElement = (patch) => currentPage && currentElement && updateElement(currentPage.id, currentElement.id, element => ({ ...element, ...patch }));
@@ -847,11 +989,11 @@ export const DepartmentIntroductionEditor = ({ module, token, language = 'zh', o
               <button type="button" onClick={addCanvasPage}><Plus />{isEnglish ? 'New page' : '新增页面'}</button>
               <div className="dept-intro-block-list">
                 {content.pages.map(page => (
-                  <article key={page.id} className={page.id === currentPage.id ? 'is-active' : ''} onClick={() => { setSelectedPageId(page.id); setSelectedElementId(page.elements?.[0]?.id || ''); }}>
+                  <article key={page.id} className={page.id === currentPage.id && !currentElement ? 'is-active' : ''} onClick={() => { setSelectedPageId(page.id); setSelectedElementId(''); }}>
                     <span>{String(content.pages.indexOf(page) + 1).padStart(2, '0')}</span>
                     <b>{getText(page.title, language) || `Page ${content.pages.indexOf(page) + 1}`}</b>
                     <div>
-                      <button type="button" onClick={(event) => { event.stopPropagation(); updatePage(page.id, next => ({ ...next, transition: next.transition === 'fade' ? 'rise' : 'fade' })); }}><Eye /></button>
+                      <button type="button" onClick={(event) => { event.stopPropagation(); duplicateCanvasPage(page.id); }}><Copy /></button>
                       <button type="button" onClick={(event) => { event.stopPropagation(); removeCanvasPage(page.id); }}><Trash2 /></button>
                     </div>
                   </article>
@@ -870,6 +1012,7 @@ export const DepartmentIntroductionEditor = ({ module, token, language = 'zh', o
                     <b>{getText(element.content?.text || element.content?.title || element.content?.label, language) || element.type}</b>
                     <div>
                       <button type="button" onClick={(event) => { event.stopPropagation(); updateElement(currentPage.id, element.id, current => ({ ...current, visible: !current.visible })); }}><Eye /></button>
+                      <button type="button" onClick={(event) => { event.stopPropagation(); duplicateCanvasElement(currentPage.id, element.id); }}><Copy /></button>
                       <button type="button" onClick={(event) => { event.stopPropagation(); removeCanvasElement(currentPage.id, element.id); }}><Trash2 /></button>
                     </div>
                   </article>
@@ -923,6 +1066,35 @@ export const DepartmentIntroductionEditor = ({ module, token, language = 'zh', o
                   <input type="file" accept="image/jpeg,image/png,image/webp" onChange={event => uploadCanvasPageBackground(event.target.files?.[0])} />
                 </label>
                 <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Page image fit' : '页面背景适配'}</span>
+                  <select value={currentPage.backgroundSize || 'cover'} onChange={event => patchPage({ backgroundSize: event.target.value })}>
+                    <option value="cover">{isEnglish ? 'Cover' : '铺满'}</option>
+                    <option value="contain">{isEnglish ? 'Contain' : '完整显示'}</option>
+                    <option value="auto">{isEnglish ? 'Original' : '原始尺寸'}</option>
+                  </select>
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Page image position' : '页面背景位置'}</span>
+                  <input value={currentPage.backgroundPosition || 'center'} onChange={event => patchPage({ backgroundPosition: event.target.value })} placeholder="center / 50% 20%" />
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Page overlay color' : '页面蒙版颜色'}</span>
+                  <input type="color" value={currentPage.overlayColor || '#0f172a'} onChange={event => patchPage({ overlayColor: event.target.value })} />
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Page overlay opacity' : '页面蒙版透明度'}</span>
+                  <input type="range" min="0" max="0.95" step="0.01" value={currentPage.overlayOpacity ?? 0} onChange={event => patchPage({ overlayOpacity: Number(event.target.value) })} />
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Page transition' : '页面过渡动画'}</span>
+                  <select value={currentPage.transition || 'rise'} onChange={event => patchPage({ transition: event.target.value })}>
+                    <option value="rise">{isEnglish ? 'Rise' : '上浮'}</option>
+                    <option value="fade">{isEnglish ? 'Fade' : '淡入'}</option>
+                    <option value="slide">{isEnglish ? 'Slide' : '滑入'}</option>
+                    <option value="none">{isEnglish ? 'None' : '无'}</option>
+                  </select>
+                </label>
+                <label className="dept-intro-field">
                   <span>{isEnglish ? 'Selected x' : '位置 X'}</span>
                   <input type="number" value={currentElement?.style?.x || 0} onChange={event => patchElementStyle({ x: Number(event.target.value) || 0 })} />
                 </label>
@@ -946,11 +1118,22 @@ export const DepartmentIntroductionEditor = ({ module, token, language = 'zh', o
                   <span>{isEnglish ? 'Layer' : '图层顺序'}</span>
                   <input type="number" value={currentElement?.style?.zIndex || 1} onChange={event => patchElementStyle({ zIndex: Number(event.target.value) || 1 })} />
                 </label>
+                {currentElement && (
+                  <div className="dept-intro-inline-actions">
+                    <button type="button" onClick={() => duplicateCanvasElement(currentPage.id, currentElement.id)}><Copy />{isEnglish ? 'Duplicate' : '复制'}</button>
+                    <button type="button" onClick={() => shiftCanvasElementLayer(currentPage.id, currentElement.id, 1)}>{isEnglish ? 'Layer +' : '上移图层'}</button>
+                    <button type="button" onClick={() => shiftCanvasElementLayer(currentPage.id, currentElement.id, -1)}>{isEnglish ? 'Layer -' : '下移图层'}</button>
+                  </div>
+                )}
                 <label className="dept-intro-field">
                   <span>{isEnglish ? 'Font family' : '字体'}</span>
                   <select value={currentElement?.style?.fontFamily || 'Noto Sans SC'} onChange={event => patchElementStyle({ fontFamily: event.target.value })}>
                     <option value="Noto Sans SC">Noto Sans SC</option>
                     <option value="Noto Serif SC">Noto Serif SC</option>
+                    <option value="Microsoft YaHei">Microsoft YaHei</option>
+                    <option value="KaiTi">KaiTi</option>
+                    <option value="SimSun">SimSun</option>
+                    <option value="Georgia">Georgia</option>
                     <option value="serif">Serif</option>
                     <option value="sans-serif">Sans-serif</option>
                   </select>
@@ -958,6 +1141,26 @@ export const DepartmentIntroductionEditor = ({ module, token, language = 'zh', o
                 <label className="dept-intro-field">
                   <span>{isEnglish ? 'Font size' : '字号'}</span>
                   <input type="number" value={currentElement?.style?.fontSize || 24} onChange={event => patchElementStyle({ fontSize: Number(event.target.value) || 24 })} />
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Text color' : '文字颜色'}</span>
+                  <input type="color" value={currentElement?.style?.color || '#132033'} onChange={event => patchElementStyle({ color: event.target.value })} />
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Font weight' : '字重'}</span>
+                  <input type="number" min="100" max="1000" step="100" value={currentElement?.style?.fontWeight || 700} onChange={event => patchElementStyle({ fontWeight: Number(event.target.value) || 700 })} />
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Line height' : '行高'}</span>
+                  <input type="number" min="0.8" max="3" step="0.05" value={currentElement?.style?.lineHeight || 1.25} onChange={event => patchElementStyle({ lineHeight: Number(event.target.value) || 1.25 })} />
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Text align' : '文字对齐'}</span>
+                  <select value={currentElement?.style?.textAlign || 'left'} onChange={event => patchElementStyle({ textAlign: event.target.value })}>
+                    <option value="left">{isEnglish ? 'Left' : '左对齐'}</option>
+                    <option value="center">{isEnglish ? 'Center' : '居中'}</option>
+                    <option value="right">{isEnglish ? 'Right' : '右对齐'}</option>
+                  </select>
                 </label>
                 <label className="dept-intro-field">
                   <span>{isEnglish ? 'Overlay opacity' : '蒙版透明度'}</span>
@@ -977,8 +1180,32 @@ export const DepartmentIntroductionEditor = ({ module, token, language = 'zh', o
                   <input type="file" accept="image/jpeg,image/png,image/webp" onChange={event => uploadCanvasElementBackground(event.target.files?.[0])} />
                 </label>
                 <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Background fit' : '组件背景适配'}</span>
+                  <select value={currentElement?.style?.backgroundSize || 'cover'} onChange={event => patchElementStyle({ backgroundSize: event.target.value })}>
+                    <option value="cover">{isEnglish ? 'Cover' : '铺满'}</option>
+                    <option value="contain">{isEnglish ? 'Contain' : '完整显示'}</option>
+                    <option value="auto">{isEnglish ? 'Original' : '原始尺寸'}</option>
+                  </select>
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Background position' : '组件背景位置'}</span>
+                  <input value={currentElement?.style?.backgroundPosition || 'center'} onChange={event => patchElementStyle({ backgroundPosition: event.target.value })} placeholder="center / 50% 20%" />
+                </label>
+                <label className="dept-intro-field">
                   <span>{isEnglish ? 'Background color' : '组件底色'}</span>
                   <input type="color" value={currentElement?.style?.backgroundColor === 'transparent' ? '#ffffff' : (currentElement?.style?.backgroundColor || '#ffffff')} onChange={event => patchElementStyle({ backgroundColor: event.target.value })} />
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Image fit' : '图片适配'}</span>
+                  <select value={currentElement?.style?.objectFit || 'cover'} onChange={event => patchElementStyle({ objectFit: event.target.value })}>
+                    <option value="cover">{isEnglish ? 'Cover' : '铺满'}</option>
+                    <option value="contain">{isEnglish ? 'Contain' : '完整显示'}</option>
+                    <option value="fill">{isEnglish ? 'Fill' : '拉伸'}</option>
+                  </select>
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Image position' : '图片位置'}</span>
+                  <input value={currentElement?.style?.objectPosition || 'center'} onChange={event => patchElementStyle({ objectPosition: event.target.value })} placeholder="center / 50% 20%" />
                 </label>
                 <label className="dept-intro-field">
                   <span>{isEnglish ? 'Opacity' : '透明度'}</span>
@@ -991,6 +1218,14 @@ export const DepartmentIntroductionEditor = ({ module, token, language = 'zh', o
                 <label className="dept-intro-field">
                   <span>{isEnglish ? 'Padding' : '内边距'}</span>
                   <input type="number" value={currentElement?.style?.padding || 0} onChange={event => patchElementStyle({ padding: Number(event.target.value) || 0 })} />
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Border color' : '边框颜色'}</span>
+                  <input type="color" value={currentElement?.style?.borderColor === 'transparent' ? '#ffffff' : (currentElement?.style?.borderColor || '#ffffff')} onChange={event => patchElementStyle({ borderColor: event.target.value })} />
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Border width' : '边框宽度'}</span>
+                  <input type="number" min="0" max="16" value={currentElement?.style?.borderWidth || 0} onChange={event => patchElementStyle({ borderWidth: Number(event.target.value) || 0 })} />
                 </label>
                 {currentElement?.type === 'text' && <FieldPair label={isEnglish ? 'Text' : '文字'} value={currentElement.content?.text} onChange={value => patchElementContent({ text: value })} textarea language={language} />}
                 {currentElement?.type === 'card' && (
@@ -1181,7 +1416,7 @@ export const DepartmentIntroductionManageCard = ({ onOpen }) => (
   <section>
     <span>02</span>
     <h2>部门介绍编辑</h2>
-    <p>使用受控区块搭建学生端部门介绍页，支持中英文文本、图片与视频。</p>
+    <p>进入 PPT 式宣传页编辑器，拖拽页面元素、调整文字图片、插入活动卡并发布展示内容。</p>
     <button type="button" onClick={onOpen}>进入编辑 <SquarePen /></button>
   </section>
 );
