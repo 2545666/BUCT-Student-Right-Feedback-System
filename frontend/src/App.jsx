@@ -20,7 +20,6 @@ import { SIEBridgeReviewWorkspace, SIEBridgeStudentPortal } from './SIEBridge';
 import {
   DepartmentIntroductionEditor,
   DepartmentIntroductionEntryCard,
-  DepartmentIntroductionManageCard,
   DepartmentIntroductionViewer
 } from './DepartmentIntroduction';
 
@@ -1478,13 +1477,6 @@ const canManageVolunteerPolicy = (user, module) => {
   if (user?.isUltimateAdmin) return true;
   const matchedAccess = getModuleAccess(user, module);
   if (matchedAccess) return matchedAccess.capabilities?.includes('manage_volunteer_performance_policy');
-  return user?.role === 'superadmin' && ['department_head', 'youth_league_cadre', 'presidium_member', 'youth_league_deputy_secretary'].includes(user?.positionTitle);
-};
-
-const canManageDepartmentIntroduction = (user, module) => {
-  if (user?.isUltimateAdmin) return true;
-  const matchedAccess = getModuleAccess(user, module);
-  if (matchedAccess) return matchedAccess.capabilities?.includes('manage_department_introduction');
   return user?.role === 'superadmin' && ['department_head', 'youth_league_cadre', 'presidium_member', 'youth_league_deputy_secretary'].includes(user?.positionTitle);
 };
 
@@ -3209,13 +3201,25 @@ const SIEHUBHome = ({ user, token, theme, onOpenModule, onOpenDepartments, onOpe
       <span>{marker}</span>
       <strong>{title}</strong>
       <div className="siehub-department-chip-grid">
-        {items.map(module => (
-          <button key={module.key} className={`siehub-department-chip tone-${module.tone}`} type="button" onClick={() => onOpenModule(module)}>
-            <i><DepartmentModuleMark module={module} /></i>
-            <span>{module.title}</span>
-            <ChevronRight />
-          </button>
-        ))}
+        {items.map(module => {
+          const showcaseUrl = DEPARTMENT_SHOWCASE_URLS[module.key] || '';
+          const content = (
+            <>
+              <i><DepartmentModuleMark module={module} /></i>
+              <span>{module.title}</span>
+              <ChevronRight />
+            </>
+          );
+          return showcaseUrl ? (
+            <a key={module.key} className={`siehub-department-chip tone-${module.tone}`} href={showcaseUrl}>
+              {content}
+            </a>
+          ) : (
+            <button key={module.key} className={`siehub-department-chip tone-${module.tone}`} type="button" onClick={() => onOpenModule(module)}>
+              {content}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -3275,18 +3279,30 @@ const SIEHUBDepartmentDirectory = ({ user, theme, onBack, onOpenModule, onOpenMy
     <section className="siehub-directory-group">
       <div className="siehub-group-heading"><span>{eyebrow}</span><div><p>DEPARTMENT ORDER</p><h2>{title}</h2></div><b>{items.length}</b></div>
       <div className="siehub-directory-grid">
-        {items.map((module, index) => (
-          <button key={module.key} className={`siehub-directory-card tone-${module.tone}`} type="button" onClick={() => onOpenModule(module)}>
-            <span className="siehub-directory-index">{String(index + 1).padStart(2, '0')}</span>
-            <span className="siehub-module-icon"><DepartmentModuleMark module={module} /></span>
-            <span className="siehub-directory-copy">
-              <small>{module.entryLabel || (module.organization === 'youth_league' ? '团委部门宣传页' : '学生会部门宣传页')}</small>
-              <strong>{module.title}</strong>
-              <em>{module.summary}</em>
-            </span>
-            <span className="siehub-directory-action">进入 <ArrowUpRight /></span>
-          </button>
-        ))}
+        {items.map((module, index) => {
+          const showcaseUrl = DEPARTMENT_SHOWCASE_URLS[module.key] || '';
+          const content = (
+            <>
+              <span className="siehub-directory-index">{String(index + 1).padStart(2, '0')}</span>
+              <span className="siehub-module-icon"><DepartmentModuleMark module={module} /></span>
+              <span className="siehub-directory-copy">
+                <small>{module.entryLabel || (module.organization === 'youth_league' ? '团委部门宣传页' : '学生会部门宣传页')}</small>
+                <strong>{module.title}</strong>
+                <em>{module.summary}</em>
+              </span>
+              <span className="siehub-directory-action">进入 <ArrowUpRight /></span>
+            </>
+          );
+          return showcaseUrl ? (
+            <a key={module.key} className={`siehub-directory-card tone-${module.tone}`} href={showcaseUrl}>
+              {content}
+            </a>
+          ) : (
+            <button key={module.key} className={`siehub-directory-card tone-${module.tone}`} type="button" onClick={() => onOpenModule(module)}>
+              {content}
+            </button>
+          );
+        })}
       </div>
     </section>
   );
@@ -3405,7 +3421,6 @@ const DepartmentPlaceholder = ({ module, user, token, theme, onBack, onOpenSIEVO
   const [departmentPortal, setDepartmentPortal] = useState(canSwitchPortal ? 'manage' : 'student');
   const [manageWorkspace, setManageWorkspace] = useState('introduction');
   const fallbackCanManagePerformance = canManageVolunteerPolicy(user, module);
-  const canManageIntroduction = canManageDepartmentIntroduction(user, module);
   const canManageNotice = canManageDepartmentNotice(user, module);
   const canManageMembers = canManageDepartmentMembers(user, module);
   const canManageAccounts = canManageDepartmentAccounts(user, module);
@@ -3413,7 +3428,8 @@ const DepartmentPlaceholder = ({ module, user, token, theme, onBack, onOpenSIEVO
   const canEnterSIEVOX = module?.key === 'student_rights' || user?.isUltimateAdmin;
   const isSIEBridge = module?.key === 'academic_technology';
   const isCultureSportsArts = module?.key === 'culture_sports_arts';
-  const hideIntroductionWorkspace = isCultureSportsArts;
+  const isLocalShowcaseDepartment = module?.key === 'student_rights' || module?.key === 'academic_technology';
+  const hideIntroductionWorkspace = isCultureSportsArts || isLocalShowcaseDepartment;
   const showManagePortal = canSwitchPortal && departmentPortal === 'manage';
 
   useEffect(() => {
@@ -3562,8 +3578,7 @@ const DepartmentPlaceholder = ({ module, user, token, theme, onBack, onOpenSIEVO
         <>
           <div className="siehub-framework-grid">
             <section><span>01</span><h2>通知管理</h2><p>发布面向学生的部门通知、活动信息和公众号文章链接，首页消息中心会自动汇总展示。</p><button type="button" disabled={!canManageNotice} onClick={() => setManageWorkspace('notice')}>{canManageNotice ? '进入编辑' : '只读说明'}</button></section>
-            {canManageIntroduction && !hideIntroductionWorkspace && <DepartmentIntroductionManageCard onOpen={() => setManageWorkspace('introduction')} />}
-            {hideIntroductionWorkspace && (
+            {isCultureSportsArts && (
               <section>
                 <span>02</span>
                 <h2>部门介绍</h2>

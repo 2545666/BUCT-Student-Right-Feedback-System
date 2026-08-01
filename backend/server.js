@@ -2470,31 +2470,6 @@ app.patch('/api/hub/departments/:organization/:department/notices/:id', authenti
   }
 });
 
-app.get('/api/public/hub/departments/:organization/:department/introduction', async (req, res) => {
-  const assignment = {
-    organization: req.params.organization,
-    department: req.params.department
-  };
-  if (!isValidManagedDepartment(assignment)) {
-    return res.status(404).json({ success: false, message: '部门模块不存在' });
-  }
-
-  try {
-    const intro = await DepartmentIntroduction.findOne(assignment).lean();
-    const payload = serializeDepartmentIntroduction(intro, assignment, 'published');
-    res.json({
-      success: true,
-      introduction: {
-        ...payload,
-        hasPublished: Boolean(intro?.publishedContent),
-        content: intro?.publishedContent || null
-      }
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: '获取部门介绍失败' });
-  }
-});
-
 app.get('/api/hub/departments/:organization/:department/introduction', authenticate, async (req, res) => {
   const assignment = {
     organization: req.params.organization,

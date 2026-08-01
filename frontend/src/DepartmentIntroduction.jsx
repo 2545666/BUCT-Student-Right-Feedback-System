@@ -1412,14 +1412,6 @@ export const DepartmentIntroductionEditor = ({ module, token, language = 'zh', o
   );
 };
 
-export const DepartmentIntroductionManageCard = ({ onOpen }) => (
-  <section>
-    <span>02</span>
-    <h2>部门介绍编辑</h2>
-    <p>进入 PPT 式宣传页编辑器，拖拽页面元素、调整文字图片、插入活动卡并发布展示内容。</p>
-    <button type="button" onClick={onOpen}>进入编辑 <SquarePen /></button>
-  </section>
-);
 
 export const DepartmentIntroductionEntryCard = ({ onOpen, module }) => (
   <button className="siehub-student-service-entry dept-intro-entry" type="button" onClick={onOpen}>
