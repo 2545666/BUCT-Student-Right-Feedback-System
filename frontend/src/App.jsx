@@ -1425,7 +1425,12 @@ const SIEHUB_MODULES = [
   { key: 'new_media', organization: 'student_union', title: '新媒体工作部', summary: '内容矩阵、平台运营与视觉创作', icon: Paintbrush, tone: 'pink' }
 ];
 
-const CULTURE_SPORTS_ARTS_INTRO_URL = '/culture-sports-arts/';
+const DEPARTMENT_SHOWCASE_URLS = {
+  student_rights: '/student-rights/',
+  academic_technology: '/academic-technology/',
+  culture_sports_arts: '/culture-sports-arts/'
+};
+const CULTURE_SPORTS_ARTS_INTRO_URL = DEPARTMENT_SHOWCASE_URLS.culture_sports_arts;
 
 const SIEHUB_HISTORY_MARKER = 'siehub-navigation-v1';
 const SIEHUB_APP_SURFACES = new Set(['hub', 'departments', 'ultimateOrganization', 'department', 'sievox', 'siebridge', 'my']);
@@ -3312,6 +3317,7 @@ const DepartmentStudentPortal = ({ module, onOpenSIEVOX, onOpenSIEBridge, token,
   const isSIEVOX = module?.key === 'student_rights';
   const isSIEBridge = module?.key === 'academic_technology';
   const isCultureSportsArts = module?.key === 'culture_sports_arts';
+  const showcaseUrl = DEPARTMENT_SHOWCASE_URLS[module?.key] || '';
 
   if (introductionOpen) {
     return (
@@ -3346,12 +3352,12 @@ const DepartmentStudentPortal = ({ module, onOpenSIEVOX, onOpenSIEBridge, token,
           <span>这里面向所有学生开放，用于查看部门服务说明、活动入口和后续上线的学生侧功能。</span>
         </div>
         <div className="siehub-student-service-grid">
-          {isCultureSportsArts ? (
-            <a className="siehub-student-service-entry dept-intro-entry" href={CULTURE_SPORTS_ARTS_INTRO_URL} target="_blank" rel="noreferrer">
+          {showcaseUrl ? (
+            <a className="siehub-student-service-entry dept-intro-entry" href={showcaseUrl} target="_blank" rel="noreferrer">
               <span>01</span>
               <ArrowUpRight />
-              <strong>文体艺术部展示平台</strong>
-              <p>部门介绍已迁移到独立展示站，点击后直接打开最新外观页面。</p>
+              <strong>{module?.title}宣传展示台</strong>
+              <p>点击后直接打开该部门独立宣传页，学生端与志愿者端仅用于查看展示内容。</p>
               <b>打开展示站 <ArrowUpRight /></b>
             </a>
           ) : (

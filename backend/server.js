@@ -1368,6 +1368,93 @@ const createDefaultDepartmentIntroduction = (organization, department) => {
           }
         }
       }
+    ],
+    pages: [
+      {
+        id: 'default-page',
+        title: { zh: departmentLabel, en: departmentLabel },
+        width: 1440,
+        height: 900,
+        backgroundColor: '#f8fafc',
+        backgroundImageUrl: '',
+        overlayColor: '#0f172a',
+        overlayOpacity: 0,
+        transition: 'rise',
+        elements: [
+          {
+            id: 'default-page-title',
+            type: 'text',
+            visible: true,
+            content: { text: { zh: departmentLabel, en: departmentLabel } },
+            style: {
+              x: 88,
+              y: 88,
+              width: 720,
+              height: 140,
+              rotation: 0,
+              zIndex: 3,
+              fontFamily: 'Noto Serif SC',
+              fontSize: 72,
+              fontWeight: 800,
+              lineHeight: 1.1,
+              color: '#102238',
+              textAlign: 'left',
+              backgroundColor: 'transparent',
+              backgroundImageUrl: '',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              objectFit: 'cover',
+              objectPosition: 'center',
+              borderColor: 'transparent',
+              borderWidth: 0,
+              borderRadius: 16,
+              padding: 0,
+              overlayColor: '#0f172a',
+              overlayOpacity: 0,
+              opacity: 1
+            }
+          },
+          {
+            id: 'default-page-card',
+            type: 'card',
+            visible: true,
+            content: {
+              title: { zh: '部门简介', en: 'Department Profile' },
+              body: {
+                zh: `${organizationLabel}${departmentLabel}介绍页面正在建设中。`,
+                en: 'This department introduction page is being prepared.'
+              }
+            },
+            style: {
+              x: 92,
+              y: 310,
+              width: 500,
+              height: 260,
+              rotation: 0,
+              zIndex: 4,
+              fontFamily: 'Noto Sans SC',
+              fontSize: 24,
+              fontWeight: 700,
+              lineHeight: 1.25,
+              color: '#132033',
+              textAlign: 'left',
+              backgroundColor: '#ffffff',
+              backgroundImageUrl: '',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              objectFit: 'cover',
+              objectPosition: 'center',
+              borderColor: 'transparent',
+              borderWidth: 0,
+              borderRadius: 28,
+              padding: 24,
+              overlayColor: '#0f172a',
+              overlayOpacity: 0,
+              opacity: 1
+            }
+          }
+        ]
+      }
     ]
   };
 };
@@ -1422,6 +1509,87 @@ const normalizeIntroductionBlock = (block = {}, index = 0) => {
 };
 
 const normalizeIntroductionContent = (payload = {}, assignment) => {
+  const cleanCanvasStyle = (style = {}, index = 0) => {
+    const clamp = (value, fallback, min, max) => {
+      const number = Number(value);
+      if (!Number.isFinite(number)) return fallback;
+      return Math.max(min, Math.min(max, number));
+    };
+    return {
+      x: clamp(style.x, 80 + (index % 5) * 28, -2400, 2400),
+      y: clamp(style.y, 80 + (index % 5) * 28, -2400, 2400),
+      width: clamp(style.width, 360, 24, 2400),
+      height: clamp(style.height, 180, 24, 1800),
+      rotation: clamp(style.rotation, 0, -180, 180),
+      zIndex: clamp(style.zIndex, index + 1, 0, 999),
+      fontFamily: cleanText(style.fontFamily, 80) || 'Noto Sans SC',
+      fontSize: clamp(style.fontSize, 24, 8, 180),
+      fontWeight: clamp(style.fontWeight, 700, 100, 1000),
+      lineHeight: clamp(style.lineHeight, 1.25, 0.8, 3),
+      color: cleanText(style.color, 40) || '#0f172a',
+      textAlign: ['left', 'center', 'right'].includes(style.textAlign) ? style.textAlign : 'left',
+      backgroundColor: cleanText(style.backgroundColor, 40) || 'transparent',
+      backgroundImageUrl: cleanText(style.backgroundImageUrl, 300),
+      backgroundSize: ['cover', 'contain', 'auto'].includes(style.backgroundSize) ? style.backgroundSize : 'cover',
+      backgroundPosition: cleanText(style.backgroundPosition, 80) || 'center',
+      objectFit: ['cover', 'contain', 'fill'].includes(style.objectFit) ? style.objectFit : 'cover',
+      objectPosition: cleanText(style.objectPosition, 80) || 'center',
+      borderColor: cleanText(style.borderColor, 40) || 'transparent',
+      borderWidth: clamp(style.borderWidth, 0, 0, 16),
+      borderRadius: clamp(style.borderRadius, 16, 0, 120),
+      padding: clamp(style.padding, 20, 0, 120),
+      overlayColor: cleanText(style.overlayColor, 40) || '#0f172a',
+      overlayOpacity: clamp(style.overlayOpacity, 0, 0, 0.95),
+      opacity: clamp(style.opacity, 1, 0.05, 1)
+    };
+  };
+  const cleanCanvasElement = (element = {}, index = 0) => {
+    const allowedTypes = new Set(['text', 'image', 'shape', 'card', 'activity']);
+    const type = allowedTypes.has(element.type) ? element.type : 'text';
+    const content = element.content || {};
+    const base = {
+      id: cleanText(element.id, 64) || crypto.randomUUID(),
+      type,
+      visible: element.visible !== false,
+      content: {},
+      style: cleanCanvasStyle(element.style || {}, index)
+    };
+    if (type === 'text') {
+      base.content.text = cleanLocalizedText(content.text, { zh: '新文本', en: 'New text' }, 1200);
+    } else if (type === 'image') {
+      base.content.title = cleanLocalizedText(content.title, {}, 120);
+      base.content.alt = cleanLocalizedText(content.alt, {}, 160);
+      base.content.url = cleanText(content.url, 300);
+    } else if (type === 'shape') {
+      base.content.label = cleanLocalizedText(content.label, {}, 160);
+    } else if (type === 'card') {
+      base.content.title = cleanLocalizedText(content.title, { zh: '信息卡片', en: 'Info card' }, 160);
+      base.content.body = cleanLocalizedText(content.body, {}, 1600);
+    } else if (type === 'activity') {
+      base.content.kicker = cleanLocalizedText(content.kicker, { zh: 'ACTIVITY', en: 'ACTIVITY' }, 80);
+      base.content.title = cleanLocalizedText(content.title, { zh: '新活动', en: 'New activity' }, 160);
+      base.content.body = cleanLocalizedText(content.body, {}, 1400);
+      base.content.date = cleanLocalizedText(content.date, {}, 80);
+    }
+    return base;
+  };
+  const incomingPages = Array.isArray(payload.pages) ? payload.pages : [];
+  const pages = incomingPages.slice(0, 12).map((page, index) => {
+    const elements = Array.isArray(page.elements) ? page.elements : [];
+    return {
+      id: cleanText(page.id, 64) || crypto.randomUUID(),
+      title: cleanLocalizedText(page.title, { zh: `页面 ${index + 1}`, en: `Page ${index + 1}` }, 120),
+      width: Math.max(640, Math.min(2400, Number(page.width) || 1440)),
+      height: Math.max(420, Math.min(1800, Number(page.height) || 900)),
+      backgroundColor: cleanText(page.backgroundColor, 40) || '#f8fafc',
+      backgroundImageUrl: cleanText(page.backgroundImageUrl, 300),
+      overlayColor: cleanText(page.overlayColor, 40) || '#0f172a',
+      overlayOpacity: Math.max(0, Math.min(0.95, Number(page.overlayOpacity) || 0)),
+      transition: ['fade', 'slide', 'rise', 'none'].includes(page.transition) ? page.transition : 'rise',
+      elements: elements.slice(0, 80).map(cleanCanvasElement)
+    };
+  });
+
   const incomingBlocks = Array.isArray(payload.blocks) ? payload.blocks : [];
   const blocks = incomingBlocks
     .slice(0, 24)
@@ -1429,6 +1597,7 @@ const normalizeIntroductionContent = (payload = {}, assignment) => {
     .filter(block => block.visible !== false || block.data);
 
   return {
+    ...(pages.length ? { pages } : {}),
     blocks: blocks.length ? blocks : createDefaultDepartmentIntroduction(assignment.organization, assignment.department).blocks
   };
 };

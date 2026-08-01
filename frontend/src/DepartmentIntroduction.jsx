@@ -209,6 +209,213 @@ const BlockPreview = ({ block, language = 'zh' }) => {
   return null;
 };
 
+const newId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+const createCanvasElement = (type, overrides = {}) => {
+  const base = {
+    id: newId(type),
+    type,
+    visible: true,
+    content: {},
+    style: {
+      x: 96,
+      y: 96,
+      width: 360,
+      height: 180,
+      rotation: 0,
+      zIndex: 10,
+      fontFamily: 'Noto Sans SC',
+      fontSize: 24,
+      fontWeight: 700,
+      lineHeight: 1.25,
+      color: '#132033',
+      textAlign: 'left',
+      backgroundColor: 'transparent',
+      backgroundImageUrl: '',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      objectFit: 'cover',
+      objectPosition: 'center',
+      borderColor: 'transparent',
+      borderWidth: 0,
+      borderRadius: 16,
+      padding: 20,
+      overlayColor: '#0f172a',
+      overlayOpacity: 0,
+      opacity: 1
+    }
+  };
+  if (type === 'text') {
+    base.content = { text: makeLocalized('双击右侧面板编辑文字', 'Edit text in the right panel') };
+    base.style.width = 520;
+    base.style.height = 110;
+    base.style.fontSize = 42;
+    base.style.fontFamily = 'Noto Serif SC';
+    base.style.fontWeight = 800;
+  } else if (type === 'image') {
+    base.content = { title: makeLocalized('图片', 'Image'), alt: makeLocalized('', ''), url: '' };
+    base.style.width = 420;
+    base.style.height = 280;
+    base.style.backgroundColor = '#dbeafe';
+    base.style.borderRadius = 28;
+  } else if (type === 'shape') {
+    base.content = { label: makeLocalized('', '') };
+    base.style.width = 220;
+    base.style.height = 140;
+    base.style.backgroundColor = '#facc15';
+    base.style.borderRadius = 40;
+  } else if (type === 'card') {
+    base.content = { title: makeLocalized('信息卡片', 'Info card'), body: makeLocalized('可以编辑文字、背景图、蒙版、位置和大小。', 'Edit text, background, overlay, position and size.') };
+    base.style.width = 380;
+    base.style.height = 240;
+    base.style.backgroundColor = '#ffffff';
+    base.style.borderColor = '#d8e1ef';
+    base.style.borderWidth = 1;
+    base.style.borderRadius = 26;
+  } else if (type === 'activity') {
+    base.content = {
+      kicker: makeLocalized('ACTIVITY', 'ACTIVITY'),
+      title: makeLocalized('新活动', 'New activity'),
+      body: makeLocalized('记录活动亮点、现场照片和成果。', 'Record highlights, photos and outcomes.'),
+      date: makeLocalized('2026', '2026')
+    };
+    base.style.width = 420;
+    base.style.height = 260;
+    base.style.backgroundColor = '#102a43';
+    base.style.color = '#ffffff';
+    base.style.borderRadius = 30;
+    base.style.overlayOpacity = 0.28;
+  }
+  return {
+    ...base,
+    ...overrides,
+    style: { ...base.style, ...(overrides.style || {}) },
+    content: { ...base.content, ...(overrides.content || {}) }
+  };
+};
+
+const createCanvasPage = (module, index = 0) => ({
+  id: newId('page'),
+  title: makeLocalized(index === 0 ? `${module?.title || '部门'}首页` : `页面 ${index + 1}`, index === 0 ? `${getModuleTitle(module, 'en')} Home` : `Page ${index + 1}`),
+  width: 1440,
+  height: 900,
+  backgroundColor: '#f7fafc',
+  backgroundImageUrl: '',
+  overlayColor: '#0f172a',
+  overlayOpacity: 0,
+  transition: 'rise',
+  elements: [
+    createCanvasElement('text', {
+      id: newId('title'),
+      content: { text: makeLocalized(module?.title || '部门介绍', getModuleTitle(module, 'en')) },
+      style: { x: 88, y: 88, width: 720, height: 140, fontSize: 72, zIndex: 3 }
+    }),
+    createCanvasElement('card', {
+      id: newId('intro-card'),
+      content: { title: makeLocalized('部门简介', 'Department Profile'), body: makeLocalized(module?.summary || '在这里编辑部门职责、成员风采、服务流程与活动展示。', module?.summary || 'Edit department profile here.') },
+      style: { x: 92, y: 310, width: 500, height: 260, zIndex: 4 }
+    }),
+    createCanvasElement('image', {
+      id: newId('hero-image'),
+      content: { title: makeLocalized('展示图片', 'Showcase image'), alt: makeLocalized('部门展示图片', 'Department showcase image') },
+      style: { x: 760, y: 118, width: 560, height: 500, zIndex: 2, backgroundColor: '#e2e8f0' }
+    })
+  ]
+});
+
+const ensureCanvasContent = (content, module) => {
+  if (Array.isArray(content?.pages) && content.pages.length) return content;
+  return { ...content, pages: [createCanvasPage(module, 0)] };
+};
+
+const canvasElementStyle = (element, scale = 1) => {
+  const style = element.style || {};
+  const backgroundImage = style.backgroundImageUrl ? `url("${style.backgroundImageUrl}")` : undefined;
+  return {
+    left: `${(Number(style.x) || 0) * scale}px`,
+    top: `${(Number(style.y) || 0) * scale}px`,
+    width: `${(Number(style.width) || 100) * scale}px`,
+    height: `${(Number(style.height) || 100) * scale}px`,
+    transform: `rotate(${Number(style.rotation) || 0}deg)`,
+    zIndex: Number(style.zIndex) || 1,
+    color: style.color || '#132033',
+    opacity: Number(style.opacity ?? 1),
+    fontFamily: style.fontFamily || 'Noto Sans SC',
+    fontSize: `${(Number(style.fontSize) || 18) * scale}px`,
+    fontWeight: Number(style.fontWeight) || 700,
+    lineHeight: Number(style.lineHeight) || 1.25,
+    textAlign: style.textAlign || 'left',
+    backgroundColor: style.backgroundColor || 'transparent',
+    backgroundImage,
+    backgroundSize: style.backgroundSize || 'cover',
+    backgroundPosition: style.backgroundPosition || 'center',
+    border: `${Number(style.borderWidth) || 0}px solid ${style.borderColor || 'transparent'}`,
+    borderRadius: `${(Number(style.borderRadius) || 0) * scale}px`,
+    padding: `${(Number(style.padding) || 0) * scale}px`
+  };
+};
+
+const CanvasElementPreview = ({ element, language = 'zh', scale = 1, selected = false, onSelect, onPointerDown }) => {
+  if (!element?.visible) return null;
+  const style = element.style || {};
+  const overlayStyle = {
+    backgroundColor: style.overlayColor || '#0f172a',
+    opacity: Number(style.overlayOpacity) || 0
+  };
+  const className = `dept-intro-slide-element ${element.type} ${selected ? 'is-selected' : ''}`;
+  return (
+    <div
+      className={className}
+      style={canvasElementStyle(element, scale)}
+      onClick={onSelect}
+      onPointerDown={event => onPointerDown?.(element, event, 'move')}
+    >
+      {style.backgroundImageUrl && <span className="dept-intro-slide-overlay" style={overlayStyle} />}
+      {element.type === 'text' && <div className="dept-intro-slide-text">{getText(element.content?.text, language)}</div>}
+      {element.type === 'image' && (element.content?.url ? <img src={element.content.url} alt={getText(element.content.alt, language) || getText(element.content.title, language)} style={{ objectFit: style.objectFit || 'cover', objectPosition: style.objectPosition || 'center' }} /> : <div className="dept-intro-slide-empty"><ImagePlus />图片占位</div>)}
+      {element.type === 'shape' && getText(element.content?.label, language) && <div>{getText(element.content.label, language)}</div>}
+      {element.type === 'card' && <div className="dept-intro-slide-card-copy"><strong>{getText(element.content?.title, language)}</strong><p>{getText(element.content?.body, language)}</p></div>}
+      {element.type === 'activity' && <div className="dept-intro-slide-card-copy"><small>{getText(element.content?.kicker, language)} / {getText(element.content?.date, language)}</small><strong>{getText(element.content?.title, language)}</strong><p>{getText(element.content?.body, language)}</p></div>}
+      {selected && onPointerDown && (
+        <span
+          className="dept-intro-resize-handle"
+          onPointerDown={event => onPointerDown(element, event, 'resize')}
+        />
+      )}
+    </div>
+  );
+};
+
+const CanvasPagePreview = ({ page, language = 'zh', scale = 1, selectedElementId = '', onSelectElement, onElementPointerDown }) => {
+  const pageStyle = {
+    width: `${page.width * scale}px`,
+    height: `${page.height * scale}px`,
+    backgroundColor: page.backgroundColor || '#f8fafc',
+    backgroundImage: page.backgroundImageUrl ? `url("${page.backgroundImageUrl}")` : undefined,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center'
+  };
+  return (
+    <section className={`dept-intro-slide-page transition-${page.transition || 'rise'}`} style={pageStyle}>
+      {page.backgroundImageUrl && <span className="dept-intro-slide-overlay" style={{ backgroundColor: page.overlayColor || '#0f172a', opacity: Number(page.overlayOpacity) || 0 }} />}
+      {(page.elements || []).map(element => (
+        <CanvasElementPreview
+          key={element.id}
+          element={element}
+          language={language}
+          scale={scale}
+          selected={element.id === selectedElementId}
+          onSelect={event => {
+            event?.stopPropagation();
+            onSelectElement?.(element.id);
+          }}
+          onPointerDown={onElementPointerDown}
+        />
+      ))}
+    </section>
+  );
+};
+
 export const DepartmentIntroductionViewer = ({ module, token, language = 'zh' }) => {
   const externalUrl = getExternalIntroductionUrl(module);
   const [loading, setLoading] = useState(!externalUrl);
@@ -268,7 +475,13 @@ export const DepartmentIntroductionViewer = ({ module, token, language = 'zh' })
       {!loading && !message && (
         <>
           {!intro?.hasPublished && <div className="dept-intro-status">{language === 'en' ? 'This department has not published a custom introduction page yet. The default template is shown.' : '该部门暂未发布自定义介绍页，当前显示默认模板。'}</div>}
-          {(content.blocks || []).map(block => <BlockPreview key={block.id} block={block} language={language} />)}
+          {Array.isArray(content.pages) && content.pages.length ? (
+            <div className="dept-intro-slide-viewer">
+              {content.pages.map(page => <CanvasPagePreview key={page.id} page={page} language={language} scale={Math.min(1, 1100 / (page.width || 1440))} />)}
+            </div>
+          ) : (
+            (content.blocks || []).map(block => <BlockPreview key={block.id} block={block} language={language} />)
+          )}
         </>
       )}
     </section>
@@ -284,8 +497,10 @@ export const DepartmentIntroductionEditor = ({ module, token, language = 'zh', o
   const [publishing, setPublishing] = useState(false);
   const [uploadingBlockId, setUploadingBlockId] = useState('');
   const [intro, setIntro] = useState(null);
-  const [content, setContent] = useState(defaultContent(module));
+  const [content, setContent] = useState(() => ensureCanvasContent(defaultContent(module), module));
   const [selectedId, setSelectedId] = useState('');
+  const [selectedPageId, setSelectedPageId] = useState('');
+  const [selectedElementId, setSelectedElementId] = useState('');
   const [message, setMessage] = useState('');
   const [revisions, setRevisions] = useState([]);
 
@@ -303,9 +518,12 @@ export const DepartmentIntroductionEditor = ({ module, token, language = 'zh', o
       .then(data => {
         if (cancelled) return;
         if (!data.success) throw new Error(data.message || '获取编辑数据失败');
+        const nextContent = ensureCanvasContent(data.introduction?.content || defaultContent(module), module);
         setIntro(data.introduction);
-        setContent(data.introduction?.content || defaultContent(module));
-        setSelectedId(data.introduction?.content?.blocks?.[0]?.id || '');
+        setContent(nextContent);
+        setSelectedId(nextContent.blocks?.[0]?.id || '');
+        setSelectedPageId(nextContent.pages?.[0]?.id || '');
+        setSelectedElementId(nextContent.pages?.[0]?.elements?.[0]?.id || '');
         setRevisions(data.revisions || []);
       })
       .catch(error => {
@@ -321,6 +539,9 @@ export const DepartmentIntroductionEditor = ({ module, token, language = 'zh', o
 
   const blocks = content.blocks || [];
   const selectedBlock = useMemo(() => blocks.find(block => block.id === selectedId) || blocks[0], [blocks, selectedId]);
+  const pages = content.pages || [];
+  const selectedPage = useMemo(() => pages.find(page => page.id === selectedPageId) || pages[0], [pages, selectedPageId]);
+  const selectedElement = useMemo(() => selectedPage?.elements?.find(element => element.id === selectedElementId) || selectedPage?.elements?.[0], [selectedElementId, selectedPage]);
 
   const setBlocks = (nextBlocks) => {
     setContent({ blocks: nextBlocks });
@@ -421,6 +642,82 @@ export const DepartmentIntroductionEditor = ({ module, token, language = 'zh', o
     }
   };
 
+  const setPageList = (nextPages) => {
+    setContent(current => ({ ...(current || {}), pages: nextPages, blocks: current?.blocks || blocks }));
+    if (!nextPages.find(page => page.id === selectedPageId)) {
+      const nextPage = nextPages[0];
+      setSelectedPageId(nextPage?.id || '');
+      setSelectedElementId(nextPage?.elements?.[0]?.id || '');
+    }
+  };
+
+  const updatePage = (pageId, updater) => {
+    setPageList(pages.map(page => page.id === pageId ? updater(page) : page));
+  };
+
+  const addCanvasPage = () => {
+    const nextPage = createCanvasPage(module, pages.length);
+    setPageList([...pages, nextPage]);
+    setSelectedPageId(nextPage.id);
+    setSelectedElementId(nextPage.elements?.[0]?.id || '');
+  };
+
+  const removeCanvasPage = (pageId) => {
+    if (pages.length <= 1) {
+      setMessage(isEnglish ? 'Keep at least one page.' : '至少保留一个页面。');
+      return;
+    }
+    setPageList(pages.filter(page => page.id !== pageId));
+  };
+
+  const updateElement = (pageId, elementId, updater) => {
+    updatePage(pageId, page => ({
+      ...page,
+      elements: (page.elements || []).map(element => element.id === elementId ? updater(element) : element)
+    }));
+  };
+
+  const addCanvasElement = (type) => {
+    if (!selectedPage) return;
+    const element = createCanvasElement(type, { style: { x: 120 + (selectedPage.elements?.length || 0) * 20, y: 120 + (selectedPage.elements?.length || 0) * 16 } });
+    updatePage(selectedPage.id, page => ({ ...page, elements: [...(page.elements || []), element] }));
+    setSelectedElementId(element.id);
+  };
+
+  const removeCanvasElement = (pageId, elementId) => {
+    updatePage(pageId, page => ({
+      ...page,
+      elements: (page.elements || []).filter(element => element.id !== elementId)
+    }));
+    setSelectedElementId('');
+  };
+
+  const uploadCanvasMedia = async (element, file, targetField = 'url') => {
+    if (!file || !selectedPage) return;
+    setUploadingBlockId(element.id);
+    setMessage('');
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(`${API_BASE}/hub/departments/${module.organization}/${module.key}/introduction/media`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || '上传失败');
+      updateElement(selectedPage.id, element.id, current => ({
+        ...current,
+        content: { ...current.content, [targetField]: data.media.url }
+      }));
+      setMessage(isEnglish ? 'Media uploaded. You can publish directly.' : '媒体已上传，可以直接发布。');
+    } catch (error) {
+      setMessage(error.message || '上传失败');
+    } finally {
+      setUploadingBlockId('');
+    }
+  };
+
   if (externalEditorDisabled) {
     return (
       <section className="dept-intro-editor dept-intro-editor--external">
@@ -434,6 +731,301 @@ export const DepartmentIntroductionEditor = ({ module, token, language = 'zh', o
             {isEnglish ? 'Open showcase' : '打开展示站'} <ArrowUpRight />
           </a>
         </section>
+      </section>
+    );
+  }
+
+  if (Array.isArray(content.pages) && content.pages.length) {
+    const currentPage = selectedPage || content.pages[0];
+    const currentElement = selectedElement || currentPage?.elements?.[0] || null;
+    const patchPage = (patch) => currentPage && updatePage(currentPage.id, page => ({ ...page, ...patch }));
+    const patchPageStyle = (patch) => currentPage && updatePage(currentPage.id, page => ({ ...page, ...patch }));
+    const patchElement = (patch) => currentPage && currentElement && updateElement(currentPage.id, currentElement.id, element => ({ ...element, ...patch }));
+    const patchElementContent = (patch) => currentPage && currentElement && updateElement(currentPage.id, currentElement.id, element => ({ ...element, content: { ...element.content, ...patch } }));
+    const patchElementStyle = (patch) => currentPage && currentElement && updateElement(currentPage.id, currentElement.id, element => ({ ...element, style: { ...element.style, ...patch } }));
+    const uploadCanvasPageBackground = async (file) => {
+      if (!file || !currentPage) return;
+      setUploadingBlockId(`${currentPage.id}-background`);
+      setMessage('');
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch(`${API_BASE}/hub/departments/${module.organization}/${module.key}/introduction/media`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || '上传失败');
+        updatePage(currentPage.id, page => ({ ...page, backgroundImageUrl: data.media.url }));
+        setMessage(isEnglish ? 'Page background uploaded.' : '页面背景已上传。');
+      } catch (error) {
+        setMessage(error.message || '上传失败');
+      } finally {
+        setUploadingBlockId('');
+      }
+    };
+    const uploadCanvasElementBackground = async (file) => {
+      if (!file || !currentPage || !currentElement) return;
+      setUploadingBlockId(`${currentElement.id}-background`);
+      setMessage('');
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch(`${API_BASE}/hub/departments/${module.organization}/${module.key}/introduction/media`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || '上传失败');
+        updateElement(currentPage.id, currentElement.id, element => ({
+          ...element,
+          style: { ...element.style, backgroundImageUrl: data.media.url }
+        }));
+        setMessage(isEnglish ? 'Element background uploaded.' : '组件背景已上传。');
+      } catch (error) {
+        setMessage(error.message || '上传失败');
+      } finally {
+        setUploadingBlockId('');
+      }
+    };
+    const startCanvasInteraction = (element, event, mode, scale) => {
+      if (!currentPage || !element || event.button !== 0) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setSelectedElementId(element.id);
+      const startX = event.clientX;
+      const startY = event.clientY;
+      const baseStyle = element.style || {};
+      const baseX = Number(baseStyle.x) || 0;
+      const baseY = Number(baseStyle.y) || 0;
+      const baseWidth = Number(baseStyle.width) || 100;
+      const baseHeight = Number(baseStyle.height) || 100;
+      const safeScale = scale || 1;
+      const handleMove = (moveEvent) => {
+        const dx = (moveEvent.clientX - startX) / safeScale;
+        const dy = (moveEvent.clientY - startY) / safeScale;
+        updateElement(currentPage.id, element.id, current => ({
+          ...current,
+          style: {
+            ...current.style,
+            ...(mode === 'resize'
+              ? { width: Math.max(24, Math.round(baseWidth + dx)), height: Math.max(24, Math.round(baseHeight + dy)) }
+              : { x: Math.round(baseX + dx), y: Math.round(baseY + dy) })
+          }
+        }));
+      };
+      const handleUp = () => {
+        window.removeEventListener('pointermove', handleMove);
+        window.removeEventListener('pointerup', handleUp);
+      };
+      window.addEventListener('pointermove', handleMove);
+      window.addEventListener('pointerup', handleUp, { once: true });
+    };
+    const canvasScale = Math.min(1, 1060 / (currentPage.width || 1440));
+
+    return (
+      <section className="dept-intro-editor dept-intro-editor--canvas">
+        <div className="dept-intro-editor-topbar">
+          <div>
+            <p>SIEHUB / INTRODUCTION BUILDER</p>
+            <h2>{getModuleTitle(module, language)} / {isEnglish ? 'Canvas editor' : '画布编辑器'}</h2>
+            <span>{isEnglish ? 'Drag, resize and restyle page elements like a deck.' : '像编辑 PPT 一样编辑页面、元素、位置和样式。'}</span>
+          </div>
+          <div>
+            <button type="button" onClick={onClose}>{isEnglish ? 'Back to manage portal' : '返回管理端'}</button>
+            <button type="button" onClick={saveDraft} disabled={saving}><Save />{saving ? (isEnglish ? 'Saving' : '保存中') : (isEnglish ? 'Save draft' : '保存草稿')}</button>
+            <button className="primary-button" type="button" onClick={publish} disabled={publishing}><Send />{publishing ? (isEnglish ? 'Publishing' : '发布中') : (isEnglish ? 'Publish' : '发布')}</button>
+          </div>
+        </div>
+        {message && <div className="dept-intro-status">{message}</div>}
+        {loading ? <div className="dept-intro-status">{isEnglish ? 'Loading editor...' : '加载编辑器中...'}</div> : (
+          <div className="dept-intro-editor-grid dept-intro-editor-grid--canvas">
+            <aside className="dept-intro-library">
+              <strong>{isEnglish ? 'Pages' : '页面'}</strong>
+              <button type="button" onClick={addCanvasPage}><Plus />{isEnglish ? 'New page' : '新增页面'}</button>
+              <div className="dept-intro-block-list">
+                {content.pages.map(page => (
+                  <article key={page.id} className={page.id === currentPage.id ? 'is-active' : ''} onClick={() => { setSelectedPageId(page.id); setSelectedElementId(page.elements?.[0]?.id || ''); }}>
+                    <span>{String(content.pages.indexOf(page) + 1).padStart(2, '0')}</span>
+                    <b>{getText(page.title, language) || `Page ${content.pages.indexOf(page) + 1}`}</b>
+                    <div>
+                      <button type="button" onClick={(event) => { event.stopPropagation(); updatePage(page.id, next => ({ ...next, transition: next.transition === 'fade' ? 'rise' : 'fade' })); }}><Eye /></button>
+                      <button type="button" onClick={(event) => { event.stopPropagation(); removeCanvasPage(page.id); }}><Trash2 /></button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+              <strong>{isEnglish ? 'Elements' : '元素'}</strong>
+              <button type="button" onClick={() => addCanvasElement('text')}><Plus />{isEnglish ? 'Text' : '文本框'}</button>
+              <button type="button" onClick={() => addCanvasElement('image')}><ImagePlus />{isEnglish ? 'Image' : '图片'}</button>
+              <button type="button" onClick={() => addCanvasElement('card')}><Plus />{isEnglish ? 'Card' : '卡片'}</button>
+              <button type="button" onClick={() => addCanvasElement('activity')}><Plus />{isEnglish ? 'Activity' : '活动'}</button>
+              <button type="button" onClick={() => addCanvasElement('shape')}><Plus />{isEnglish ? 'Shape' : '图形'}</button>
+              <div className="dept-intro-block-list">
+                {(currentPage.elements || []).map(element => (
+                  <article key={element.id} className={element.id === currentElement?.id ? 'is-active' : ''} onClick={() => setSelectedElementId(element.id)}>
+                    <span>{element.type.slice(0, 2).toUpperCase()}</span>
+                    <b>{getText(element.content?.text || element.content?.title || element.content?.label, language) || element.type}</b>
+                    <div>
+                      <button type="button" onClick={(event) => { event.stopPropagation(); updateElement(currentPage.id, element.id, current => ({ ...current, visible: !current.visible })); }}><Eye /></button>
+                      <button type="button" onClick={(event) => { event.stopPropagation(); removeCanvasElement(currentPage.id, element.id); }}><Trash2 /></button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </aside>
+            <main className="dept-intro-canvas dept-intro-canvas--deck">
+              <div className="dept-intro-canvas-stage">
+                <CanvasPagePreview
+                  page={currentPage}
+                  language={language}
+                  scale={canvasScale}
+                  selectedElementId={currentElement?.id}
+                  onSelectElement={setSelectedElementId}
+                  onElementPointerDown={(element, event, mode) => startCanvasInteraction(element, event, mode, canvasScale)}
+                />
+              </div>
+            </main>
+            <aside className="dept-intro-side">
+              <div className="dept-intro-inspector">
+                <div className="dept-intro-inspector-head">
+                  <span>{currentElement ? currentElement.type.toUpperCase() : (isEnglish ? 'Page' : '页面')}</span>
+                  <button type="button" onClick={() => currentElement && updateElement(currentPage.id, currentElement.id, current => ({ ...current, visible: !current.visible }))}>
+                    <Eye />{currentElement?.visible ? (isEnglish ? 'Visible' : '显示') : (isEnglish ? 'Hidden' : '隐藏')}
+                  </button>
+                </div>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Page title' : '页面标题'}</span>
+                  <input value={getText(currentPage.title, 'zh')} onChange={event => patchPage({ title: { ...currentPage.title, zh: event.target.value } })} />
+                  <input value={getText(currentPage.title, 'en')} onChange={event => patchPage({ title: { ...currentPage.title, en: event.target.value } })} />
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Canvas width' : '画布宽度'}</span>
+                  <input type="number" value={currentPage.width || 1440} onChange={event => patchPageStyle({ width: Number(event.target.value) || 1440 })} />
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Canvas height' : '画布高度'}</span>
+                  <input type="number" value={currentPage.height || 900} onChange={event => patchPageStyle({ height: Number(event.target.value) || 900 })} />
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Background' : '背景色'}</span>
+                  <input type="color" value={currentPage.backgroundColor || '#f8fafc'} onChange={event => patchPage({ backgroundColor: event.target.value })} />
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Background image' : '背景图片'}</span>
+                  <input value={currentPage.backgroundImageUrl || ''} onChange={event => patchPage({ backgroundImageUrl: event.target.value })} />
+                </label>
+                <label className="dept-intro-upload-button">
+                  <UploadCloud />
+                  {uploadingBlockId === `${currentPage.id}-background` ? (isEnglish ? 'Uploading...' : '上传中...') : (isEnglish ? 'Upload page background' : '上传页面背景')}
+                  <input type="file" accept="image/jpeg,image/png,image/webp" onChange={event => uploadCanvasPageBackground(event.target.files?.[0])} />
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Selected x' : '位置 X'}</span>
+                  <input type="number" value={currentElement?.style?.x || 0} onChange={event => patchElementStyle({ x: Number(event.target.value) || 0 })} />
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Selected y' : '位置 Y'}</span>
+                  <input type="number" value={currentElement?.style?.y || 0} onChange={event => patchElementStyle({ y: Number(event.target.value) || 0 })} />
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Width' : '宽度'}</span>
+                  <input type="number" value={currentElement?.style?.width || 300} onChange={event => patchElementStyle({ width: Number(event.target.value) || 300 })} />
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Height' : '高度'}</span>
+                  <input type="number" value={currentElement?.style?.height || 160} onChange={event => patchElementStyle({ height: Number(event.target.value) || 160 })} />
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Rotation' : '旋转角度'}</span>
+                  <input type="number" value={currentElement?.style?.rotation || 0} onChange={event => patchElementStyle({ rotation: Number(event.target.value) || 0 })} />
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Layer' : '图层顺序'}</span>
+                  <input type="number" value={currentElement?.style?.zIndex || 1} onChange={event => patchElementStyle({ zIndex: Number(event.target.value) || 1 })} />
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Font family' : '字体'}</span>
+                  <select value={currentElement?.style?.fontFamily || 'Noto Sans SC'} onChange={event => patchElementStyle({ fontFamily: event.target.value })}>
+                    <option value="Noto Sans SC">Noto Sans SC</option>
+                    <option value="Noto Serif SC">Noto Serif SC</option>
+                    <option value="serif">Serif</option>
+                    <option value="sans-serif">Sans-serif</option>
+                  </select>
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Font size' : '字号'}</span>
+                  <input type="number" value={currentElement?.style?.fontSize || 24} onChange={event => patchElementStyle({ fontSize: Number(event.target.value) || 24 })} />
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Overlay opacity' : '蒙版透明度'}</span>
+                  <input type="range" min="0" max="0.95" step="0.01" value={currentElement?.style?.overlayOpacity ?? 0} onChange={event => patchElementStyle({ overlayOpacity: Number(event.target.value) })} />
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Overlay color' : '蒙版颜色'}</span>
+                  <input type="color" value={currentElement?.style?.overlayColor || '#0f172a'} onChange={event => patchElementStyle({ overlayColor: event.target.value })} />
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Element background' : '组件背景图'}</span>
+                  <input value={currentElement?.style?.backgroundImageUrl || ''} onChange={event => patchElementStyle({ backgroundImageUrl: event.target.value })} />
+                </label>
+                <label className="dept-intro-upload-button">
+                  <UploadCloud />
+                  {currentElement && uploadingBlockId === `${currentElement.id}-background` ? (isEnglish ? 'Uploading...' : '上传中...') : (isEnglish ? 'Upload element background' : '上传组件背景')}
+                  <input type="file" accept="image/jpeg,image/png,image/webp" onChange={event => uploadCanvasElementBackground(event.target.files?.[0])} />
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Background color' : '组件底色'}</span>
+                  <input type="color" value={currentElement?.style?.backgroundColor === 'transparent' ? '#ffffff' : (currentElement?.style?.backgroundColor || '#ffffff')} onChange={event => patchElementStyle({ backgroundColor: event.target.value })} />
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Opacity' : '透明度'}</span>
+                  <input type="range" min="0.05" max="1" step="0.01" value={currentElement?.style?.opacity ?? 1} onChange={event => patchElementStyle({ opacity: Number(event.target.value) })} />
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Radius' : '圆角'}</span>
+                  <input type="number" value={currentElement?.style?.borderRadius || 0} onChange={event => patchElementStyle({ borderRadius: Number(event.target.value) || 0 })} />
+                </label>
+                <label className="dept-intro-field">
+                  <span>{isEnglish ? 'Padding' : '内边距'}</span>
+                  <input type="number" value={currentElement?.style?.padding || 0} onChange={event => patchElementStyle({ padding: Number(event.target.value) || 0 })} />
+                </label>
+                {currentElement?.type === 'text' && <FieldPair label={isEnglish ? 'Text' : '文字'} value={currentElement.content?.text} onChange={value => patchElementContent({ text: value })} textarea language={language} />}
+                {currentElement?.type === 'card' && (
+                  <>
+                    <FieldPair label={isEnglish ? 'Title' : '标题'} value={currentElement.content?.title} onChange={value => patchElementContent({ title: value })} language={language} />
+                    <FieldPair label={isEnglish ? 'Body' : '正文'} value={currentElement.content?.body} onChange={value => patchElementContent({ body: value })} textarea language={language} />
+                  </>
+                )}
+                {currentElement?.type === 'activity' && (
+                  <>
+                    <FieldPair label="Kicker" value={currentElement.content?.kicker} onChange={value => patchElementContent({ kicker: value })} language={language} />
+                    <FieldPair label={isEnglish ? 'Title' : '标题'} value={currentElement.content?.title} onChange={value => patchElementContent({ title: value })} language={language} />
+                    <FieldPair label={isEnglish ? 'Body' : '正文'} value={currentElement.content?.body} onChange={value => patchElementContent({ body: value })} textarea language={language} />
+                    <FieldPair label={isEnglish ? 'Date' : '日期'} value={currentElement.content?.date} onChange={value => patchElementContent({ date: value })} language={language} />
+                  </>
+                )}
+                {currentElement?.type === 'image' && (
+                  <>
+                    <label className="dept-intro-field">
+                      <span>{isEnglish ? 'Image URL' : '图片地址'}</span>
+                      <input value={currentElement.content?.url || ''} onChange={event => patchElementContent({ url: event.target.value })} />
+                    </label>
+                    <label className="dept-intro-upload-button">
+                      <UploadCloud />
+                      {uploadingBlockId === currentElement.id ? (isEnglish ? 'Uploading...' : '上传中...') : (isEnglish ? 'Upload image' : '上传图片')}
+                      <input type="file" accept="image/jpeg,image/png,image/webp" onChange={event => uploadCanvasMedia(currentElement, event.target.files?.[0])} />
+                    </label>
+                    <FieldPair label={isEnglish ? 'Caption' : '说明'} value={currentElement.content?.title} onChange={value => patchElementContent({ title: value })} language={language} />
+                    <FieldPair label={isEnglish ? 'Alt text' : '替代文本'} value={currentElement.content?.alt} onChange={value => patchElementContent({ alt: value })} language={language} />
+                  </>
+                )}
+              </div>
+            </aside>
+          </div>
+        )}
       </section>
     );
   }
