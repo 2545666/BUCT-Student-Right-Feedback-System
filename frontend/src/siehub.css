@@ -1889,6 +1889,124 @@ html[data-theme="dark"] .siehub-checkbox:checked + i::after {
   font-size: 8px;
 }
 
+.login-legal a,
+.login-police-record {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #929ca4;
+}
+
+.login-legal a:hover,
+.login-legal button:hover {
+  color: var(--theme-primary);
+}
+
+.login-police-record img {
+  width: 13px;
+  height: 13px;
+}
+
+.siehub-site-legal-footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px 24px;
+  align-items: center;
+  padding: 18px clamp(18px, 4vw, 44px);
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  background: var(--paper);
+  font-size: 11px;
+  letter-spacing: .02em;
+}
+
+.siehub-site-legal-footer.is-compact {
+  padding-block: 12px;
+  font-size: 10px;
+}
+
+.siehub-site-legal-links {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.siehub-site-legal-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: inherit;
+}
+
+.siehub-site-legal-links a:hover {
+  color: var(--theme-primary);
+}
+
+.siehub-site-legal-links img {
+  width: 16px;
+  height: 16px;
+}
+
+@media (max-width: 720px) {
+  .siehub-site-legal-footer {
+    grid-template-columns: 1fr;
+  }
+
+  .siehub-site-legal-links {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  body.auth-active {
+    overflow-y: auto !important;
+  }
+
+  body.auth-active .login-view {
+    min-height: 100dvh;
+    max-height: none;
+    overflow-y: auto;
+  }
+
+  body.auth-active .login-panel {
+    min-height: auto;
+  }
+
+  body.auth-active .siehub-login-panel {
+    padding-bottom: max(26px, calc(18px + env(safe-area-inset-bottom)));
+  }
+
+  body.auth-active .login-legal {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 7px 11px;
+    width: 100%;
+    margin-top: 8px;
+    line-height: 1.45;
+  }
+
+  body.auth-active .login-legal span:first-child {
+    flex: 1 0 100%;
+    margin-right: 0;
+  }
+
+  body.auth-active .login-legal a,
+  body.auth-active .login-legal button {
+    font-size: 8px;
+  }
+
+  body.auth-active .login-police-record {
+    max-width: 100%;
+  }
+
+  body:not(.auth-active) .siehub-site-legal-footer {
+    padding-bottom: calc(106px + env(safe-area-inset-bottom));
+  }
+}
+
 .email-code-field button {
   width: auto;
   min-width: 86px;

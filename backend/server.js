@@ -1511,6 +1511,109 @@ const normalizeIntroductionBlock = (block = {}, index = 0) => {
 };
 
 const normalizeIntroductionContent = (payload = {}, assignment) => {
+  const cleanShowcaseStyle = (style = {}) => {
+    const cleanSize = (value, maxLength = 40) => {
+      const text = cleanText(value, maxLength);
+      return /^(-?\d+(\.\d+)?(px|rem|em|%)?|normal|auto|inherit)$/.test(text) ? text : '';
+    };
+    const cleanNumber = (value, fallback, min, max) => {
+      const number = Number(value);
+      if (!Number.isFinite(number)) return fallback;
+      return Math.max(min, Math.min(max, number));
+    };
+    const colorPattern = /^(#[0-9a-fA-F]{3,8}|rgba?\([0-9.,\s%]+\)|hsla?\([0-9.,\s%]+\)|transparent|currentColor|inherit)$/;
+    const cleanColor = (value) => {
+      const text = cleanText(value, 80);
+      return colorPattern.test(text) ? text : '';
+    };
+    const cleanShadow = (value) => {
+      const text = cleanText(value, 180);
+      return /^none$|^-?\d+(\.\d+)?px\s+-?\d+(\.\d+)?px\s+\d+(\.\d+)?px(\s+\d+(\.\d+)?px)?\s+(#[0-9a-fA-F]{3,8}|rgba?\([0-9.,\s%]+\))$/.test(text) ? text : '';
+    };
+    const cleanTransform = (value) => {
+      const text = cleanText(value, 140);
+      return /^none$|^(rotate\(-?\d+(\.\d+)?deg\)|scale\(\d+(\.\d+)?\)|translate\(-?\d+(\.\d+)?px,\s*-?\d+(\.\d+)?px\))$/.test(text) ? text : '';
+    };
+    return {
+      color: cleanColor(style.color),
+      backgroundColor: cleanColor(style.backgroundColor),
+      fontFamily: cleanText(style.fontFamily, 80),
+      fontSize: cleanSize(style.fontSize),
+      fontWeight: ['100', '200', '300', '400', '500', '600', '700', '800', '900', 'normal', 'bold', 'inherit'].includes(String(style.fontWeight)) ? String(style.fontWeight) : '',
+      lineHeight: cleanSize(style.lineHeight),
+      letterSpacing: cleanSize(style.letterSpacing),
+      textAlign: ['left', 'center', 'right', 'justify', 'inherit'].includes(style.textAlign) ? style.textAlign : '',
+      textTransform: ['none', 'uppercase', 'lowercase', 'capitalize', 'inherit'].includes(style.textTransform) ? style.textTransform : '',
+      opacity: cleanNumber(style.opacity, 1, 0, 1),
+      borderColor: cleanColor(style.borderColor),
+      borderWidth: cleanSize(style.borderWidth),
+      borderRadius: cleanSize(style.borderRadius),
+      boxShadow: cleanShadow(style.boxShadow),
+      objectFit: ['cover', 'contain', 'fill', 'none', 'scale-down', 'inherit'].includes(style.objectFit) ? style.objectFit : '',
+      objectPosition: cleanText(style.objectPosition, 80),
+      transform: cleanTransform(style.transform),
+      display: ['none', 'block', 'inline', 'inline-block', 'flex', 'grid', ''].includes(style.display) ? style.display : ''
+    };
+  };
+
+  const cleanShowcasePatch = (item = {}, index = 0) => ({
+    key: cleanText(item.key, 120) || `node-${index}`,
+    tagName: cleanText(item.tagName, 24),
+    text: cleanText(item.text, 6000),
+    html: '',
+    href: cleanText(item.href, 500),
+    src: cleanText(item.src, 500),
+    alt: cleanText(item.alt, 240),
+    title: cleanText(item.title, 240),
+    hidden: item.hidden === true,
+    removed: item.removed === true,
+    style: cleanShowcaseStyle(item.style || {})
+  });
+
+  const cleanShowcaseSection = (item = {}, index = 0) => ({
+    key: cleanText(item.key, 120) || `section-${index}`,
+    hidden: item.hidden === true,
+    removed: item.removed === true,
+    style: cleanShowcaseStyle(item.style || {})
+  });
+
+  const cleanShowcasePhoto = (item = {}, index = 0) => ({
+    id: cleanText(item.id, 120) || `photo-${index}`,
+    src: cleanText(item.src, 500),
+    label: cleanText(item.label, 240),
+    caption: cleanText(item.caption, 500),
+    alt: cleanText(item.alt, 240)
+  });
+
+  const cleanShowcaseGallery = (gallery = {}) => {
+    const events = Array.isArray(gallery.events) ? gallery.events : [];
+    return {
+      events: events.slice(0, 24).map((event, index) => ({
+        key: cleanText(event.key, 120) || `gallery-${index}`,
+        photos: (Array.isArray(event.photos) ? event.photos : [])
+          .slice(0, 24)
+          .map(cleanShowcasePhoto)
+          .filter(photo => photo.src)
+      }))
+    };
+  };
+
+  const cleanShowcaseContent = (showcase = {}) => {
+    if (!showcase || typeof showcase !== 'object') return null;
+    const patches = Array.isArray(showcase.patches) ? showcase.patches : [];
+    const sections = Array.isArray(showcase.sections) ? showcase.sections : [];
+    const sectionOrder = Array.isArray(showcase.sectionOrder) ? showcase.sectionOrder : [];
+    return {
+      schema: 'fixed-showcase-v1',
+      departmentKey: cleanText(showcase.departmentKey || assignment.department, 80),
+      updatedAt: cleanText(showcase.updatedAt, 40),
+      patches: patches.slice(0, 420).map(cleanShowcasePatch),
+      sections: sections.slice(0, 80).map(cleanShowcaseSection),
+      sectionOrder: sectionOrder.slice(0, 80).map(key => cleanText(key, 120)).filter(Boolean),
+      gallery: cleanShowcaseGallery(showcase.gallery || {})
+    };
+  };
+
   const cleanCanvasStyle = (style = {}, index = 0) => {
     const clamp = (value, fallback, min, max) => {
       const number = Number(value);
@@ -1600,10 +1703,13 @@ const normalizeIntroductionContent = (payload = {}, assignment) => {
     .map(normalizeIntroductionBlock)
     .filter(block => block.visible !== false || block.data);
 
-  return {
+  const normalized = {
     ...(pages.length ? { pages } : {}),
     blocks: blocks.length ? blocks : createDefaultDepartmentIntroduction(assignment.organization, assignment.department).blocks
   };
+  const showcase = cleanShowcaseContent(payload.showcase);
+  if (showcase) normalized.showcase = showcase;
+  return normalized;
 };
 
 const serializeDepartmentIntroduction = (doc, assignment, mode = 'published') => {
@@ -2467,6 +2573,26 @@ app.patch('/api/hub/departments/:organization/:department/notices/:id', authenti
     res.json({ success: true, notice: serializeDepartmentNotice(existing), access });
   } catch (error) {
     res.status(error?.code === 11000 ? 409 : 500).json({ success: false, message: error?.code === 11000 ? '该外部文章已同步' : '更新部门通知失败' });
+  }
+});
+
+app.get('/api/public/departments/:organization/:department/introduction', async (req, res) => {
+  const assignment = {
+    organization: req.params.organization,
+    department: req.params.department
+  };
+  if (!isValidManagedDepartment(assignment)) {
+    return res.status(404).json({ success: false, message: 'Department module not found' });
+  }
+
+  try {
+    const intro = await DepartmentIntroduction.findOne(assignment).lean();
+    res.json({
+      success: true,
+      introduction: serializeDepartmentIntroduction(intro, assignment, 'published')
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to load department introduction' });
   }
 });
 

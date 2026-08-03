@@ -1,0 +1,102 @@
+.photo-dots {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 3;
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.photo-dots i {
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.45);
+  box-shadow: 0 0 0 1px rgba(30, 41, 37, 0.18);
+  transition: width 0.25s ease, background 0.25s ease, transform 0.25s ease;
+}
+
+.photo-dots i.active {
+  width: 18px;
+  background: var(--yellow);
+  transform: translateY(-1px);
+}
+
+.local-editable .photo-dots {
+  bottom: 50px;
+}
+
+.photo-tools {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.upload-trigger {
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #fff;
+  background: rgba(30, 41, 37, 0.68);
+  backdrop-filter: blur(10px);
+  font: 700 10px var(--body);
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+
+.upload-trigger:hover {
+  background: var(--yellow);
+  border-color: var(--yellow);
+  color: var(--green);
+  transform: translateY(-2px);
+}
+
+.gallery-thumbs button {
+  position: relative;
+}
+
+.gallery-thumbs button::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 6px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.55);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.25s ease;
+}
+
+.gallery-thumbs button.active::after {
+  background: var(--yellow);
+  transform: scaleX(1);
+}
+
+@media (max-width: 650px) {
+  .photo-dots {
+    right: 12px;
+    bottom: 12px;
+  }
+
+  .local-editable .photo-dots {
+    bottom: 47px;
+  }
+
+  .photo-tools {
+    right: 10px;
+    bottom: 10px;
+  }
+
+  .upload-trigger {
+    height: 28px;
+    padding-inline: 9px;
+  }
+}

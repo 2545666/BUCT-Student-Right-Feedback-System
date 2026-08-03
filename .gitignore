@@ -58,6 +58,7 @@ coverage/
 *.tmp
 *.temp
 .cache/
+.tmp-putty/
 
 # MongoDB 数据（如果本地测试）
 data/db/

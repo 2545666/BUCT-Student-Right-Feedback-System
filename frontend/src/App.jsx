@@ -14,6 +14,7 @@ import siehubLogo from './assets/SIEHUB_LOGO.png';
 import siebridgeLogo from './assets/SIEBridge_LOGO.png';
 import collegeLogo from './assets/SIE_LOGO.svg';
 import buctLogo from './assets/BUCT_LOGO_blue.png';
+import beianIcon from './assets/beian.png';
 import { API_BASE } from './api';
 import { ServiceHealthNote, formatAverageFirstResponse, usePlatformClock, useServiceMetrics } from './platformStatus';
 import { SIEBridgeReviewWorkspace, SIEBridgeStudentPortal } from './SIEBridge';
@@ -73,6 +74,22 @@ const STATUS_META = {
   rejected: { label: '已拒绝', className: 'pending' }
 };
 
+const ICP_RECORD_URL = 'https://beian.miit.gov.cn/';
+const POLICE_RECORD_URL = 'https://beian.mps.gov.cn/#/query/webSearch?code=11011402055565';
+
+const SiteLegalFooter = ({ compact = false }) => (
+  <footer className={`siehub-site-legal-footer${compact ? ' is-compact' : ''}`}>
+    <div className="siehub-site-legal-brand">Copyright© 2026 BUCT SIE</div>
+    <div className="siehub-site-legal-links">
+      <a href={ICP_RECORD_URL} target="_blank" rel="noreferrer">京ICP备2026010091号-1</a>
+      <a href={POLICE_RECORD_URL} target="_blank" rel="noreferrer">
+        <img src={beianIcon} alt="公安备案图标" />
+        <span>京公网安备11011402055565号</span>
+      </a>
+    </div>
+  </footer>
+);
+
 const PRIORITY_LABEL = {
   low: '低',
   normal: '普通',
@@ -112,7 +129,9 @@ const SIEBRIDGE_HOST = (() => {
 const currentHost = typeof window !== 'undefined' ? window.location.host.toLowerCase() : '';
 const isCurrentHost = (targetHost) => Boolean(targetHost && currentHost === targetHost);
 const SIEHUB_NAMED_PATHS = {
+  hub: '/',
   departments: '/departments',
+  department: '/departments',
   sievox: '/rights',
   siebridge: '/siebridge'
 };
@@ -124,6 +143,20 @@ const getSurfaceFromPath = (pathname = '') => {
   return '';
 };
 const getPathForSurface = (surface = '') => SIEHUB_NAMED_PATHS[surface] || '/';
+const getInitialDepartmentModuleFromLocation = () => {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search || '');
+  const rawKey = params.get('module') || params.get('department') || params.get('key') || '';
+  const normalizedKey = rawKey.replace(/-/g, '_');
+  return findSIEHUBModuleByKey(normalizedKey);
+};
+const getUrlForSIEHUBState = (surface = 'hub', activeModule = null) => {
+  const path = getPathForSurface(surface);
+  if (surface === 'department' && activeModule?.key) {
+    return `${path}?module=${encodeURIComponent(activeModule.key)}`;
+  }
+  return path;
+};
 const getCurrentPathSurface = () => {
   if (typeof window === 'undefined') return '';
   return getSurfaceFromPath(window.location.pathname);
@@ -1350,7 +1383,12 @@ const LoginPage = ({ onLogin, onRegister, theme, language = 'zh', languageSwitch
           <div className="login-register"><span>{isLogin ? '首次使用 SIEHUB？' : '已有账号？'}</span><button type="button" onClick={() => setIsLogin(v => !v)}>{isLogin ? '创建学生账号' : '返回登录'}</button></div>
         </form>
         <div className="login-help"><ShieldCheck /><p><strong>SIEHUB 统一身份安全认证</strong><span>个人信息仅用于校内身份核验、部门工作协同与服务进度通知。</span></p></div>
-        <footer className="login-legal"><span>© 2026 BUCT SIE · SIEHUB</span><button type="button" onClick={() => setPrivacyOpen(true)}>隐私保护</button><span>使用帮助</span></footer>
+        <footer className="login-legal">
+          <span>Copyright© 2026 BUCT SIE</span>
+          <a href={ICP_RECORD_URL} target="_blank" rel="noreferrer">京ICP备2026010091号-1</a>
+          <a href={POLICE_RECORD_URL} target="_blank" rel="noreferrer" className="login-police-record"><img src={beianIcon} alt="公安备案图标" /> 京公网安备11011402055565号</a>
+          <button type="button" onClick={() => setPrivacyOpen(true)}>隐私保护</button>
+        </footer>
       </div>
       {privacyOpen && (
         <div className="privacy-modal-backdrop" role="presentation">
@@ -1425,9 +1463,9 @@ const SIEHUB_MODULES = [
 ];
 
 const DEPARTMENT_SHOWCASE_URLS = {
-  student_rights: '/student-rights/',
-  academic_technology: '/academic-technology/',
-  culture_sports_arts: '/culture-sports-arts/'
+  student_rights: '/student-rights/index.html',
+  academic_technology: '/academic-technology/index.html',
+  culture_sports_arts: '/culture-sports-arts/index.html'
 };
 const CULTURE_SPORTS_ARTS_INTRO_URL = DEPARTMENT_SHOWCASE_URLS.culture_sports_arts;
 
@@ -3280,7 +3318,6 @@ const SIEHUBDepartmentDirectory = ({ user, theme, onBack, onOpenModule, onOpenMy
       <div className="siehub-group-heading"><span>{eyebrow}</span><div><p>DEPARTMENT ORDER</p><h2>{title}</h2></div><b>{items.length}</b></div>
       <div className="siehub-directory-grid">
         {items.map((module, index) => {
-          const showcaseUrl = DEPARTMENT_SHOWCASE_URLS[module.key] || '';
           const content = (
             <>
               <span className="siehub-directory-index">{String(index + 1).padStart(2, '0')}</span>
@@ -3293,11 +3330,7 @@ const SIEHUBDepartmentDirectory = ({ user, theme, onBack, onOpenModule, onOpenMy
               <span className="siehub-directory-action">进入 <ArrowUpRight /></span>
             </>
           );
-          return showcaseUrl ? (
-            <a key={module.key} className={`siehub-directory-card tone-${module.tone}`} href={showcaseUrl}>
-              {content}
-            </a>
-          ) : (
+          return (
             <button key={module.key} className={`siehub-directory-card tone-${module.tone}`} type="button" onClick={() => onOpenModule(module)}>
               {content}
             </button>
@@ -3333,7 +3366,6 @@ const DepartmentStudentPortal = ({ module, onOpenSIEVOX, onOpenSIEBridge, token,
   const isSIEVOX = module?.key === 'student_rights';
   const isSIEBridge = module?.key === 'academic_technology';
   const isCultureSportsArts = module?.key === 'culture_sports_arts';
-  const showcaseUrl = DEPARTMENT_SHOWCASE_URLS[module?.key] || '';
 
   if (introductionOpen) {
     return (
@@ -3368,17 +3400,7 @@ const DepartmentStudentPortal = ({ module, onOpenSIEVOX, onOpenSIEBridge, token,
           <span>这里面向所有学生开放，用于查看部门服务说明、活动入口和后续上线的学生侧功能。</span>
         </div>
         <div className="siehub-student-service-grid">
-          {showcaseUrl ? (
-            <a className="siehub-student-service-entry dept-intro-entry" href={showcaseUrl} target="_blank" rel="noreferrer">
-              <span>01</span>
-              <ArrowUpRight />
-              <strong>{module?.title}宣传展示台</strong>
-              <p>点击后直接打开该部门独立宣传页，学生端与志愿者端仅用于查看展示内容。</p>
-              <b>打开展示站 <ArrowUpRight /></b>
-            </a>
-          ) : (
-            <DepartmentIntroductionEntryCard module={module} onOpen={() => setIntroductionOpen(true)} />
-          )}
+          <DepartmentIntroductionEntryCard module={module} onOpen={() => setIntroductionOpen(true)} />
           {isSIEVOX ? (
             <button className="siehub-student-service-entry sievox-entry" type="button" onClick={onOpenSIEVOX}>
               <span>02</span>
@@ -4232,13 +4254,15 @@ export default function App() {
   const languageTools = useLanguage();
   const [portalView, setPortalView] = useState('superadmin');
   const [appSurface, setAppSurface] = useState(() => {
+    const initialDepartmentModule = getInitialDepartmentModuleFromLocation();
+    if (initialDepartmentModule) return 'department';
     const pathSurface = getCurrentPathSurface();
     if (pathSurface) return pathSurface;
     if (currentHost && SIEVOX_HOST && currentHost === SIEVOX_HOST) return 'sievox';
     if (currentHost && SIEBRIDGE_HOST && currentHost === SIEBRIDGE_HOST) return 'siebridge';
     return 'hub';
   });
-  const [activeModule, setActiveModule] = useState(null);
+  const [activeModule, setActiveModule] = useState(() => getInitialDepartmentModuleFromLocation());
   const historySyncRef = useRef({ initialized: false, applyingPop: false, signature: '' });
   const renderLanguageSwitcher = () => <LanguageSwitcher language={languageTools.language} setLanguage={languageTools.setLanguage} />;
 
@@ -4260,8 +4284,9 @@ export default function App() {
 
   useEffect(() => {
     if (!user) {
-      setAppSurface(getCurrentPathSurface() || 'hub');
-      setActiveModule(null);
+      const initialDepartmentModule = getInitialDepartmentModuleFromLocation();
+      setAppSurface(initialDepartmentModule ? 'department' : (getCurrentPathSurface() || 'hub'));
+      setActiveModule(initialDepartmentModule);
       historySyncRef.current = { initialized: false, applyingPop: false, signature: '' };
     }
   }, [user]);
@@ -4283,8 +4308,7 @@ export default function App() {
     if (!user || typeof window === 'undefined') return;
     const state = createSIEHUBHistoryState(appSurface, activeModule, portalView);
     const signature = JSON.stringify(state);
-    const targetPath = getPathForSurface(appSurface);
-    const targetUrl = `${targetPath}${window.location.search || ''}${window.location.hash || ''}`;
+    const targetUrl = getUrlForSIEHUBState(appSurface, activeModule);
     if (historySyncRef.current.applyingPop) {
       historySyncRef.current.applyingPop = false;
       historySyncRef.current.signature = signature;
@@ -4347,5 +4371,10 @@ export default function App() {
     content = <DashboardPage user={user} token={token} onLogout={logout} onRefreshUser={refreshUser} onOpenMy={openMy} theme={theme} onBackToHub={() => setAppSurface('hub')} renderLanguageSwitcher={renderLanguageSwitcher} language={languageTools.language} />;
   }
 
-  return content;
+  return (
+    <>
+      {content}
+      {user && <SiteLegalFooter />}
+    </>
+  );
 }

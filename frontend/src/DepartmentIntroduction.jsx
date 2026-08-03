@@ -14,11 +14,7 @@ import {
 } from 'lucide-react';
 import { API_BASE } from './api';
 
-const EXTERNAL_DEPARTMENT_INTRO_URLS = {
-  student_rights: '/student-rights/',
-  academic_technology: '/academic-technology/',
-  culture_sports_arts: '/culture-sports-arts/'
-};
+const EXTERNAL_DEPARTMENT_INTRO_URLS = {};
 
 const getExternalIntroductionUrl = (module) => EXTERNAL_DEPARTMENT_INTRO_URLS[module?.key] || '';
 const EXTERNAL_EDITOR_DISABLED_DEPARTMENTS = new Set();

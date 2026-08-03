@@ -2933,7 +2933,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, o
 
       {/* 底部信息 */}
       <div className="mt-6 text-center text-[10px] md:text-xs text-purple-200/40 px-4 transform scale-90 origin-center space-y-2 pb-6">
-        <p>Copyright© 2026 赵启涵.</p>
+        <p>Copyright© 2026 BUCT SIE</p>
         <div className="flex flex-col md:flex-row items-center justify-center gap-2 md:gap-4 mt-1">
           <a href="https://beian.miit.gov.cn/" target="_blank" rel="noreferrer" className="hover:text-purple-200 transition-colors">京ICP备2026010091号-1</a>
           <a href="https://beian.mps.gov.cn/#/query/webSearch?code=11011402055565" target="_blank" rel="noreferrer" className="flex items-center gap-1 hover:text-purple-200 transition-colors">
