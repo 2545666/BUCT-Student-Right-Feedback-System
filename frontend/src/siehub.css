@@ -1566,7 +1566,7 @@ html[data-theme="dark"] .siehub-shell, html[data-theme="dark"] .siehub-topbar { 
 .siehub-login-panel h2,
 .siehub-login-panel .login-submit,
 .siehub-login-art h1,
-.hub-node b {
+.login-orbit-node b {
   font-family: "方正大标宋简体", "Source Han Serif SC", "Songti SC", Georgia, serif;
   font-weight: 900;
   letter-spacing: 0;
@@ -1574,96 +1574,199 @@ html[data-theme="dark"] .siehub-shell, html[data-theme="dark"] .siehub-topbar { 
 
 .siehub-login-blueprint {
   position: absolute;
-  right: clamp(38px, 6vw, 92px);
-  top: 18%;
-  width: 360px;
-  height: 420px;
+  right: clamp(20px, 4.2vw, 76px);
+  top: 14%;
+  width: min(560px, 48vw);
+  height: 520px;
   z-index: 1;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
-.blueprint-axis {
+.login-orbit-bridge {
   position: absolute;
-  left: 0;
-  right: 0;
+  left: 23%;
+  right: 23%;
   top: 50%;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,.32), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.34), rgba(255,255,255,.12), transparent);
+  opacity: .7;
 }
 
-.blueprint-axis.vertical {
-  inset: 0 auto 0 50%;
-  width: 1px;
-  height: auto;
-  background: linear-gradient(180deg, transparent, rgba(255,255,255,.28), transparent);
-}
-
-.hub-node {
+.login-organization-orbit {
+  --orbit-size: 270px;
+  --orbit-radius: 91px;
+  --orbit-speed: 44s;
   position: absolute;
-  left: calc(var(--node-col) * 118px);
-  top: calc(var(--node-row) * 102px);
-  width: 112px;
-  min-height: 76px;
+  width: var(--orbit-size);
+  height: var(--orbit-size);
   display: grid;
+  place-items: center;
+  isolation: isolate;
+}
+
+.youth-league-orbit {
+  left: 0;
+  top: 42px;
+  --orbit-speed: 42s;
+}
+
+.student-union-orbit {
+  right: 0;
+  top: 88px;
+  --orbit-speed: 52s;
+}
+
+.login-orbit-track {
+  position: absolute;
+  inset: 12px;
+  border: 1px solid rgba(255,255,255,.25);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 12px rgba(255,255,255,.025),
+    0 0 42px rgba(0,0,0,.13);
+}
+
+.login-orbit-track::after {
+  content: "";
+  position: absolute;
+  inset: 16px;
+  border: 1px dashed rgba(255,255,255,.2);
+  border-radius: 50%;
+}
+
+.login-orbit-core {
+  position: relative;
+  z-index: 2;
+  width: 106px;
+  height: 106px;
+  display: grid;
+  place-content: center;
+  gap: 4px;
+  text-align: center;
+  color: #fff;
+  background:
+    radial-gradient(circle at 32% 22%, rgba(255,255,255,.2), transparent 42%),
+    color-mix(in srgb, var(--theme-primary) 48%, #102d47);
+  border: 1px solid rgba(255,255,255,.4);
+  border-radius: 50%;
+  box-shadow:
+    0 16px 34px rgba(0,0,0,.18),
+    inset 0 0 0 7px rgba(255,255,255,.05);
+  animation: login-orbit-core-in .7s var(--ease-out) both;
+}
+
+.login-orbit-core::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border: 1px solid color-mix(in srgb, var(--theme-container) 44%, transparent);
+  border-radius: 50%;
+  opacity: .75;
+}
+
+.login-orbit-core span {
+  font-family: "方正大标宋简体", "Source Han Serif SC", "Songti SC", Georgia, serif;
+  font-size: 25px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.login-orbit-core small {
+  color: rgba(255,255,255,.65);
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  line-height: 1;
+}
+
+.login-orbit-nodes {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  animation: login-orbit-spin var(--orbit-speed) linear infinite;
+}
+
+.login-organization-orbit:hover .login-orbit-nodes,
+.login-organization-orbit:hover .login-orbit-node-motion {
+  animation-play-state: paused;
+}
+
+.login-orbit-node {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 84px;
+  height: 84px;
+  transform: rotate(var(--node-angle)) translateX(var(--orbit-radius));
+  transform-origin: 0 0;
+  animation: login-orbit-node-in .65s var(--ease-out) both;
+  animation-delay: calc(120ms + var(--node-index) * 65ms);
+}
+
+.login-orbit-node-inner {
+  display: block;
+  width: 84px;
+  height: 84px;
+  transform: translate(-50%, -50%) rotate(calc(var(--node-angle) * -1));
+}
+
+.login-orbit-node-motion {
+  width: 84px;
+  height: 84px;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 20px auto;
   align-content: center;
-  justify-items: start;
-  gap: 7px;
-  padding: 12px;
-  color: rgba(255,255,255,.78);
-  background: rgba(255,255,255,.075);
-  border: 1px solid rgba(255,255,255,.16);
-  border-radius: 8px;
+  justify-items: center;
+  gap: 5px;
+  padding: 10px;
+  color: rgba(255,255,255,.88);
+  background: rgba(255,255,255,.095);
+  border: 1px solid rgba(255,255,255,.24);
+  border-radius: 50%;
   backdrop-filter: blur(12px);
-  animation: siehub-node-in .54s var(--ease-out) both;
-  animation-delay: calc(80ms + var(--node-index) * 38ms);
+  box-shadow: 0 10px 24px rgba(0,0,0,.11);
+  animation: login-orbit-counter var(--orbit-speed) linear infinite;
 }
 
-.hub-node svg {
-  width: 18px;
-  height: 18px;
-  color: var(--theme-container);
-}
-
-.hub-node.org-youth_league {
-  color: rgba(241, 253, 247, .92);
+.youth-league-orbit .login-orbit-node-motion {
   background: rgba(31, 125, 92, .2);
   border-color: rgba(145, 218, 185, .34);
 }
 
-.hub-node.org-youth_league svg {
-  color: #9fe7c0;
-}
-
-.hub-node.org-student_union {
-  color: rgba(240, 253, 250, .92);
+.student-union-orbit .login-orbit-node-motion {
   background: rgba(18, 105, 116, .22);
   border-color: rgba(125, 211, 199, .34);
 }
 
-.hub-node.org-student_union svg {
+.login-orbit-node svg {
+  width: 18px;
+  height: 18px;
+  color: #a8edd0;
+}
+
+.student-union-orbit .login-orbit-node svg {
   color: #8ee0d4;
 }
 
-.hub-node .siehub-module-logo {
+.login-orbit-node .siehub-module-logo {
   width: 18px;
   height: 18px;
   border-radius: 4px;
 }
 
-.hub-node b {
-  max-width: 100%;
+.login-orbit-node b {
+  min-width: 0;
+  max-width: 64px;
+  display: -webkit-box;
   overflow: hidden;
-  font-size: 13px;
+  color: rgba(255,255,255,.92);
+  font-size: 11px;
   line-height: 1.25;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.hub-node.is-live {
-  color: #fff;
-  background: color-mix(in srgb, var(--theme-primary) 44%, rgba(255,255,255,.11));
-  border-color: color-mix(in srgb, var(--theme-container) 54%, rgba(255,255,255,.2));
-  box-shadow: 0 16px 34px rgba(0,0,0,.18);
+  text-align: center;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .siehub-login-art .login-art-copy {
@@ -2267,6 +2370,38 @@ html[data-theme="dark"] .siehub-checkbox:checked + i::after {
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes login-orbit-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes login-orbit-counter {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(-360deg); }
+}
+
+@keyframes login-orbit-node-in {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+@keyframes login-orbit-core-in {
+  from {
+    opacity: 0;
+    transform: scale(.78);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 
@@ -3360,21 +3495,51 @@ html[data-theme="dark"] .org-delete-warning {
   .siehub-login-blueprint {
     right: 18px;
     top: 78px;
-    width: 286px;
-    height: 230px;
-    opacity: .54;
+    width: 430px;
+    height: 330px;
+    opacity: .72;
   }
 
-  .hub-node {
-    left: calc(var(--node-col) * 92px);
-    top: calc(var(--node-row) * 74px);
-    width: 86px;
-    min-height: 58px;
-    padding: 9px;
+  .login-organization-orbit {
+    --orbit-size: 190px;
+    --orbit-radius: 64px;
   }
 
-  .hub-node b {
-    font-size: 10px;
+  .login-orbit-node,
+  .login-orbit-node-inner {
+    width: 72px;
+    height: 72px;
+  }
+
+  .login-orbit-node-motion {
+    width: 72px;
+    height: 72px;
+    grid-template-rows: 16px auto;
+    gap: 4px;
+    padding: 7px;
+  }
+
+  .login-orbit-node b {
+    font-size: 9px;
+  }
+
+  .login-orbit-node svg,
+  .login-orbit-node .siehub-module-logo {
+    width: 14px;
+    height: 14px;
+  }
+
+  .login-orbit-core {
+    width: 76px;
+    height: 76px;
+  }
+
+  .login-orbit-core span {
+    font-size: 18px;
+  }
+
+  .login-orbit-core small {
+    font-size: 5px;
   }
 
   .siehub-access-seal {
@@ -5044,5 +5209,128 @@ html[data-theme="dark"] .org-archive-tier-section .siehub-member-tier-card[data-
 
   .mobile-role-chip {
     max-width: 78px;
+  }
+}
+
+@media (max-width: 640px) {
+  .siehub-login-art {
+    min-height: 490px;
+  }
+
+  .siehub-login-blueprint {
+    display: block;
+    left: 50%;
+    right: auto;
+    top: 72px;
+    width: min(360px, calc(100vw - 28px));
+    height: 286px;
+    transform: translateX(-50%);
+    opacity: .88;
+  }
+
+  .login-organization-orbit {
+    --orbit-size: 166px;
+    --orbit-radius: 55px;
+  }
+
+  .youth-league-orbit {
+    left: 0;
+    top: 0;
+  }
+
+  .student-union-orbit {
+    right: 0;
+    top: auto;
+    bottom: 0;
+  }
+
+  .login-orbit-core {
+    width: 68px;
+    height: 68px;
+  }
+
+  .login-orbit-core span {
+    font-size: 16px;
+  }
+
+  .login-orbit-core small {
+    font-size: 4px;
+  }
+
+  .login-orbit-node,
+  .login-orbit-node-inner {
+    width: 68px;
+    height: 68px;
+  }
+
+  .login-orbit-node-motion {
+    width: 68px;
+    height: 68px;
+    grid-template-rows: 14px auto;
+    gap: 3px;
+    padding: 6px;
+  }
+
+  .login-orbit-node b {
+    font-size: 8px;
+  }
+
+  .login-orbit-node svg,
+  .login-orbit-node .siehub-module-logo {
+    width: 12px;
+    height: 12px;
+  }
+
+  .siehub-login-art .login-art-copy {
+    margin-top: 286px;
+    margin-bottom: 0;
+  }
+
+  .siehub-login-art .login-art-copy h1 {
+    max-width: 340px;
+    font-size: 28px;
+  }
+
+  .login-orbit-bridge {
+    left: 24%;
+    right: 24%;
+    top: 50%;
+  }
+}
+
+@media (max-width: 390px) {
+  .siehub-login-blueprint {
+    width: calc(100vw - 20px);
+  }
+
+  .login-organization-orbit {
+    --orbit-size: 148px;
+    --orbit-radius: 48px;
+  }
+
+  .login-orbit-node,
+  .login-orbit-node-inner {
+    width: 60px;
+    height: 60px;
+  }
+
+  .login-orbit-node-motion {
+    width: 60px;
+    height: 60px;
+    grid-template-rows: 12px auto;
+    padding: 5px;
+  }
+
+  .login-orbit-node b {
+    font-size: 7px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-orbit-nodes,
+  .login-orbit-node-motion,
+  .login-orbit-node,
+  .login-orbit-core {
+    animation: none !important;
   }
 }

@@ -1136,8 +1136,21 @@ const LoginPage = ({ onLogin, onRegister, theme, language = 'zh', languageSwitch
   const [loading, setLoading] = useState(false);
   const privacyTerms = language === 'en' ? PRIVACY_TERMS_EN : PRIVACY_TERMS;
   const loginModules = SIEHUB_MODULES.filter(module => module.organization !== 'hub');
+  const youthLeagueModules = loginModules.filter(module => module.organization === 'youth_league');
+  const studentUnionModules = loginModules.filter(module => module.organization === 'student_union');
   const youthLeagueCount = loginModules.filter(module => module.organization === 'youth_league').length;
   const studentUnionCount = loginModules.filter(module => module.organization === 'student_union').length;
+  const loginModuleEnglishTitles = {
+    organization: 'Organization',
+    publicity: 'Publicity',
+    practice: 'Practice',
+    volunteer_service: 'Volunteer',
+    general_office: 'General Office',
+    student_rights: 'Student Rights',
+    culture_sports_arts: 'Arts & Sports',
+    academic_technology: 'Academic Tech',
+    new_media: 'New Media'
+  };
 
   useEffect(() => {
     let active = true;
@@ -1291,20 +1304,53 @@ const LoginPage = ({ onLogin, onRegister, theme, language = 'zh', languageSwitch
           <span className="edition-mark">LT1 · PLATFORM UPGRADE</span>
         </div>
         <div className="siehub-login-blueprint">
-          <div className="blueprint-axis"></div>
-          <div className="blueprint-axis vertical"></div>
-          {loginModules.map((module, index) => {
-            return (
-              <span
-                key={module.key}
-                className={cls('hub-node', `org-${module.organization}`)}
-                style={{ '--node-index': `${index}`, '--node-col': `${index % 3}`, '--node-row': `${Math.floor(index / 3)}` }}
-              >
-                <DepartmentModuleMark module={module} showLogo={false} />
-                <b>{module.title}</b>
-              </span>
-            );
-          })}
+          <div className="login-orbit-bridge"></div>
+          <section className="login-organization-orbit youth-league-orbit">
+            <div className="login-orbit-track"></div>
+            <div className="login-orbit-core">
+              <span>团委</span>
+              <small>YOUTH LEAGUE</small>
+            </div>
+            <div className="login-orbit-nodes">
+              {youthLeagueModules.map((module, index) => (
+                <span
+                  key={module.key}
+                  className="login-orbit-node"
+                  style={{ '--node-angle': `${index * 90}deg`, '--node-index': index }}
+                >
+                  <span className="login-orbit-node-inner">
+                    <span className="login-orbit-node-motion">
+                      <DepartmentModuleMark module={module} showLogo={false} />
+                      <b>{language === 'en' ? loginModuleEnglishTitles[module.key] : module.title}</b>
+                    </span>
+                  </span>
+                </span>
+              ))}
+            </div>
+          </section>
+          <section className="login-organization-orbit student-union-orbit">
+            <div className="login-orbit-track"></div>
+            <div className="login-orbit-core">
+              <span>学生会</span>
+              <small>STUDENT UNION</small>
+            </div>
+            <div className="login-orbit-nodes">
+              {studentUnionModules.map((module, index) => (
+                <span
+                  key={module.key}
+                  className="login-orbit-node"
+                  style={{ '--node-angle': `${-90 + index * 72}deg`, '--node-index': index }}
+                >
+                  <span className="login-orbit-node-inner">
+                    <span className="login-orbit-node-motion">
+                      <DepartmentModuleMark module={module} showLogo={false} />
+                      <b>{language === 'en' ? loginModuleEnglishTitles[module.key] : module.title}</b>
+                    </span>
+                  </span>
+                </span>
+              ))}
+            </div>
+          </section>
         </div>
         <div className="login-art-copy">
           <p className="art-kicker">ONE ID · ALL STUDENT WORK</p>
