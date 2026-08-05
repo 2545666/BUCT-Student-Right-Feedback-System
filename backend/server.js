@@ -2229,6 +2229,54 @@ const serializeCohortMember = (member) => {
   };
 };
 
+const normalizeDepartmentPairs = (items = []) => (Array.isArray(items) ? items : [])
+  .map(item => `${item.organization || ''}:${item.department || ''}`)
+  .filter(pair => pair !== ':')
+  .sort();
+
+const hasSameManagedDepartments = (memberDepartments = [], userDepartments = []) => {
+  const memberPairs = normalizeDepartmentPairs(memberDepartments);
+  const userPairs = normalizeDepartmentPairs(userDepartments);
+  if (memberPairs.length !== userPairs.length) return false;
+  return memberPairs.every((pair, index) => pair === userPairs[index]);
+};
+
+const isCurrentCohortMembership = (member = {}) => {
+  const user = member.user;
+  if (!user || typeof user !== 'object' || user.isUltimateAdmin) return false;
+
+  const memberRole = member.memberRole || 'student';
+  const positionTitle = member.positionTitle || 'student';
+  if (memberRole === 'student' || positionTitle === 'student') return false;
+
+  if (memberRole === 'volunteer' || positionTitle === 'volunteer') {
+    return user.memberRole === 'volunteer' &&
+      user.positionTitle === 'volunteer' &&
+      user.organization === member.organization &&
+      user.department === member.department;
+  }
+
+  if (memberRole === 'department_lead' || ['department_head', 'youth_league_cadre'].includes(positionTitle)) {
+    return user.memberRole === 'department_lead' &&
+      user.positionTitle === positionTitle &&
+      user.organization === member.organization &&
+      user.department === member.department;
+  }
+
+  if (memberRole === 'presidium' || ['presidium_member', 'youth_league_deputy_secretary'].includes(positionTitle)) {
+    return user.memberRole === 'presidium' &&
+      user.positionTitle === positionTitle &&
+      hasSameManagedDepartments(member.managedDepartments, user.managedDepartments);
+  }
+
+  return false;
+};
+
+const filterCohortMembershipsForDisplay = (members = [], cohort = null) => {
+  if (!cohort || cohort.status === 'archived') return members;
+  return members.filter(isCurrentCohortMembership);
+};
+
 const buildMemberSnapshot = (user) => ({
   name: user.name,
   studentId: user.studentId,
@@ -3365,13 +3413,7 @@ app.delete('/api/hub/departments/:organization/:department/members/:id', authent
     if (activeCohortIds.length > 0) {
       deletedMemberships = await CohortMembership.deleteMany({
         user: target._id,
-        cohort: { $in: activeCohortIds },
-        organization: assignment.organization,
-        department: assignment.department,
-        $or: [
-          { memberRole: 'volunteer' },
-          { positionTitle: 'volunteer' }
-        ]
+        cohort: { $in: activeCohortIds }
       });
     }
 
@@ -3545,11 +3587,12 @@ app.patch('/api/ultimate/users/:studentId/identity', authenticate, ultimateOnly,
 app.get('/api/ultimate/members', authenticate, ultimateOnly, async (req, res) => {
   try {
     const query = req.query.cohortId ? { cohort: req.query.cohortId } : {};
+    const cohort = req.query.cohortId ? await Cohort.findById(req.query.cohortId).lean() : null;
     const members = await CohortMembership.find(query)
-      .populate('user', 'name studentId email phone')
+      .populate('user', 'name studentId email phone role memberRole positionTitle organization department managedDepartments isUltimateAdmin')
       .sort({ createdAt: -1 })
       .lean();
-    res.json({ success: true, members: members.map(serializeCohortMember) });
+    res.json({ success: true, members: filterCohortMembershipsForDisplay(members, cohort).map(serializeCohortMember) });
   } catch (error) {
     res.status(500).json({ success: false, message: '获取届次成员失败' });
   }
@@ -3689,8 +3732,10 @@ app.get('/api/ultimate/cohorts/:id/archive-preview', authenticate, ultimateOnly,
   try {
     const cohort = await Cohort.findById(req.params.id);
     if (!cohort) return res.status(404).json({ success: false, message: '届次不存在' });
-    const members = await CohortMembership.find({ cohort: cohort._id }).populate('user', 'name studentId email phone');
-    const previews = await Promise.all(members.map(async (member) => {
+    const members = await CohortMembership.find({ cohort: cohort._id })
+      .populate('user', 'name studentId email phone role memberRole positionTitle organization department managedDepartments isUltimateAdmin');
+    const currentMembers = filterCohortMembershipsForDisplay(members, cohort);
+    const previews = await Promise.all(currentMembers.map(async (member) => {
       const snapshot = await buildPerformanceSnapshot(member.user?._id || member.user, cohort.semesters || []);
       return {
         ...serializeCohortMember(member),
@@ -3714,7 +3759,8 @@ app.post('/api/ultimate/cohorts/:id/archive', authenticate, ultimateOnly, async 
   try {
     const cohort = await Cohort.findById(req.params.id);
     if (!cohort) return res.status(404).json({ success: false, message: '届次不存在' });
-    const members = await CohortMembership.find({ cohort: cohort._id }).populate('user');
+    const allMembers = await CohortMembership.find({ cohort: cohort._id }).populate('user');
+    const members = filterCohortMembershipsForDisplay(allMembers, cohort);
     const snapshots = [];
 
     for (const member of members) {
@@ -5193,11 +5239,13 @@ app.put('/api/admin/ultimate/cohorts/:id', authenticate, adminOnly, ultimateOnly
 
 app.get('/api/admin/ultimate/cohorts/:id/members', authenticate, adminOnly, ultimateOnly, async (req, res) => {
   try {
+    const cohort = await Cohort.findById(req.params.id).lean();
+    if (!cohort) return res.status(404).json({ success: false, message: '届次不存在' });
     const members = await CohortMembership.find({ cohort: req.params.id })
       .populate('user', 'name studentId email phone role memberRole positionTitle organization department managedDepartments isUltimateAdmin')
       .sort({ createdAt: -1 })
       .lean();
-    res.json({ success: true, members });
+    res.json({ success: true, members: filterCohortMembershipsForDisplay(members, cohort) });
   } catch (error) {
     res.status(500).json({ success: false, message: '获取届次成员失败' });
   }
@@ -5321,10 +5369,12 @@ app.get('/api/admin/ultimate/cohorts/:id/archive-preview', authenticate, adminOn
   try {
     const cohort = await Cohort.findById(req.params.id).lean();
     if (!cohort) return res.status(404).json({ success: false, message: '届次不存在' });
-    const memberships = await CohortMembership.find({ cohort: cohort._id }).lean();
-    const previews = await Promise.all(memberships.map(async membership => ({
+    const memberships = await CohortMembership.find({ cohort: cohort._id })
+      .populate('user', 'name studentId email phone role memberRole positionTitle organization department managedDepartments isUltimateAdmin')
+      .lean();
+    const previews = await Promise.all(filterCohortMembershipsForDisplay(memberships, cohort).map(async membership => ({
       ...membership,
-      performanceSnapshot: await buildPerformanceSnapshot(membership.user, cohort.semesters || [])
+      performanceSnapshot: await buildPerformanceSnapshot(membership.user?._id || membership.user, cohort.semesters || [])
     })));
     res.json({ success: true, cohort, members: previews });
   } catch (error) {
@@ -5336,7 +5386,10 @@ app.post('/api/admin/ultimate/cohorts/:id/archive', authenticate, adminOnly, ult
   try {
     const cohort = await Cohort.findById(req.params.id);
     if (!cohort) return res.status(404).json({ success: false, message: '届次不存在' });
-    const memberships = await CohortMembership.find({ cohort: cohort._id }).populate('user');
+    const memberships = filterCohortMembershipsForDisplay(
+      await CohortMembership.find({ cohort: cohort._id }).populate('user'),
+      cohort
+    );
     for (const membership of memberships) {
       if (membership.user) {
         membership.accountSnapshot = buildMemberSnapshot(membership.user);
@@ -5454,6 +5507,7 @@ app.normalizeDateToEndOfDay = normalizeDateToEndOfDay;
 app.getLoginTokenExpiresIn = getLoginTokenExpiresIn;
 app.isMobileUserAgent = isMobileUserAgent;
 app.shouldPersistLogin = shouldPersistLogin;
+app.filterCohortMembershipsForDisplay = filterCohortMembershipsForDisplay;
 
 if (require.main === module) {
   startServer();
