@@ -429,12 +429,18 @@
   color: var(--notice-ink);
 }
 
+.siehub-school-news-carousel {
+  display: grid;
+  gap: 10px;
+}
+
 .siehub-school-feature-news {
   width: 100%;
-  min-height: 210px;
+  min-height: 0;
   display: grid;
-  grid-template-rows: minmax(150px, 1fr) auto auto;
+  grid-template-rows: auto auto;
   gap: 9px;
+  padding: 0;
   border: 0;
   background: transparent;
   color: var(--notice-ink);
@@ -460,6 +466,12 @@
   letter-spacing: .14em;
 }
 
+.siehub-school-news-caption {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
 .siehub-school-feature-news strong {
   overflow-wrap: anywhere;
   font-size: 18px;
@@ -470,6 +482,51 @@
   color: var(--notice-muted);
   font-size: 12px;
   font-weight: 800;
+}
+
+.siehub-school-carousel-controls {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 32px;
+  gap: 8px;
+  align-items: center;
+}
+
+.siehub-school-carousel-controls > button {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--notice-line);
+  border-radius: 8px;
+  background: color-mix(in srgb, rgb(var(--theme-rgb)) 7%, #ffffff);
+  color: var(--theme-primary);
+  cursor: pointer;
+}
+
+.siehub-school-carousel-controls svg {
+  width: 15px;
+  height: 15px;
+}
+
+.siehub-school-carousel-controls > div {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.siehub-school-carousel-controls > div button {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--theme-primary) 25%, #d8e2ee);
+  cursor: pointer;
+}
+
+.siehub-school-carousel-controls > div button.is-active {
+  width: 24px;
+  background: var(--theme-primary);
 }
 
 .siehub-school-news-list {
@@ -491,6 +548,10 @@
   color: var(--notice-ink);
   text-align: left;
   cursor: pointer;
+}
+
+.siehub-school-news-list button.is-active {
+  background: color-mix(in srgb, rgb(var(--theme-rgb)) 7%, transparent);
 }
 
 .siehub-school-news-list span {
@@ -2194,6 +2255,7 @@ html[data-theme="dark"] .siehub-checkbox:checked + i::after {
   box-shadow: none;
 }
 
+.siehub-modal-backdrop,
 .privacy-modal-backdrop {
   position: fixed;
   z-index: 900;
@@ -2203,6 +2265,96 @@ html[data-theme="dark"] .siehub-checkbox:checked + i::after {
   padding: 22px;
   background: rgba(7, 19, 32, .58);
   backdrop-filter: blur(12px);
+}
+
+.siehub-modal {
+  width: min(620px, 100%);
+  max-height: min(720px, calc(100vh - 44px));
+  display: grid;
+  gap: 14px;
+  overflow: hidden;
+  padding: 0;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 24%, var(--line));
+  border-radius: 8px;
+  box-shadow: 0 26px 70px rgba(7, 19, 32, .28);
+}
+
+.siehub-modal header,
+.siehub-modal footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+}
+
+.siehub-modal header {
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--theme-container) 40%, var(--paper));
+}
+
+.siehub-modal header p {
+  margin: 0 0 4px;
+  color: var(--theme-primary);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .13em;
+}
+
+.siehub-modal h2 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: 0;
+}
+
+.siehub-modal-note,
+.siehub-modal-muted,
+.siehub-modal-message {
+  margin: 0 18px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.siehub-modal-textarea {
+  min-height: 190px;
+  margin: 0 18px;
+  padding: 12px;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.siehub-modal-muted {
+  color: var(--theme-primary);
+  font-weight: 900;
+}
+
+.siehub-modal-message {
+  color: var(--theme-primary);
+  font-weight: 900;
+}
+
+.siehub-modal footer {
+  justify-content: flex-end;
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--canvas) 42%, var(--paper));
+}
+
+.siehub-modal footer button {
+  min-height: 38px;
+  padding: 0 15px;
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 900;
 }
 
 .privacy-modal,

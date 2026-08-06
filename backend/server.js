@@ -1184,6 +1184,18 @@ const fetchJsonWithTimeout = async (url, options = {}, timeoutMs = 12_000) => {
   }
 };
 
+const fetchTextWithTimeout = async (url, options = {}, timeoutMs = 12_000) => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    const text = await res.text();
+    return { res, text };
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
 const getWechatMpConfig = () => {
   const assignment = {
     organization: process.env.WECHAT_MP_NOTICE_ORGANIZATION || 'student_union',
@@ -1274,6 +1286,139 @@ const buildWechatNoticePayload = (article, newsItem, index, assignment) => {
     sourceExternalId: `${article.article_id || article.article_id_string || article.media_id || 'article'}:${article.update_time || 0}:${index}`,
     status: 'published',
     publishedAt
+  };
+};
+
+const decodeHtmlEntities = (value = '') => String(value)
+  .replace(/&amp;/g, '&')
+  .replace(/&quot;/g, '"')
+  .replace(/&#39;/g, "'")
+  .replace(/&lt;/g, '<')
+  .replace(/&gt;/g, '>')
+  .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+  .replace(/&#(\d+);/g, (_, num) => String.fromCharCode(Number(num)));
+
+const decodeWechatJsString = (value = '') => {
+  try {
+    return JSON.parse(`"${String(value).replace(/"/g, '\\"')}"`);
+  } catch {
+    return String(value)
+      .replace(/\\x([0-9a-f]{2})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+      .replace(/\\u([0-9a-f]{4})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+      .replace(/\\n/g, '\n')
+      .replace(/\\r/g, '\r')
+      .replace(/\\'/g, "'")
+      .replace(/\\"/g, '"')
+      .replace(/\\\\/g, '\\');
+  }
+};
+
+const extractWechatJsVar = (html = '', name) => {
+  const match = String(html).match(new RegExp(`var\\s+${name}\\s*=\\s*(['"])([\\s\\S]*?)\\1\\s*;`));
+  return match ? decodeHtmlEntities(decodeWechatJsString(match[2])) : '';
+};
+
+const extractMetaContent = (html = '', patterns = []) => {
+  for (const pattern of patterns) {
+    const match = String(html).match(pattern);
+    if (match?.[1]) return decodeHtmlEntities(match[1].trim());
+  }
+  return '';
+};
+
+const normalizeWechatArticleUrl = (value = '') => {
+  const clean = String(value || '').trim();
+  try {
+    const parsed = new URL(clean);
+    if (parsed.hostname !== 'mp.weixin.qq.com') return '';
+    if (!parsed.pathname.startsWith('/s/')) return '';
+    return parsed.toString();
+  } catch {
+    return '';
+  }
+};
+
+const sourceKeyFromWechatArticleUrl = (url = '') => {
+  const normalized = normalizeWechatArticleUrl(url);
+  if (!normalized) return '';
+  const parsed = new URL(normalized);
+  const slug = parsed.pathname.split('/').filter(Boolean).pop();
+  return slug ? `manual_link:${slug}` : '';
+};
+
+const parseWechatArticleHtml = (html = '', sourceUrl = '', assignment = getWechatMpConfig().assignment) => {
+  const title = extractWechatJsVar(html, 'msg_title') || extractMetaContent(html, [
+    /<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["'][^>]*>/i,
+    /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["'][^>]*>/i,
+    /<title[^>]*>([\s\S]*?)<\/title>/i
+  ]);
+  const summary = extractWechatJsVar(html, 'msg_desc') || extractMetaContent(html, [
+    /<meta[^>]+name=["']description["'][^>]+content=["']([^"']*)["'][^>]*>/i,
+    /<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']*)["'][^>]*>/i
+  ]);
+  const coverImageUrl = extractWechatJsVar(html, 'msg_cdn_url') || extractMetaContent(html, [
+    /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["'][^>]*>/i
+  ]);
+  const createTime = extractWechatJsVar(html, 'ct') || extractWechatJsVar(html, 'ori_create_time');
+  const publishedAt = /^\d+$/.test(createTime) ? new Date(Number(createTime) * 1000) : new Date();
+
+  return {
+    ...assignment,
+    title: { zh: cleanText(title, 120), en: '' },
+    summary: { zh: cleanText(summary, 260), en: '' },
+    body: { zh: cleanText(summary || '点击下方链接查看公众号原文。', 6000), en: '' },
+    coverImageUrl: cleanText(coverImageUrl, 500),
+    sourceUrl: cleanText(normalizeWechatArticleUrl(sourceUrl), 500),
+    source: 'wechat_mp',
+    sourceExternalId: cleanText(sourceKeyFromWechatArticleUrl(sourceUrl), 160) || undefined,
+    status: 'published',
+    publishedAt
+  };
+};
+
+const importWechatArticleLinks = async ({ urls = [], assignment = getWechatMpConfig().assignment, user = null, req = null }) => {
+  const uniqueUrls = Array.from(new Set(urls.map(normalizeWechatArticleUrl).filter(Boolean)));
+  const imported = [];
+  const failed = [];
+
+  for (const url of uniqueUrls) {
+    try {
+      const { res, text } = await fetchTextWithTimeout(url, { headers: { 'User-Agent': 'Mozilla/5.0 SIEHUB-WeChatManualImport' } });
+      if (!res.ok) throw new Error(`fetch_failed_${res.status}`);
+      const payload = parseWechatArticleHtml(text, url, assignment);
+      if (!payload.title.zh || !payload.sourceExternalId) throw new Error('article_metadata_missing');
+      const result = await DepartmentNotice.updateOne(
+        { source: 'wechat_mp', sourceExternalId: payload.sourceExternalId },
+        { $set: { ...payload, updatedBy: user?._id || undefined }, $setOnInsert: { createdBy: user?._id || undefined } },
+        { upsert: true }
+      );
+      imported.push({
+        url,
+        title: payload.title.zh,
+        sourceExternalId: payload.sourceExternalId,
+        created: Boolean(result.upsertedCount),
+        updated: Boolean(!result.upsertedCount && result.modifiedCount)
+      });
+    } catch (error) {
+      failed.push({ url, error: error.message || 'import_failed' });
+    }
+  }
+
+  if (imported.length && user?._id) {
+    await logAction(user._id, 'manual_import_wechat_articles', 'departmentNotice', null, {
+      ...assignment,
+      importedCount: imported.filter(item => item.created).length,
+      updatedCount: imported.filter(item => item.updated).length,
+      failedCount: failed.length
+    }, req);
+  }
+
+  return {
+    imported,
+    failed,
+    importedCount: imported.filter(item => item.created).length,
+    updatedCount: imported.filter(item => item.updated).length,
+    failedCount: failed.length
   };
 };
 
@@ -2450,6 +2595,26 @@ app.post('/api/hub/wechat-mp/sync', authenticate, ultimateOnly, async (req, res)
   } catch (error) {
     wechatMpSyncState.lastError = error.message || 'wechat_sync_failed';
     res.status(502).json({ success: false, message: '微信公众号同步失败，请检查凭据、接口权限和服务器 IP 白名单', wechatMp: getWechatMpPublicConfig(true) });
+  }
+});
+
+app.post('/api/hub/wechat-mp/import', authenticate, ultimateOnly, async (req, res) => {
+  try {
+    const text = typeof req.body?.text === 'string' ? req.body.text : '';
+    const urls = Array.isArray(req.body?.urls) ? req.body.urls : [];
+    const mergedUrls = [
+      ...urls,
+      ...text.split(/[\s\r\n,，；;]+/g).filter(Boolean)
+    ];
+    const result = await importWechatArticleLinks({
+      urls: mergedUrls,
+      assignment: getWechatMpConfig().assignment,
+      user: req.user,
+      req
+    });
+    res.json({ success: true, result, wechatMp: getWechatMpPublicConfig(true) });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message || '手动导入公众号推文失败', wechatMp: getWechatMpPublicConfig(true) });
   }
 });
 
@@ -5503,6 +5668,10 @@ const startServer = async () => {
 };
 
 app.buildWechatNoticePayload = buildWechatNoticePayload;
+app.normalizeWechatArticleUrl = normalizeWechatArticleUrl;
+app.sourceKeyFromWechatArticleUrl = sourceKeyFromWechatArticleUrl;
+app.parseWechatArticleHtml = parseWechatArticleHtml;
+app.importWechatArticleLinks = importWechatArticleLinks;
 app.normalizeDateToEndOfDay = normalizeDateToEndOfDay;
 app.getLoginTokenExpiresIn = getLoginTokenExpiresIn;
 app.isMobileUserAgent = isMobileUserAgent;

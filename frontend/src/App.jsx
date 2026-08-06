@@ -2664,8 +2664,9 @@ const NoticeDetailPage = ({ notice, language = 'zh', onBack }) => {
   );
 };
 
-const SIEHUBNoticePortal = ({ token, language = 'zh', fixedModule = null, user = null }) => {
+const SIEHUBNoticePortal = ({ token, language = 'zh', fixedModule = null, user = null, refreshKey = 0 }) => {
   const [news, setNews] = useState([]);
+  const [newsSlideIndex, setNewsSlideIndex] = useState(0);
   const [notices, setNotices] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedNotice, setSelectedNotice] = useState(null);
@@ -2722,7 +2723,22 @@ const SIEHUBNoticePortal = ({ token, language = 'zh', fixedModule = null, user =
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [token, filters, departments]);
+  }, [token, filters, departments, refreshKey]);
+
+  const carouselNews = news.slice(0, 5);
+  const newsSignature = carouselNews.map(noticeIdentity).join('|');
+
+  useEffect(() => {
+    setNewsSlideIndex(0);
+  }, [newsSignature]);
+
+  useEffect(() => {
+    if (carouselNews.length <= 1) return undefined;
+    const timer = setInterval(() => {
+      setNewsSlideIndex(current => (current + 1) % carouselNews.length);
+    }, 5200);
+    return () => clearInterval(timer);
+  }, [carouselNews.length]);
 
   const unreadNoticeCount = notices.reduce((count, notice) => {
     const id = noticeIdentity(notice);
@@ -2745,8 +2761,12 @@ const SIEHUBNoticePortal = ({ token, language = 'zh', fixedModule = null, user =
     setSelectedNotice(notice);
   };
 
-  const featureNews = news[0];
-  const secondaryNews = news.slice(1, 6);
+  const activeNewsSlideIndex = carouselNews.length ? newsSlideIndex % carouselNews.length : 0;
+  const featureNews = carouselNews.length ? carouselNews[activeNewsSlideIndex] : null;
+  const shiftNewsSlide = (direction) => {
+    if (!carouselNews.length) return;
+    setNewsSlideIndex(current => (current + direction + carouselNews.length) % carouselNews.length);
+  };
 
   if (selectedNotice) {
     return (
@@ -2788,21 +2808,42 @@ const SIEHUBNoticePortal = ({ token, language = 'zh', fixedModule = null, user =
           {loading ? (
             <p className="siehub-empty-text">{language === 'en' ? 'Loading news...' : '正在同步新闻...'}</p>
           ) : featureNews ? (
-            <>
+            <div className="siehub-school-news-carousel">
               <button className="siehub-school-feature-news" type="button" onClick={() => featureNews.sourceUrl && window.open(featureNews.sourceUrl, '_blank', 'noopener,noreferrer')}>
                 {featureNews.coverImageUrl ? <img src={featureNews.coverImageUrl} alt="" /> : <span className="siehub-news-cover-fallback">SIE</span>}
-                <strong>{pickLocalizedNoticeText(featureNews.title, language)}</strong>
-                <small>{formatNoticeDate(featureNews.publishedAt, language)}</small>
+                <span className="siehub-school-news-caption">
+                  <strong>{pickLocalizedNoticeText(featureNews.title, language)}</strong>
+                  <small>{formatNoticeDate(featureNews.publishedAt, language)}</small>
+                </span>
               </button>
-              <div className="siehub-school-news-list">
-                {secondaryNews.map(item => (
-                  <button key={noticeIdentity(item)} type="button" onClick={() => item.sourceUrl && window.open(item.sourceUrl, '_blank', 'noopener,noreferrer')}>
-                    <span>{formatNoticeDate(item.publishedAt, language)}</span>
-                    <strong>{pickLocalizedNoticeText(item.title, language)}</strong>
-                  </button>
-                ))}
-              </div>
-            </>
+              {carouselNews.length > 1 && (
+                <div className="siehub-school-carousel-controls">
+                  <button type="button" onClick={() => shiftNewsSlide(-1)} aria-label="上一条推文"><ArrowLeft /></button>
+                  <div>
+                    {carouselNews.map((item, index) => (
+                      <button
+                        key={noticeIdentity(item)}
+                        type="button"
+                        className={index === activeNewsSlideIndex ? 'is-active' : ''}
+                        onClick={() => setNewsSlideIndex(index)}
+                        aria-label={`第 ${index + 1} 条推文`}
+                      />
+                    ))}
+                  </div>
+                  <button type="button" onClick={() => shiftNewsSlide(1)} aria-label="下一条推文"><ArrowRight /></button>
+                </div>
+              )}
+              {carouselNews.length > 1 && (
+                <div className="siehub-school-news-list">
+                  {carouselNews.map((item, index) => (
+                    <button key={noticeIdentity(item)} type="button" className={index === activeNewsSlideIndex ? 'is-active' : ''} onClick={() => setNewsSlideIndex(index)}>
+                      <span>{formatNoticeDate(item.publishedAt, language)}</span>
+                      <strong>{pickLocalizedNoticeText(item.title, language)}</strong>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           ) : (
             <p className="siehub-empty-text">{language === 'en' ? 'No WeChat posts yet.' : '暂无国教空间公众号推送。'}</p>
           )}
@@ -3118,10 +3159,14 @@ const DepartmentNoticeWorkspace = ({ module, token, language = 'zh', onClose }) 
   );
 };
 
-const WechatMpHeroEntry = ({ token, user, language = 'zh' }) => {
+const WechatMpHeroEntry = ({ token, user, language = 'zh', onWechatMpChanged = () => {} }) => {
   const [wechatMp, setWechatMp] = useState(null);
   const [message, setMessage] = useState('');
   const [syncing, setSyncing] = useState(false);
+  const [manualImportOpen, setManualImportOpen] = useState(false);
+  const [manualImportText, setManualImportText] = useState('');
+  const [manualImportLoading, setManualImportLoading] = useState(false);
+  const [manualImportMessage, setManualImportMessage] = useState('');
 
   const loadConfig = useCallback(async () => {
     if (!token) return;
@@ -3151,6 +3196,7 @@ const WechatMpHeroEntry = ({ token, user, language = 'zh' }) => {
       const data = await res.json();
       if (!data.success) throw new Error(data.message || '同步失败');
       setWechatMp(data.wechatMp || null);
+      onWechatMpChanged();
       const imported = data.result?.importedCount || 0;
       const updated = data.result?.updatedCount || 0;
       setMessage(data.result?.configured === false ? '公众号凭据未配置，已保持降级展示。' : `同步完成：新增 ${imported} 条，更新 ${updated} 条。`);
@@ -3158,6 +3204,36 @@ const WechatMpHeroEntry = ({ token, user, language = 'zh' }) => {
       setMessage(error.message || '同步失败');
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const importManualLinks = async () => {
+    const text = manualImportText.trim();
+    if (!text) {
+      setManualImportMessage('请先粘贴至少一条推文链接');
+      return;
+    }
+    setManualImportLoading(true);
+    setManualImportMessage('');
+    try {
+      const res = await fetch(`${API_BASE}/hub/wechat-mp/import`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ text })
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || '导入失败');
+      setWechatMp(data.wechatMp || null);
+      onWechatMpChanged();
+      setManualImportMessage(`已导入 ${data.result?.importedCount || 0} 条，更新 ${data.result?.updatedCount || 0} 条，失败 ${data.result?.failedCount || 0} 条。`);
+      setMessage('');
+    } catch (error) {
+      setManualImportMessage(error.message || '导入失败');
+    } finally {
+      setManualImportLoading(false);
     }
   };
 
@@ -3179,9 +3255,39 @@ const WechatMpHeroEntry = ({ token, user, language = 'zh' }) => {
         <div className="siehub-wechat-actions">
           {wechatMp?.accountUrl && <button type="button" onClick={openAccount}>打开主页 <ArrowUpRight /></button>}
           {user?.isUltimateAdmin && <button type="button" onClick={syncArticles} disabled={syncing}>{syncing ? '同步中' : '同步文章'}</button>}
+          {user?.isUltimateAdmin && <button type="button" onClick={() => setManualImportOpen(true)}>手动导入 <Plus /></button>}
         </div>
         {message && <small>{message}</small>}
       </div>
+      {manualImportOpen && (
+        <div className="siehub-modal-backdrop" role="presentation" onClick={() => setManualImportOpen(false)}>
+          <section className="siehub-modal" role="dialog" aria-modal="true" aria-labelledby="wechat-import-title" onClick={event => event.stopPropagation()}>
+            <header>
+              <div>
+                <p>MANUAL IMPORT</p>
+                <h2 id="wechat-import-title">粘贴推文链接</h2>
+              </div>
+              <button type="button" className="icon-button" onClick={() => setManualImportOpen(false)}><X /></button>
+            </header>
+            <p className="siehub-modal-note">一行一条，系统会尽量提取标题、摘要和封面；如果链接页受限，会返回失败结果。</p>
+            <textarea
+              className="siehub-modal-textarea"
+              value={manualImportText}
+              onChange={event => setManualImportText(event.target.value)}
+              placeholder="https://mp.weixin.qq.com/s/..."
+              rows={8}
+            />
+            {wechatMp?.noticeDepartmentLabel && (
+              <small className="siehub-modal-muted">导入目标：{wechatMp.noticeDepartmentLabel} · {wechatMp.accountName || '国教空间'}</small>
+            )}
+            {manualImportMessage && <p className="siehub-modal-message">{manualImportMessage}</p>}
+            <footer>
+              <button type="button" className="text-button" onClick={() => setManualImportOpen(false)}>取消</button>
+              <button type="button" className="primary-button" onClick={importManualLinks} disabled={manualImportLoading}>{manualImportLoading ? '导入中' : '开始导入'}</button>
+            </footer>
+          </section>
+        </div>
+      )}
     </aside>
   );
 };
@@ -3252,9 +3358,11 @@ const SIEHUBHome = ({ user, token, theme, onOpenModule, onOpenDepartments, onOpe
   const modules = getAccessibleModules(user);
   const clock = usePlatformClock(language);
   const serviceMetrics = useServiceMetrics(token);
+  const [wechatNewsRefreshKey, setWechatNewsRefreshKey] = useState(0);
   const youthLeague = modules.filter(module => module.organization === 'youth_league');
   const studentUnion = modules.filter(module => module.organization === 'student_union');
   const roleScope = user?.isUltimateAdmin ? '全平台治理范围' : `${user?.organizationLabel || '学生服务'} / ${user?.departmentLabel || '可访问模块'}`;
+  const refreshWechatNews = useCallback(() => setWechatNewsRefreshKey(current => current + 1), []);
   const sievoxModule = SIEHUB_MODULES.find(module => module.key === 'student_rights');
   const siebridgeModule = SIEHUB_MODULES.find(module => module.key === 'academic_technology');
   const productWindows = [
@@ -3323,9 +3431,9 @@ const SIEHUBHome = ({ user, token, theme, onOpenModule, onOpenDepartments, onOpe
           <small>{clock.dateLabel} · {clock.timezoneLabel}</small>
           <small>{language === 'en' ? 'SIEVOX first response' : 'SIEVOX 首次响应'}：{serviceMetrics.loading && !serviceMetrics.metrics ? (language === 'en' ? 'Syncing' : '同步中') : formatAverageFirstResponse(serviceMetrics.metrics, language)}</small>
         </div>
-        <WechatMpHeroEntry token={token} user={user} language={language} />
+        <WechatMpHeroEntry token={token} user={user} language={language} onWechatMpChanged={refreshWechatNews} />
       </section>
-      <SIEHUBNoticePortal token={token} language={language} user={user} />
+      <SIEHUBNoticePortal token={token} language={language} user={user} refreshKey={wechatNewsRefreshKey} />
       <section className="siehub-product-windows" aria-label="SIEHUB 平台入口">
         <div className="siehub-group-heading"><span>ENTRY</span><div><p>PLATFORM WINDOWS</p><h2>核心平台入口</h2></div><b>{productWindows.length}</b></div>
         <div className="siehub-product-window-grid">

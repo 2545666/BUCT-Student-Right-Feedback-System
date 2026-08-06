@@ -237,6 +237,7 @@ npm run dev -- --port 3001
 | GET | /api/hub/notices | 获取首页消息中心已发布部门通知，支持部门和时间筛选 |
 | GET | /api/hub/wechat-mp | 获取“国教空间”公众号首页入口公开配置 |
 | POST | /api/hub/wechat-mp/sync | 终极管理员手动触发公众号文章同步 |
+| POST | /api/hub/wechat-mp/import | 终极管理员粘贴公众号推文链接进行临时导入 |
 
 ### 部门介绍页
 
