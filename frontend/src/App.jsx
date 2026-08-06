@@ -3159,11 +3159,18 @@ const DepartmentNoticeWorkspace = ({ module, token, language = 'zh', onClose }) 
   );
 };
 
-const WechatMpHeroEntry = ({ token, user, language = 'zh', onWechatMpChanged = () => {} }) => {
+const WechatMpHeroEntry = ({
+  token,
+  user,
+  language = 'zh',
+  onWechatMpChanged = () => {},
+  manualImportOpen = false,
+  onOpenManualImport = () => {},
+  onCloseManualImport = () => {}
+}) => {
   const [wechatMp, setWechatMp] = useState(null);
   const [message, setMessage] = useState('');
   const [syncing, setSyncing] = useState(false);
-  const [manualImportOpen, setManualImportOpen] = useState(false);
   const [manualImportText, setManualImportText] = useState('');
   const [manualImportLoading, setManualImportLoading] = useState(false);
   const [manualImportMessage, setManualImportMessage] = useState('');
@@ -3255,19 +3262,19 @@ const WechatMpHeroEntry = ({ token, user, language = 'zh', onWechatMpChanged = (
         <div className="siehub-wechat-actions">
           {wechatMp?.accountUrl && <button type="button" onClick={openAccount}>打开主页 <ArrowUpRight /></button>}
           {user?.isUltimateAdmin && <button type="button" onClick={syncArticles} disabled={syncing}>{syncing ? '同步中' : '同步文章'}</button>}
-          {user?.isUltimateAdmin && <button type="button" onClick={() => setManualImportOpen(true)}>手动导入 <Plus /></button>}
+          {user?.isUltimateAdmin && <button type="button" onClick={onOpenManualImport}>手动导入 <Plus /></button>}
         </div>
         {message && <small>{message}</small>}
       </div>
       {manualImportOpen && (
-        <div className="siehub-modal-backdrop" role="presentation" onClick={() => setManualImportOpen(false)}>
+        <div className="siehub-modal-backdrop" role="presentation" onClick={onCloseManualImport}>
           <section className="siehub-modal" role="dialog" aria-modal="true" aria-labelledby="wechat-import-title" onClick={event => event.stopPropagation()}>
             <header>
               <div>
                 <p>MANUAL IMPORT</p>
                 <h2 id="wechat-import-title">粘贴推文链接</h2>
               </div>
-              <button type="button" className="icon-button" onClick={() => setManualImportOpen(false)}><X /></button>
+              <button type="button" className="icon-button" onClick={onCloseManualImport}><X /></button>
             </header>
             <p className="siehub-modal-note">一行一条，系统会尽量提取标题、摘要和封面；如果链接页受限，会返回失败结果。</p>
             <textarea
@@ -3282,7 +3289,7 @@ const WechatMpHeroEntry = ({ token, user, language = 'zh', onWechatMpChanged = (
             )}
             {manualImportMessage && <p className="siehub-modal-message">{manualImportMessage}</p>}
             <footer>
-              <button type="button" className="text-button" onClick={() => setManualImportOpen(false)}>取消</button>
+              <button type="button" className="text-button" onClick={onCloseManualImport}>取消</button>
               <button type="button" className="primary-button" onClick={importManualLinks} disabled={manualImportLoading}>{manualImportLoading ? '导入中' : '开始导入'}</button>
             </footer>
           </section>
@@ -3359,10 +3366,13 @@ const SIEHUBHome = ({ user, token, theme, onOpenModule, onOpenDepartments, onOpe
   const clock = usePlatformClock(language);
   const serviceMetrics = useServiceMetrics(token);
   const [wechatNewsRefreshKey, setWechatNewsRefreshKey] = useState(0);
+  const [wechatManualImportOpen, setWechatManualImportOpen] = useState(false);
   const youthLeague = modules.filter(module => module.organization === 'youth_league');
   const studentUnion = modules.filter(module => module.organization === 'student_union');
   const roleScope = user?.isUltimateAdmin ? '全平台治理范围' : `${user?.organizationLabel || '学生服务'} / ${user?.departmentLabel || '可访问模块'}`;
   const refreshWechatNews = useCallback(() => setWechatNewsRefreshKey(current => current + 1), []);
+  const openWechatManualImport = useCallback(() => setWechatManualImportOpen(true), []);
+  const closeWechatManualImport = useCallback(() => setWechatManualImportOpen(false), []);
   const sievoxModule = SIEHUB_MODULES.find(module => module.key === 'student_rights');
   const siebridgeModule = SIEHUB_MODULES.find(module => module.key === 'academic_technology');
   const productWindows = [
@@ -3419,7 +3429,7 @@ const SIEHUBHome = ({ user, token, theme, onOpenModule, onOpenDepartments, onOpe
   return <main className="siehub-shell">
     <header className="siehub-topbar">
       <div className="siehub-brand"><span className="siehub-brand-mark"><img src={siehubLogo} alt="SIEHUB" /><i></i></span><div><strong>SIEHUB</strong><small>SIE LIFE PLATFORM</small></div></div>
-      <div className="siehub-topbar-actions"><ThemeModeButtons theme={theme} compact /><button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)} title="外观设置"><Palette /></button><HubUserChip user={user} /><SIEHUBHomeNotificationCenter token={token} onOpenSIEVOX={onOpenSIEVOX} /><button className="siehub-topbar-link" type="button" onClick={onOpenDepartments}><Building2 />部门</button><button className="icon-button" type="button" onClick={onOpenMy} title="账号设置"><UserRound /></button><button className="icon-button" type="button" onClick={onLogout} title="退出登录"><LogOut /></button>{languageSwitcher}</div>
+      <div className="siehub-topbar-actions"><ThemeModeButtons theme={theme} compact /><button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)} title="外观设置"><Palette /></button><HubUserChip user={user} />{user?.isUltimateAdmin && <button className="icon-button" type="button" onClick={openWechatManualImport} title="公众号导入"><Plus /></button>}<SIEHUBHomeNotificationCenter token={token} onOpenSIEVOX={onOpenSIEVOX} /><button className="siehub-topbar-link" type="button" onClick={onOpenDepartments}><Building2 />部门</button><button className="icon-button" type="button" onClick={onOpenMy} title="账号设置"><UserRound /></button><button className="icon-button" type="button" onClick={onLogout} title="退出登录"><LogOut /></button>{languageSwitcher}</div>
     </header>
     <div className="siehub-content">
       <section className="siehub-hero">
@@ -3431,7 +3441,15 @@ const SIEHUBHome = ({ user, token, theme, onOpenModule, onOpenDepartments, onOpe
           <small>{clock.dateLabel} · {clock.timezoneLabel}</small>
           <small>{language === 'en' ? 'SIEVOX first response' : 'SIEVOX 首次响应'}：{serviceMetrics.loading && !serviceMetrics.metrics ? (language === 'en' ? 'Syncing' : '同步中') : formatAverageFirstResponse(serviceMetrics.metrics, language)}</small>
         </div>
-        <WechatMpHeroEntry token={token} user={user} language={language} onWechatMpChanged={refreshWechatNews} />
+        <WechatMpHeroEntry
+          token={token}
+          user={user}
+          language={language}
+          onWechatMpChanged={refreshWechatNews}
+          manualImportOpen={wechatManualImportOpen}
+          onOpenManualImport={openWechatManualImport}
+          onCloseManualImport={closeWechatManualImport}
+        />
       </section>
       <SIEHUBNoticePortal token={token} language={language} user={user} refreshKey={wechatNewsRefreshKey} />
       <section className="siehub-product-windows" aria-label="SIEHUB 平台入口">
