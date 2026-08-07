@@ -2764,6 +2764,11 @@ const SIEHUBNoticePortal = ({ token, language = 'zh', fixedModule = null, user =
 
   const activeNewsSlideIndex = carouselNews.length ? newsSlideIndex % carouselNews.length : 0;
   const featureNews = carouselNews.length ? carouselNews[activeNewsSlideIndex] : null;
+  const featureNewsKey = noticeIdentity(featureNews) || `wechat-news-${activeNewsSlideIndex}`;
+  const featureNewsTitle = pickLocalizedNoticeText(featureNews?.title, language);
+  const featureNewsDate = formatNoticeDate(featureNews?.publishedAt, language);
+  const featureNewsHref = featureNews?.sourceUrl || '';
+  const featureNewsCover = featureNews?.coverImageUrl || '';
   const shiftNewsSlide = (direction) => {
     if (!carouselNews.length) return;
     setNewsSlideIndex(current => (current + direction + carouselNews.length) % carouselNews.length);
@@ -2810,11 +2815,16 @@ const SIEHUBNoticePortal = ({ token, language = 'zh', fixedModule = null, user =
             <p className="siehub-empty-text">{language === 'en' ? 'Loading news...' : '正在同步新闻...'}</p>
           ) : featureNews ? (
             <div className="siehub-school-news-carousel">
-              <button className="siehub-school-feature-news" type="button" onClick={() => featureNews.sourceUrl && window.open(featureNews.sourceUrl, '_blank', 'noopener,noreferrer')}>
-                {featureNews.coverImageUrl ? <img src={featureNews.coverImageUrl} alt="" /> : <span className="siehub-news-cover-fallback">SIE</span>}
+              <button
+                key={featureNewsKey}
+                className="siehub-school-feature-news"
+                type="button"
+                onClick={() => featureNewsHref && window.open(featureNewsHref, '_blank', 'noopener,noreferrer')}
+              >
+                {featureNewsCover ? <img key={`${featureNewsKey}-cover`} src={featureNewsCover} alt={featureNewsTitle} /> : <span className="siehub-news-cover-fallback">SIE</span>}
                 <span className="siehub-school-news-caption">
-                  <strong>{pickLocalizedNoticeText(featureNews.title, language)}</strong>
-                  <small>{formatNoticeDate(featureNews.publishedAt, language)}</small>
+                  <strong key={`${featureNewsKey}-title`}>{featureNewsTitle}</strong>
+                  <small key={`${featureNewsKey}-date`}>{featureNewsDate}</small>
                 </span>
               </button>
               {carouselNews.length > 1 && (
