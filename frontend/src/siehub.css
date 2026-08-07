@@ -2263,16 +2263,23 @@ html[data-theme="dark"] .siehub-checkbox:checked + i::after {
   display: grid;
   place-items: center;
   padding: 22px;
+  overflow-y: auto;
   background: rgba(7, 19, 32, .58);
   backdrop-filter: blur(12px);
 }
 
+.siehub-modal-portal-backdrop {
+  z-index: 1200;
+}
+
 .siehub-modal {
   width: min(620px, 100%);
-  max-height: min(720px, calc(100vh - 44px));
+  max-height: min(720px, calc(100dvh - 44px));
   display: grid;
+  grid-template-rows: auto auto minmax(150px, 1fr) auto auto;
   gap: 14px;
-  overflow: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 0;
   color: var(--ink);
   background: var(--paper);
@@ -2291,6 +2298,9 @@ html[data-theme="dark"] .siehub-checkbox:checked + i::after {
 }
 
 .siehub-modal header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   border-bottom: 1px solid var(--line);
   background: color-mix(in srgb, var(--theme-container) 40%, var(--paper));
 }
@@ -2319,7 +2329,7 @@ html[data-theme="dark"] .siehub-checkbox:checked + i::after {
 }
 
 .siehub-modal-textarea {
-  min-height: 190px;
+  min-height: clamp(150px, 32dvh, 230px);
   margin: 0 18px;
   padding: 12px;
   resize: vertical;
@@ -2343,6 +2353,9 @@ html[data-theme="dark"] .siehub-checkbox:checked + i::after {
 }
 
 .siehub-modal footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
   justify-content: flex-end;
   border-top: 1px solid var(--line);
   background: color-mix(in srgb, var(--canvas) 42%, var(--paper));
@@ -2355,6 +2368,53 @@ html[data-theme="dark"] .siehub-checkbox:checked + i::after {
   font-family: inherit;
   font-size: 12px;
   font-weight: 900;
+}
+
+@media (max-height: 680px) {
+  .siehub-modal-backdrop {
+    place-items: start center;
+  }
+
+  .siehub-modal {
+    max-height: calc(100dvh - 28px);
+  }
+
+  .siehub-modal-textarea {
+    min-height: 130px;
+  }
+}
+
+@media (max-width: 640px) {
+  .siehub-modal-backdrop {
+    padding: 12px;
+  }
+
+  .siehub-modal {
+    width: 100%;
+    max-height: calc(100dvh - 24px);
+    gap: 12px;
+  }
+
+  .siehub-modal header,
+  .siehub-modal footer {
+    padding: 14px;
+  }
+
+  .siehub-modal-note,
+  .siehub-modal-muted,
+  .siehub-modal-message,
+  .siehub-modal-textarea {
+    margin-right: 14px;
+    margin-left: 14px;
+  }
+
+  .siehub-modal footer {
+    flex-wrap: wrap;
+  }
+
+  .siehub-modal footer button {
+    flex: 1 1 120px;
+  }
 }
 
 .privacy-modal,

@@ -113,6 +113,10 @@ const departmentNoticeUploadDir = path.join(__dirname, 'department_notice_upload
 if (!fs.existsSync(departmentNoticeUploadDir)) {
   fs.mkdirSync(departmentNoticeUploadDir, { recursive: true });
 }
+const wechatMpCoverCacheDir = path.join(departmentNoticeUploadDir, 'wechat-mp');
+if (!fs.existsSync(wechatMpCoverCacheDir)) {
+  fs.mkdirSync(wechatMpCoverCacheDir, { recursive: true });
+}
 const departmentNoticeStorage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, departmentNoticeUploadDir);
@@ -1196,6 +1200,18 @@ const fetchTextWithTimeout = async (url, options = {}, timeoutMs = 12_000) => {
   }
 };
 
+const fetchBufferWithTimeout = async (url, options = {}, timeoutMs = 12_000) => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    const arrayBuffer = await res.arrayBuffer();
+    return { res, buffer: Buffer.from(arrayBuffer) };
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
 const getWechatMpConfig = () => {
   const assignment = {
     organization: process.env.WECHAT_MP_NOTICE_ORGANIZATION || 'student_union',
@@ -1314,8 +1330,18 @@ const decodeWechatJsString = (value = '') => {
 };
 
 const extractWechatJsVar = (html = '', name) => {
-  const match = String(html).match(new RegExp(`var\\s+${name}\\s*=\\s*(['"])([\\s\\S]*?)\\1\\s*;`));
-  return match ? decodeHtmlEntities(decodeWechatJsString(match[2])) : '';
+  const source = String(html);
+  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const patterns = [
+    new RegExp(`var\\s+${escapedName}\\s*=\\s*htmlDecode\\(\\s*(['"])([\\s\\S]*?)\\1\\s*\\)\\s*;`),
+    new RegExp(`var\\s+${escapedName}\\s*=\\s*(['"])([\\s\\S]*?)\\1\\s*\\.html\\(\\s*false\\s*\\)\\s*;`),
+    new RegExp(`var\\s+${escapedName}\\s*=\\s*(['"])([\\s\\S]*?)\\1\\s*;`)
+  ];
+  for (const pattern of patterns) {
+    const match = source.match(pattern);
+    if (match?.[2]) return decodeHtmlEntities(decodeWechatJsString(match[2])).trim();
+  }
+  return '';
 };
 
 const extractMetaContent = (html = '', patterns = []) => {
@@ -1327,11 +1353,12 @@ const extractMetaContent = (html = '', patterns = []) => {
 };
 
 const normalizeWechatArticleUrl = (value = '') => {
-  const clean = String(value || '').trim();
+  const raw = String(value || '').trim();
+  const clean = raw.startsWith('http') ? raw : `https://${raw}`;
   try {
     const parsed = new URL(clean);
     if (parsed.hostname !== 'mp.weixin.qq.com') return '';
-    if (!parsed.pathname.startsWith('/s/')) return '';
+    if (!(parsed.pathname === '/s' || parsed.pathname.startsWith('/s/'))) return '';
     return parsed.toString();
   } catch {
     return '';
@@ -1343,7 +1370,57 @@ const sourceKeyFromWechatArticleUrl = (url = '') => {
   if (!normalized) return '';
   const parsed = new URL(normalized);
   const slug = parsed.pathname.split('/').filter(Boolean).pop();
-  return slug ? `manual_link:${slug}` : '';
+  if (slug && slug !== 's') return `manual_link:${slug}`;
+  const queryKey = ['__biz', 'mid', 'idx', 'sn']
+    .map(key => parsed.searchParams.get(key))
+    .filter(Boolean)
+    .join(':');
+  return queryKey ? `manual_link:${queryKey}` : `manual_link:${normalized}`;
+};
+
+const inferImageExtension = (url = '', contentType = '') => {
+  const type = String(contentType || '').toLowerCase();
+  if (type.includes('png')) return '.png';
+  if (type.includes('webp')) return '.webp';
+  if (type.includes('gif')) return '.gif';
+  if (type.includes('jpeg') || type.includes('jpg')) return '.jpg';
+  try {
+    const parsed = new URL(url);
+    const wxFmt = parsed.searchParams.get('wx_fmt');
+    if (wxFmt === 'png') return '.png';
+    if (wxFmt === 'webp') return '.webp';
+    if (wxFmt === 'gif') return '.gif';
+  } catch {
+    // Fall through to jpg; WeChat article covers are most commonly jpeg.
+  }
+  return '.jpg';
+};
+
+const cacheWechatCoverImage = async (imageUrl = '', sourceUrl = '', sourceExternalId = '') => {
+  try {
+    const normalized = String(imageUrl || '').trim();
+    if (!/^https?:\/\//i.test(normalized)) return '';
+    if (normalized.startsWith('/api/department-notice-assets/')) return normalized;
+
+    const key = sourceExternalId || sourceKeyFromWechatArticleUrl(sourceUrl) || normalized;
+    const hash = crypto.createHash('sha256').update(`${key}:${normalized}`).digest('hex').slice(0, 24);
+    const existing = fs.readdirSync(wechatMpCoverCacheDir).find(file => file.startsWith(`${hash}.`));
+    if (existing) return `/api/department-notice-assets/wechat-mp/${existing}`;
+
+    const { res, buffer } = await fetchBufferWithTimeout(normalized, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 SIEHUB-WeChatManualImport',
+        Referer: sourceUrl || 'https://mp.weixin.qq.com/'
+      }
+    });
+    if (!res.ok || !String(res.headers.get('content-type') || '').toLowerCase().startsWith('image/')) return '';
+    const ext = inferImageExtension(normalized, res.headers.get('content-type') || '');
+    const filename = `${hash}${ext}`;
+    await fs.promises.writeFile(path.join(wechatMpCoverCacheDir, filename), buffer);
+    return `/api/department-notice-assets/wechat-mp/${filename}`;
+  } catch {
+    return '';
+  }
 };
 
 const parseWechatArticleHtml = (html = '', sourceUrl = '', assignment = getWechatMpConfig().assignment) => {
@@ -1386,6 +1463,7 @@ const importWechatArticleLinks = async ({ urls = [], assignment = getWechatMpCon
       const { res, text } = await fetchTextWithTimeout(url, { headers: { 'User-Agent': 'Mozilla/5.0 SIEHUB-WeChatManualImport' } });
       if (!res.ok) throw new Error(`fetch_failed_${res.status}`);
       const payload = parseWechatArticleHtml(text, url, assignment);
+      payload.coverImageUrl = await cacheWechatCoverImage(payload.coverImageUrl, url, payload.sourceExternalId);
       if (!payload.title.zh || !payload.sourceExternalId) throw new Error('article_metadata_missing');
       const result = await DepartmentNotice.updateOne(
         { source: 'wechat_mp', sourceExternalId: payload.sourceExternalId },
@@ -1448,6 +1526,7 @@ const runWechatMpArticleSync = async () => {
     const items = article.content?.news_item || [];
     for (let index = 0; index < items.length; index += 1) {
       const payload = buildWechatNoticePayload(article, items[index], index, config.assignment);
+      payload.coverImageUrl = await cacheWechatCoverImage(payload.coverImageUrl, payload.sourceUrl, payload.sourceExternalId);
       if (!payload.title.zh || !payload.sourceExternalId) continue;
       const result = await DepartmentNotice.updateOne(
         { source: 'wechat_mp', sourceExternalId: payload.sourceExternalId },

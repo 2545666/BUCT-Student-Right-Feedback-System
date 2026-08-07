@@ -1,5 +1,6 @@
 import AdminDashboard, { OrganizationFrameworkPanel } from './AdminDashboard';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ArrowLeft, ArrowRight, ArrowUpRight, Bell, BookOpen, Check, ChevronRight,
   GraduationCap, House, IdCard, ImagePlus, KeyRound, LayoutDashboard, LockKeyhole,
@@ -3159,6 +3160,14 @@ const DepartmentNoticeWorkspace = ({ module, token, language = 'zh', onClose }) 
   );
 };
 
+const extractWechatArticleUrls = (value = '') => {
+  const matches = String(value).match(/(?:https?:\/\/)?mp\.weixin\.qq\.com\/[^\s"'<>，,；;]+/gi) || [];
+  return Array.from(new Set(matches.map(url => {
+    const clean = url.replace(/[)\]。！？!?]+$/g, '');
+    return clean.startsWith('http') ? clean : `https://${clean}`;
+  }).filter(Boolean)));
+};
+
 const WechatMpHeroEntry = ({
   token,
   user,
@@ -3174,6 +3183,7 @@ const WechatMpHeroEntry = ({
   const [manualImportText, setManualImportText] = useState('');
   const [manualImportLoading, setManualImportLoading] = useState(false);
   const [manualImportMessage, setManualImportMessage] = useState('');
+  const manualImportUrls = useMemo(() => extractWechatArticleUrls(manualImportText), [manualImportText]);
 
   const loadConfig = useCallback(async () => {
     if (!token) return;
@@ -3214,31 +3224,61 @@ const WechatMpHeroEntry = ({
     }
   };
 
+  const updateManualImportText = (value) => {
+    setManualImportText(value);
+    if (!value.trim()) {
+      setManualImportMessage('');
+      return;
+    }
+    const urls = extractWechatArticleUrls(value);
+    setManualImportMessage(urls.length
+      ? `已识别 ${urls.length} 条推文链接，点击“开始导入”继续。`
+      : '未识别到有效网址，请粘贴 https://mp.weixin.qq.com/s/... 链接。');
+  };
+
+  const handleManualImportPaste = (event) => {
+    const pasted = event.clipboardData?.getData('text') || '';
+    const pastedUrls = extractWechatArticleUrls(pasted);
+    if (pastedUrls.length) {
+      setManualImportMessage(`已识别 ${pastedUrls.length} 条推文链接，粘贴后可直接开始导入。`);
+    }
+  };
+
   const importManualLinks = async () => {
     const text = manualImportText.trim();
-    if (!text) {
-      setManualImportMessage('请先粘贴至少一条推文链接');
+    const urls = extractWechatArticleUrls(text);
+    if (!urls.length) {
+      setManualImportMessage(text ? '未识别到有效网址，请粘贴 https://mp.weixin.qq.com/s/... 链接。' : '请先粘贴至少一条推文链接');
       return;
     }
     setManualImportLoading(true);
-    setManualImportMessage('');
+    setManualImportMessage(`正在导入 ${urls.length} 条推文链接，请稍候...`);
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), 30_000);
     try {
       const res = await fetch(`${API_BASE}/hub/wechat-mp/import`, {
         method: 'POST',
+        signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ text })
+        body: JSON.stringify({ text, urls })
       });
+      window.clearTimeout(timer);
       const data = await res.json();
       if (!data.success) throw new Error(data.message || '导入失败');
       setWechatMp(data.wechatMp || null);
       onWechatMpChanged();
-      setManualImportMessage(`已导入 ${data.result?.importedCount || 0} 条，更新 ${data.result?.updatedCount || 0} 条，失败 ${data.result?.failedCount || 0} 条。`);
+      const imported = data.result?.importedCount || 0;
+      const updated = data.result?.updatedCount || 0;
+      const failed = data.result?.failedCount || 0;
+      const failureNote = data.result?.failed?.length ? ` 首个失败原因：${data.result.failed[0].error}` : '';
+      setManualImportMessage(`导入完成：新增 ${imported} 条，更新 ${updated} 条，失败 ${failed} 条。${failureNote}`);
       setMessage('');
     } catch (error) {
-      setManualImportMessage(error.message || '导入失败');
+      window.clearTimeout(timer);
+      setManualImportMessage(error.name === 'AbortError' ? '导入请求超时，请稍后重试或检查链接是否能公开访问。' : (error.message || '导入失败'));
     } finally {
       setManualImportLoading(false);
     }
@@ -3266,9 +3306,9 @@ const WechatMpHeroEntry = ({
         </div>
         {message && <small>{message}</small>}
       </div>
-      {manualImportOpen && (
-        <div className="siehub-modal-backdrop" role="presentation" onClick={onCloseManualImport}>
-          <section className="siehub-modal" role="dialog" aria-modal="true" aria-labelledby="wechat-import-title" onClick={event => event.stopPropagation()}>
+      {manualImportOpen && typeof document !== 'undefined' && createPortal(
+        <div className="siehub-modal-backdrop siehub-modal-portal-backdrop" role="presentation" onClick={onCloseManualImport}>
+          <section className="siehub-modal siehub-modal-portal" role="dialog" aria-modal="true" aria-labelledby="wechat-import-title" onClick={event => event.stopPropagation()}>
             <header>
               <div>
                 <p>MANUAL IMPORT</p>
@@ -3280,20 +3320,20 @@ const WechatMpHeroEntry = ({
             <textarea
               className="siehub-modal-textarea"
               value={manualImportText}
-              onChange={event => setManualImportText(event.target.value)}
+              onChange={event => updateManualImportText(event.target.value)}
+              onPaste={handleManualImportPaste}
               placeholder="https://mp.weixin.qq.com/s/..."
               rows={8}
             />
-            {wechatMp?.noticeDepartmentLabel && (
-              <small className="siehub-modal-muted">导入目标：{wechatMp.noticeDepartmentLabel} · {wechatMp.accountName || '国教空间'}</small>
-            )}
+            <small className="siehub-modal-muted">已识别 {manualImportUrls.length} 条链接{wechatMp?.noticeDepartmentLabel ? ` · 导入目标：${wechatMp.noticeDepartmentLabel} · ${wechatMp.accountName || '国教空间'}` : ''}</small>
             {manualImportMessage && <p className="siehub-modal-message">{manualImportMessage}</p>}
             <footer>
               <button type="button" className="text-button" onClick={onCloseManualImport}>取消</button>
-              <button type="button" className="primary-button" onClick={importManualLinks} disabled={manualImportLoading}>{manualImportLoading ? '导入中' : '开始导入'}</button>
+              <button type="button" className="primary-button" onClick={importManualLinks} disabled={manualImportLoading}>{manualImportLoading ? '导入中...' : '开始导入'}</button>
             </footer>
           </section>
-        </div>
+        </div>,
+        document.body
       )}
     </aside>
   );
