@@ -57,28 +57,22 @@
 .siehub-user-chip .role-pill { font-size: 10px; white-space: nowrap; }
 
 .siehub-content { width: min(1280px, calc(100% - 40px)); margin: 0 auto; padding: 36px 0 60px; }
-.siehub-hero { min-height: 280px; position: relative; isolation: isolate; overflow: hidden; padding: clamp(26px, 5vw, 62px); border-radius: 8px; color: #fff; background: #152234; box-shadow: 0 20px 52px rgba(22, 34, 52, .18); }
-.siehub-hero::before { content: ''; position: absolute; z-index: -1; inset: 0; background: linear-gradient(105deg, rgba(var(--theme-rgb), .72), transparent 58%), radial-gradient(circle at 85% 18%, rgba(255,255,255,.2), transparent 22%); }
+.siehub-hero { min-height: 280px; position: relative; isolation: isolate; overflow: hidden; padding: clamp(26px, 5vw, 62px); border-radius: 8px; color: #fff; background: #152234; box-shadow: 0 20px 52px rgba(22, 34, 52, .18); display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 390px); gap: 22px 28px; align-items: start; }
+.siehub-hero::before { content: ''; position: absolute; z-index: -1; inset: 0; background: linear-gradient(105deg, rgba(var(--theme-rgb), .68), rgba(8, 14, 26, .18) 58%), linear-gradient(180deg, rgba(8, 13, 22, .26), rgba(8, 13, 22, .5)), radial-gradient(circle at 85% 18%, rgba(255,255,255,.2), transparent 22%); }
+.siehub-hero-meta { grid-column: 1 / -1; }
 .siehub-hero-meta { justify-content: space-between; gap: 12px; color: rgba(255,255,255,.72); font-size: 10px; letter-spacing: .13em; font-weight: 800; }
 .siehub-hero-meta b { font-size: 10px; color: #fff; letter-spacing: 0; }
 .siehub-hero h1 { max-width: 680px; margin: 42px 0 22px; font-size: clamp(30px, 4vw, 54px); line-height: 1.15; letter-spacing: 0; color: #fff; }
 .siehub-hero p, .siehub-department-hero p { margin: 0; color: rgba(255,255,255,.7); font-size: 13px; font-weight: 800; }
-.siehub-hero-subcopy {
-  display: block;
-  max-width: 520px;
-  margin: -10px 0 0;
-  color: rgba(255,255,255,.78);
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1.6;
-}
+.siehub-hero-copy { min-width: 0; display: grid; gap: 14px; align-self: start; position: relative; z-index: 1; }
+.siehub-hero-copy > div:first-child { display: grid; gap: 0; }
 .siehub-live-greeting {
   width: min(420px, 100%);
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 4px 16px;
   align-items: end;
-  margin-top: 24px;
+  margin-top: 2px;
   padding: 14px 0 0 18px;
   border-left: 3px solid rgba(255,255,255,.72);
   color: rgba(255,255,255,.9);
@@ -107,10 +101,11 @@
 .siehub-hero-note { gap: 11px; color: rgba(255,255,255,.88); font-size: 12px; }
 .siehub-hero-note i { height: 16px; border-left: 1px solid rgba(255,255,255,.35); }
 .siehub-wechat-entry {
-  position: absolute;
-  right: clamp(22px, 5vw, 62px);
-  bottom: 24px;
-  width: min(390px, 42%);
+  position: relative;
+  right: auto;
+  bottom: auto;
+  width: 100%;
+  max-width: 390px;
   display: grid;
   grid-template-columns: 130px minmax(0, 1fr);
   gap: 14px;
@@ -174,6 +169,131 @@
 .siehub-hero-orbit { position: absolute; right: 7%; bottom: -57px; width: 220px; height: 220px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.35); border-radius: 50%; color: rgba(255,255,255,.88); font-size: 20px; font-weight: 900; letter-spacing: .12em; }
 .siehub-hero-orbit::before, .siehub-hero-orbit::after, .siehub-hero-orbit i { content: ''; position: absolute; border: 1px solid rgba(255,255,255,.22); border-radius: 50%; }
 .siehub-hero-orbit::before { inset: 19px; }.siehub-hero-orbit::after { inset: 48px; }.siehub-hero-orbit i:nth-of-type(1) { width: 10px; height: 10px; top: 15px; background: #fff; }.siehub-hero-orbit i:nth-of-type(2) { width: 7px; height: 7px; left: 11px; top: 93px; background: #fff; }.siehub-hero-orbit i:nth-of-type(3) { width: 6px; height: 6px; right: 34px; bottom: 29px; background: #fff; }
+
+.siehub-home-news-panel {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  align-self: start;
+  padding: 14px 16px 16px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 8px;
+  background: rgba(8, 16, 30, .30);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 18px 42px rgba(2, 6, 23, .18);
+}
+.siehub-home-news-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+}
+.siehub-home-news-head span {
+  color: rgba(255,255,255,.66);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .14em;
+}
+.siehub-home-news-head h3 {
+  margin: 0;
+  color: #fff;
+  font-size: 15px;
+  letter-spacing: 0;
+}
+.siehub-home-news-empty {
+  margin: 0;
+  color: rgba(255,255,255,.74);
+  font-size: 12px;
+  font-weight: 700;
+}
+.siehub-home-news-carousel {
+  display: grid;
+  gap: 10px;
+}
+.siehub-home-feature-news {
+  position: relative;
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  border-radius: 8px;
+}
+.siehub-home-feature-news img,
+.siehub-home-feature-news .siehub-news-cover-fallback {
+  width: 100%;
+  aspect-ratio: 16 / 8.5;
+  border-radius: 8px;
+  object-fit: cover;
+  background: rgba(255,255,255,.1);
+}
+.siehub-home-news-mask {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(10, 16, 28, .08) 42%, rgba(10, 16, 28, .82) 100%);
+  pointer-events: none;
+}
+.siehub-home-news-caption {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: grid;
+  gap: 3px;
+  padding: 16px 16px 14px;
+}
+.siehub-home-news-caption strong {
+  overflow-wrap: anywhere;
+  font-size: 17px;
+  line-height: 1.34;
+}
+.siehub-home-news-caption small {
+  color: rgba(255,255,255,.76);
+  font-size: 11px;
+  font-weight: 800;
+}
+.siehub-home-carousel-controls {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 32px;
+  gap: 8px;
+  align-items: center;
+}
+.siehub-home-carousel-controls > button {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255,255,255,.22);
+  border-radius: 8px;
+  background: rgba(255,255,255,.08);
+  color: #fff;
+  cursor: pointer;
+}
+.siehub-home-carousel-controls svg {
+  width: 15px;
+  height: 15px;
+}
+.siehub-home-carousel-controls > div {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+.siehub-home-carousel-controls > div button {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255,255,255,.30);
+  cursor: pointer;
+}
+.siehub-home-carousel-controls > div button.is-active {
+  width: 24px;
+  background: #fff;
+}
 
 .siehub-notice-center {
   margin-top: 22px;
@@ -372,7 +492,7 @@
 
 .siehub-school-notice-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(320px, .92fr);
+  grid-template-columns: 1fr;
   gap: 0;
   border-top: 1px solid var(--notice-line);
 }
@@ -384,8 +504,7 @@
 }
 
 .siehub-school-news-panel {
-  border-right: 1px solid var(--notice-line);
-  background: color-mix(in srgb, rgb(var(--theme-rgb)) 4%, #ffffff);
+  display: none;
 }
 
 .siehub-school-announcement-panel {
@@ -1105,7 +1224,11 @@ html[data-theme="dark"] .siehub-school-announcement-list article.is-unread time 
 @media (max-width: 820px) {
   .siehub-hero {
     display: grid;
+    grid-template-columns: 1fr;
     gap: 16px;
+  }
+  .siehub-hero-meta {
+    grid-column: auto;
   }
   .siehub-wechat-entry {
     position: relative;

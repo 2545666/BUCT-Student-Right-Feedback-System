@@ -3349,6 +3349,109 @@ const WechatMpHeroEntry = ({
   );
 };
 
+const SIEHUBWechatNewsCarousel = ({ token, language = 'zh', refreshKey = 0 }) => {
+  const [news, setNews] = useState([]);
+  const [slideIndex, setSlideIndex] = useState(0);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!token) return undefined;
+    const controller = new AbortController();
+    setLoading(true);
+    fetch(`${API_BASE}/hub/notices?${new URLSearchParams({ source: 'wechat_mp', limit: '5' }).toString()}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: controller.signal
+    })
+      .then(res => res.ok ? res.json() : Promise.reject(new Error('news_fetch_failed')))
+      .then(data => setNews(Array.isArray(data.notices) ? data.notices : []))
+      .catch(error => {
+        if (error.name !== 'AbortError') setNews([]);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [token, refreshKey]);
+
+  const carouselNews = news.slice(0, 5);
+  const newsSignature = carouselNews.map(noticeIdentity).join('|');
+
+  useEffect(() => {
+    setSlideIndex(0);
+  }, [newsSignature]);
+
+  useEffect(() => {
+    if (carouselNews.length <= 1) return undefined;
+    const timer = setInterval(() => {
+      setSlideIndex(current => (current + 1) % carouselNews.length);
+    }, 5200);
+    return () => clearInterval(timer);
+  }, [carouselNews.length]);
+
+  const activeIndex = carouselNews.length ? slideIndex % carouselNews.length : 0;
+  const activeNews = carouselNews.length ? carouselNews[activeIndex] : null;
+  const activeKey = noticeIdentity(activeNews) || `wechat-news-${activeIndex}`;
+  const activeTitle = String(pickLocalizedNoticeText(activeNews?.title, language) || '')
+    .replace(/\s+/g, ' ')
+    .replace(/(?:\.html\(false\);\s*var\s+msg_desc\s*=\s*htmlDecode\([\s\S]*)$/i, '')
+    .replace(/(?:var\s+msg_desc\s*=\s*htmlDecode\([\s\S]*)$/i, '')
+    .trim();
+  const activeDate = formatNoticeDate(activeNews?.publishedAt, language);
+  const activeHref = activeNews?.sourceUrl || '';
+  const activeCover = activeNews?.coverImageUrl || '';
+  const shiftSlide = (direction) => {
+    if (!carouselNews.length) return;
+    setSlideIndex(current => (current + direction + carouselNews.length) % carouselNews.length);
+  };
+
+  return (
+    <section className="siehub-home-news-panel" aria-label={language === 'en' ? 'WeChat news carousel' : '推文轮播'}>
+      <div className="siehub-home-news-head">
+        <span>NEWS</span>
+        <h3>{language === 'en' ? 'Latest WeChat posts' : '最新推文'}</h3>
+      </div>
+      {loading ? (
+        <p className="siehub-home-news-empty">{language === 'en' ? 'Loading news...' : '正在同步推文...'}</p>
+      ) : activeNews ? (
+        <div className="siehub-home-news-carousel">
+          <button
+            key={activeKey}
+            className="siehub-home-feature-news"
+            type="button"
+            onClick={() => activeHref && window.open(activeHref, '_blank', 'noopener,noreferrer')}
+          >
+            {activeCover ? <img src={activeCover} alt={activeTitle} /> : <span className="siehub-news-cover-fallback">SIE</span>}
+            <span className="siehub-home-news-mask" aria-hidden="true"></span>
+            <span className="siehub-home-news-caption">
+              <strong>{activeTitle}</strong>
+              <small>{activeDate}</small>
+            </span>
+          </button>
+          {carouselNews.length > 1 && (
+            <div className="siehub-home-carousel-controls">
+              <button type="button" onClick={() => shiftSlide(-1)} aria-label={language === 'en' ? 'Previous post' : '上一条推文'}><ArrowLeft /></button>
+              <div>
+                {carouselNews.map((item, index) => (
+                  <button
+                    key={noticeIdentity(item)}
+                    type="button"
+                    className={index === activeIndex ? 'is-active' : ''}
+                    onClick={() => setSlideIndex(index)}
+                    aria-label={`${language === 'en' ? 'Slide' : '第'} ${index + 1}`}
+                  />
+                ))}
+              </div>
+              <button type="button" onClick={() => shiftSlide(1)} aria-label={language === 'en' ? 'Next post' : '下一条推文'}><ArrowRight /></button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <p className="siehub-home-news-empty">{language === 'en' ? 'No WeChat posts yet.' : '暂无推文可展示。'}</p>
+      )}
+    </section>
+  );
+};
+
 const SIEHUBHomeNotificationCenter = ({ token, onOpenSIEVOX }) => {
   const [notifications, setNotifications] = useState([]);
   const [open, setOpen] = useState(false);
@@ -3484,12 +3587,18 @@ const SIEHUBHome = ({ user, token, theme, onOpenModule, onOpenDepartments, onOpe
     <div className="siehub-content">
       <section className="siehub-hero">
         <div className="siehub-hero-meta"><span>WECHAT MP / 国教空间</span><b>{roleScope}</b></div>
-        <div><p>北京化工大学国际教育学院</p><h1>国教空间</h1><span className="siehub-hero-subcopy">学院资讯、部门通知与学生工作动态在这里汇合。</span></div>
-        <div className="siehub-live-greeting">
-          <span>{clock.greeting}，{user?.name}</span>
-          <strong>{clock.timeLabel}</strong>
-          <small>{clock.dateLabel} · {clock.timezoneLabel}</small>
-          <small>{language === 'en' ? 'SIEVOX first response' : 'SIEVOX 首次响应'}：{serviceMetrics.loading && !serviceMetrics.metrics ? (language === 'en' ? 'Syncing' : '同步中') : formatAverageFirstResponse(serviceMetrics.metrics, language)}</small>
+        <div className="siehub-hero-copy">
+          <div>
+            <p>北京化工大学国际教育学院</p>
+            <h1>国教空间</h1>
+          </div>
+          <SIEHUBWechatNewsCarousel token={token} language={language} refreshKey={wechatNewsRefreshKey} />
+          <div className="siehub-live-greeting">
+            <span>{clock.greeting}，{user?.name}</span>
+            <strong>{clock.timeLabel}</strong>
+            <small>{clock.dateLabel} · {clock.timezoneLabel}</small>
+            <small>{language === 'en' ? 'SIEVOX first response' : 'SIEVOX 首次响应'}：{serviceMetrics.loading && !serviceMetrics.metrics ? (language === 'en' ? 'Syncing' : '同步中') : formatAverageFirstResponse(serviceMetrics.metrics, language)}</small>
+          </div>
         </div>
         <WechatMpHeroEntry
           token={token}
