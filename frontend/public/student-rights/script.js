@@ -26,13 +26,153 @@ document.querySelectorAll('.case-row').forEach((row) => row.addEventListener('cl
   document.querySelector('.mini-progress span').style.width = item.progress;
 }));
 
+const workflowSteps = [
+  {
+    label: '01 / 接住声音',
+    title: '提交反馈，先让问题有名字',
+    copy: '同学可以从 SIEHUB 进入 SIEVOX，留下问题分类、地点和期望。每一条反馈都会生成独立记录，方便后续追踪。',
+    action: 'Open SIEVOX ↗'
+  },
+  {
+    label: '02 / 自动编号',
+    title: '生成单号，确认反馈进入队列',
+    copy: '系统记录提交时间、反馈人状态、问题类型和附件信息，形成可检索的工单编号，避免问题在口头沟通中丢失。',
+    action: '查看我的反馈 ↗'
+  },
+  {
+    label: '03 / 初筛分类',
+    title: '学生权益部先判断问题归属',
+    copy: '志愿者和负责人会核对描述是否完整，必要时补充追问，再按教学教务、住宿、餐饮、安全或综合服务等类型分类。',
+    action: '了解处理规则 ↗'
+  },
+  {
+    label: '04 / 分派协同',
+    title: '转交对应负责同学或协同部门',
+    copy: '需要跨部门处理的问题会被分派到对应负责人；系统保留每次状态变化和回复记录，让进展对提交者可见。',
+    action: '追踪处理进度 ↗'
+  },
+  {
+    label: '05 / 处理回应',
+    title: '持续更新进展，直到给出结果',
+    copy: '处理过程中会同步阶段性说明、现场核实情况和最终解决方案。若问题暂时无法解决，也会说明原因和下一步安排。',
+    action: '查看部门回复 ↗'
+  },
+  {
+    label: '06 / 回访归档',
+    title: '确认体验，把个案变成改进依据',
+    copy: '事项完成后进行回访确认，并按学期归档。共性问题会进入复盘，转化为后续提案、服务优化和制度改进线索。',
+    action: '查看归档记录 ↗'
+  }
+];
+
+const workflowRoot = document.querySelector('.workflow');
+const workflowLabel = document.querySelector('#workflowStepLabel');
+const workflowTitle = document.querySelector('#workflowStepTitle');
+const workflowCopy = document.querySelector('#workflowStepCopy');
+const workflowAction = document.querySelector('#workflowStepAction');
+const workflowCard = document.querySelector('.workflow-card');
+const workflowProgress = document.querySelector('.workflow-progress i');
+const workflowStepButtons = [...document.querySelectorAll('[data-workflow-step]')];
+let workflowIndex = 0;
+let workflowIdleUntil = 0;
+let workflowTimer = null;
+
+const renderWorkflowStep = (index, manual = false) => {
+  if (!workflowRoot || !workflowLabel || !workflowTitle || !workflowCopy || !workflowAction) return;
+  workflowIndex = (index + workflowSteps.length) % workflowSteps.length;
+  const step = workflowSteps[workflowIndex];
+  workflowRoot.dataset.activeStep = String(workflowIndex + 1).padStart(2, '0');
+  if (workflowCard) workflowCard.dataset.step = String(workflowIndex + 1).padStart(2, '0');
+  workflowLabel.textContent = step.label;
+  workflowTitle.textContent = step.title;
+  workflowCopy.textContent = step.copy;
+  workflowAction.textContent = step.action;
+  workflowStepButtons.forEach((button) => {
+    button.classList.toggle('is-active', Number(button.dataset.workflowStep) === workflowIndex);
+    button.classList.toggle('rail-current', Number(button.dataset.workflowStep) === workflowIndex && button.closest('.workflow-rail'));
+    button.setAttribute('aria-current', Number(button.dataset.workflowStep) === workflowIndex ? 'step' : 'false');
+  });
+  if (workflowProgress) {
+    workflowProgress.style.animation = 'none';
+    workflowProgress.offsetHeight;
+    workflowProgress.style.animation = '';
+  }
+  if (manual) workflowIdleUntil = Date.now() + 9000;
+};
+
+workflowStepButtons.forEach((button) => {
+  button.addEventListener('click', () => renderWorkflowStep(Number(button.dataset.workflowStep) || 0, true));
+});
+
+workflowRoot?.addEventListener('pointerenter', () => {
+  workflowIdleUntil = Date.now() + 9000;
+});
+
+workflowRoot?.addEventListener('focusin', () => {
+  workflowIdleUntil = Date.now() + 9000;
+});
+
+if (workflowRoot) {
+  renderWorkflowStep(0);
+  workflowTimer = window.setInterval(() => {
+    if (Date.now() < workflowIdleUntil) return;
+    renderWorkflowStep(workflowIndex + 1);
+  }, 4400);
+}
+
 const showcaseCards = [...document.querySelectorAll('.gallery-trigger')];
 const showcaseItems = showcaseCards.map((card, index) => ({
   title: card.querySelector('.event-info h3')?.textContent?.trim() || 'Activity ' + String(index + 1).padStart(2, '0'),
   category: card.querySelector('.event-info small')?.textContent?.trim() || 'SHOWCASE',
   caption: card.querySelector('.event-info span')?.textContent?.trim() || 'Activity photo set'
 }));
-const placeholderCounts = [4, 3, 5, 4];
+const activityPhotoSets = [
+  [
+    { src: 'assets/activities/image1.png', label: '模拟政协提案大赛', caption: '模拟政协提案大赛现场' }
+  ],
+  [
+    { src: 'assets/activities/image2.jpeg', label: '北京化工大学提案大赛', caption: '北京化工大学提案大赛活动海报' },
+    { src: 'assets/activities/image3.png', label: '北京化工大学提案大赛', caption: '北京化工大学提案大赛展示记录' }
+  ],
+  [
+    { src: 'assets/activities/image4.jpeg', label: '班级风采展示', caption: '班级风采展示活动记录' },
+    { src: 'assets/activities/image5.png', label: '班级风采展示', caption: '班级风采展示成果画面' }
+  ],
+  [
+    { src: 'assets/activities/image6.png', label: '宿舍风采展示', caption: '宿舍风采展示活动记录' }
+  ],
+  [
+    { src: 'assets/activities/image7.png', label: '教师节暖心活动', caption: '教师节暖心活动现场' },
+    { src: 'assets/activities/image8.png', label: '教师节暖心活动', caption: '教师节暖心活动祝福记录' },
+    { src: 'assets/activities/image9.png', label: '教师节暖心活动', caption: '教师节暖心活动互动瞬间' },
+    { src: 'assets/activities/image10.jpeg', label: '教师节暖心活动', caption: '教师节暖心活动合影记录' }
+  ],
+  [
+    { src: 'assets/activities/image11.png', label: '师生下午茶', caption: '师生下午茶交流现场' },
+    { src: 'assets/activities/image12.png', label: '师生下午茶', caption: '师生下午茶活动记录' },
+    { src: 'assets/activities/image13.jpeg', label: '师生下午茶', caption: '师生下午茶互动瞬间' },
+    { src: 'assets/activities/image14.png', label: '师生下午茶', caption: '师生下午茶现场合影' }
+  ],
+  [
+    { src: 'assets/activities/image15.png', label: '正念冥想活动', caption: '正念冥想活动现场' },
+    { src: 'assets/activities/image16.png', label: '正念冥想活动', caption: '静心疗愈体验记录' },
+    { src: 'assets/activities/image17.png', label: '正念冥想活动', caption: '正念冥想活动互动瞬间' },
+    { src: 'assets/activities/image18.png', label: '正念冥想活动', caption: '向阳纾压活动记录' }
+  ],
+  [
+    { src: 'assets/activities/image19.png', label: '情绪拼贴画活动', caption: '情绪拼贴画活动现场' },
+    { src: 'assets/activities/image20.png', label: '情绪拼贴画活动', caption: '剪贴情绪活动记录' },
+    { src: 'assets/activities/image21.png', label: '情绪拼贴画活动', caption: '拼出心声作品展示' },
+    { src: 'assets/activities/image22.png', label: '情绪拼贴画活动', caption: '情绪拼贴画互动瞬间' }
+  ],
+  [
+    { src: 'assets/activities/image23.jpeg', label: '525百花心晴集市', caption: '525百花心晴集市现场' },
+    { src: 'assets/activities/image24.png', label: '心愿徽章DIY', caption: '心愿徽章 DIY 活动' },
+    { src: 'assets/activities/image25.jpeg', label: '烦恼香囊DIY', caption: '烦恼香囊 DIY 活动' },
+    { src: 'assets/activities/image26.jpeg', label: '趣味套圈', caption: '趣味套圈活动' }
+  ]
+];
+const placeholderCounts = activityPhotoSets.map((photos) => Math.max(photos.length, 1));
 const storageKey = 'sievox-rights-showcase-photos-v1';
 const galleryModal = document.querySelector('#galleryModal');
 const galleryImage = document.querySelector('#galleryImage');
@@ -53,27 +193,6 @@ const escapeSvg = (value = '') => String(value)
   .replace(/"/g, '&quot;');
 
 const pad = (value) => String(value).padStart(2, '0');
-
-const readStoredPhotos = () => {
-  try {
-    return JSON.parse(localStorage.getItem(storageKey) || '{}') || {};
-  } catch (error) {
-    return {};
-  }
-};
-
-const storedPhotoSets = readStoredPhotos();
-
-const saveStoredPhotos = () => {
-  try {
-    localStorage.setItem(storageKey, JSON.stringify(storedPhotoSets));
-  } catch (error) {
-    console.warn('Photos are loaded for this session, but localStorage is full.', error);
-  }
-};
-
-const localEditorParams = new URLSearchParams(window.location.search);
-const isLocalEditor = false;
 
 const placeholderImage = (item, eventIndex, photoIndex) => {
   const photoNumber = pad(photoIndex + 1);
@@ -105,8 +224,8 @@ const placeholderPhoto = (eventIndex, photoIndex) => {
 const getPhotoSet = (eventIndex) => {
   const publishedSet = window.SiePublishedShowcasePhotos?.[storageKey]?.[eventIndex];
   if (Array.isArray(publishedSet) && publishedSet.length) return publishedSet;
-  const customSet = storedPhotoSets[eventIndex];
-  if (Array.isArray(customSet) && customSet.length) return customSet;
+  const activitySet = activityPhotoSets[eventIndex];
+  if (Array.isArray(activitySet) && activitySet.length) return activitySet;
   const count = placeholderCounts[eventIndex] || 4;
   return Array.from({ length: count }, (_, photoIndex) => placeholderPhoto(eventIndex, photoIndex));
 };
@@ -190,56 +309,10 @@ const closeGallery = () => {
   document.body.classList.remove('gallery-open');
 };
 
-const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
-  const reader = new FileReader();
-  reader.onload = () => resolve({
-    src: reader.result,
-    label: file.name,
-    caption: file.name.replace(/.[^.]+$/, '')
-  });
-  reader.onerror = reject;
-  reader.readAsDataURL(file);
-});
-
-const attachUploadControls = (card, eventIndex) => {
-  const stage = card.querySelector('.upload-photo');
-  if (!stage) return;
-  card.classList.add('local-editable');
-  const tools = document.createElement('div');
-  tools.className = 'photo-tools';
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = 'image/*';
-  input.multiple = true;
-  input.hidden = true;
-  const button = document.createElement('button');
-  button.className = 'upload-trigger';
-  button.type = 'button';
-  button.textContent = '????';
-  tools.append(button, input);
-  stage.append(tools);
-  tools.addEventListener('click', (event) => event.stopPropagation());
-  button.addEventListener('click', () => input.click());
-  input.addEventListener('change', async () => {
-    const files = [...input.files].filter((file) => file.type.startsWith('image/'));
-    if (!files.length) return;
-    const photos = await Promise.all(files.slice(0, 12).map(readFileAsDataUrl));
-    storedPhotoSets[eventIndex] = photos;
-    saveStoredPhotos();
-    setCardPreview(eventIndex, 0);
-    if (galleryModal?.classList.contains('open') && activeEventIndex === eventIndex) {
-      buildThumbs();
-      renderGallery(0);
-    }
-    input.value = '';
-  });
-};
-
 showcaseCards.forEach((card, eventIndex) => {
   setCardPreview(eventIndex, eventIndex % getPhotoSet(eventIndex).length);
-  if (isLocalEditor) attachUploadControls(card, eventIndex);
   card.addEventListener('click', (event) => {
-    if (event.target.closest('.photo-tools')) return;
+    if (event.target.closest('a')) return;
     openGallery(eventIndex, cardPhotoIndexes.get(eventIndex) || 0);
   });
   card.addEventListener('keydown', (event) => {
@@ -271,21 +344,3 @@ document.addEventListener('keydown', (event) => {
   if (event.key === 'ArrowLeft') renderGallery(activePhotoIndex - 1);
   if (event.key === 'ArrowRight') renderGallery(activePhotoIndex + 1);
 });
-
-const loadSieShowcaseEditor = () => {
-  const script = document.createElement('script');
-  script.src = '../department-showcase-editor.js';
-  script.defer = true;
-  script.onload = () => window.SieShowcaseEditor?.boot({
-    organization: 'student_union',
-    department: 'student_rights',
-    photoStorageKey: storageKey
-  });
-  document.head.append(script);
-};
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', loadSieShowcaseEditor, { once: true });
-} else {
-  loadSieShowcaseEditor();
-}

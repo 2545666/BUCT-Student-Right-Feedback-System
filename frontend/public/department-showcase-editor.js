@@ -564,17 +564,6 @@
     }
   };
 
-  const installEditButton = (state) => {
-    if ($('.sie-editor-entry')) return;
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'sie-editor-entry';
-    button.textContent = 'Edit';
-    button.title = 'Edit this showcase page';
-    button.addEventListener('click', () => enterEditor(state));
-    document.body.append(button);
-  };
-
   const bindPageEvents = (state) => {
     document.addEventListener('input', (event) => {
       if (!document.body.classList.contains('sie-showcase-editing')) return;
@@ -722,7 +711,7 @@
       const data = await request(state.apiBase + '/hub/departments/' + config.organization + '/' + config.department + '/introduction/editor', {}, state.token);
       state.editorIntro = data.introduction;
       state.draftVersion = data.introduction?.draftVersion || 0;
-      if (data.access?.canEdit) installEditButton(state);
+      // Public showcase pages are read-only; no edit entry is mounted here.
     } catch (error) {
       // Unauthorized users keep the exact published browsing experience.
     }

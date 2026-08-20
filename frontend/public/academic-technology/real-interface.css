@@ -15,18 +15,17 @@
 }
 
 .real-interface-shot::before {
-  content: "LIVE CAPTURE";
+  content: "REMOTE LIVE CAPTURE";
   position: absolute;
   top: 14px;
   left: 14px;
   z-index: 2;
   padding: 7px 10px;
   color: #f8faf7;
-  background: rgba(16, 27, 45, 0.78);
+  background: #101b2d;
   border: 1px solid rgba(255, 255, 255, 0.24);
   font: 700 9px var(--body);
   letter-spacing: 0.16em;
-  backdrop-filter: blur(10px);
 }
 
 .real-interface-shot img {

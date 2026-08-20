@@ -3,11 +3,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom';
 import {
   ArrowLeft, ArrowRight, ArrowUpRight, Bell, BookOpen, Check, ChevronRight,
+  Download,
   GraduationCap, House, IdCard, ImagePlus, KeyRound, LayoutDashboard, LockKeyhole,
   LogOut, MessageCircleMore, MessagesSquare, Palette, Paperclip, Plus, Send,
-  Settings, ShieldCheck, Smartphone, Sparkles, SquarePen, Utensils, UserRound,
+  ShieldCheck, Smartphone, Sparkles, SquarePen, Utensils, UserRound,
   X, BedDouble, Eye, EyeOff, Moon, Sun, Info, Route, Clock3, PhoneCall,
-  Building2, ChevronLeft, Flag, HeartHandshake, Megaphone,
+  Building2, ChevronLeft, FileText, Flag, HeartHandshake, Megaphone,
   Network, Paintbrush, Scale, Trophy, UsersRound, Wrench
 } from 'lucide-react';
 import sieLogo from './assets/LOGO_1.png';
@@ -1379,7 +1380,7 @@ const LoginPage = ({ onLogin, onRegister, theme, language = 'zh', languageSwitch
             {languageSwitcher}
           </div>
         </div>
-        <form className="login-form" onSubmit={submit}>
+        <form className={cls('login-form', !isLogin && 'is-register')} onSubmit={submit}>
           <div className="login-heading">
             <span className="login-index">01 / SIEHUB ACCESS</span>
             <h2>{isLogin ? '进入 SIEHUB' : '申请学生账号'}</h2>
@@ -1583,6 +1584,27 @@ const canManageDepartmentAccounts = (user, module) => {
   if (user?.isUltimateAdmin) return true;
   const matchedAccess = getModuleAccess(user, module);
   if (matchedAccess) return matchedAccess.capabilities?.includes('manage_department_accounts');
+  return user?.role === 'superadmin' && ['department_head', 'youth_league_cadre', 'presidium_member', 'youth_league_deputy_secretary'].includes(user?.positionTitle);
+};
+
+const canViewDepartmentFiles = (user, module) => {
+  if (user?.isUltimateAdmin) return true;
+  const matchedAccess = getModuleAccess(user, module);
+  if (matchedAccess) {
+    return Boolean(
+      matchedAccess.capabilities?.includes('view_department_files') ||
+      matchedAccess.capabilities?.includes('manage_department_files') ||
+      matchedAccess.accessLevel === 'member' ||
+      matchedAccess.accessLevel === 'manage'
+    );
+  }
+  return user?.memberRole === 'volunteer' && user?.organization === module?.organization && user?.department === module?.key;
+};
+
+const canManageDepartmentFiles = (user, module) => {
+  if (user?.isUltimateAdmin) return true;
+  const matchedAccess = getModuleAccess(user, module);
+  if (matchedAccess) return matchedAccess.capabilities?.includes('manage_department_files');
   return user?.role === 'superadmin' && ['department_head', 'youth_league_cadre', 'presidium_member', 'youth_league_deputy_secretary'].includes(user?.positionTitle);
 };
 
@@ -2072,6 +2094,170 @@ const DepartmentAccountWorkspace = ({ module, token, canManage, language = 'zh' 
           </article>
         ))}
         {accounts.length === 0 && <p className="siehub-empty-text">暂无部门账号。</p>}
+      </div>
+    </section>
+  );
+};
+
+const formatDepartmentFileSize = (size = 0) => {
+  const value = Number(size || 0);
+  if (!value) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const index = Math.min(units.length - 1, Math.floor(Math.log(value) / Math.log(1024)));
+  return `${(value / (1024 ** index)).toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+};
+
+const DepartmentFileWorkspace = ({ module, token, canManage, canView = true, compact = false }) => {
+  const [files, setFiles] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [message, setMessage] = useState('');
+  const [form, setForm] = useState({ title: '', description: '', files: [] });
+
+  const refreshFiles = useCallback(async () => {
+    if (!module?.organization || !module?.key || !token || !canView) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/hub/departments/${module.organization}/${module.key}/files`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || '获取部门资料失败');
+      setFiles(Array.isArray(data.files) ? data.files : []);
+    } catch (error) {
+      setMessage(error.message || '获取部门资料失败');
+      setFiles([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [module?.organization, module?.key, token, canView]);
+
+  useEffect(() => { refreshFiles(); }, [refreshFiles]);
+
+  const uploadFiles = async (event) => {
+    event.preventDefault();
+    if (!canManage) return setMessage('当前身份只能查看部门资料');
+    if (!form.files.length) return setMessage('请选择要上传的部门资料');
+    setUploading(true);
+    setMessage('');
+    try {
+      const body = new FormData();
+      form.files.forEach(file => body.append('files', file));
+      body.append('title', form.title);
+      body.append('description', form.description);
+      const res = await fetch(`${API_BASE}/hub/departments/${module.organization}/${module.key}/files`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || '上传部门资料失败');
+      setForm({ title: '', description: '', files: [] });
+      setMessage(`已上传 ${data.files?.length || form.files.length} 个部门资料`);
+      await refreshFiles();
+    } catch (error) {
+      setMessage(error.message || '上传部门资料失败');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const deleteFile = async (file) => {
+    if (!canManage) return;
+    const confirmed = window.confirm(`确认删除「${file.originalName || file.title || '该资料'}」吗？`);
+    if (!confirmed) return;
+    setLoading(true);
+    setMessage('');
+    try {
+      const res = await fetch(`${API_BASE}/hub/departments/${module.organization}/${module.key}/files/${file.id || file._id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || '删除部门资料失败');
+      setMessage(data.message || '部门资料已删除');
+      await refreshFiles();
+    } catch (error) {
+      setMessage(error.message || '删除部门资料失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const downloadFile = async (file) => {
+    setMessage('');
+    try {
+      const res = await fetch(`${API_BASE}/hub/departments/${module.organization}/${module.key}/files/${file.id || file._id}/download`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('下载部门资料失败');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = file.originalName || file.title || 'department-file';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      setMessage(error.message || '下载部门资料失败');
+    }
+  };
+
+  if (!canView) return null;
+
+  return (
+    <section className={cls('siehub-module-workspace siehub-file-workspace', compact && 'compact')}>
+      <div className="siehub-module-workspace-head">
+        <div>
+          <p>DEPARTMENT FILES</p>
+          <h2>部门资料库</h2>
+          <span>{canManage ? '上传、查看与删除本部门工作资料；志愿者可查看下载。' : '查看本部门共享资料，下载后按部门要求使用。'}</span>
+        </div>
+        <button type="button" onClick={refreshFiles} disabled={loading}>{loading ? '同步中' : '刷新'}</button>
+      </div>
+      {canManage && (
+        <form className="siehub-file-upload" onSubmit={uploadFiles}>
+          <label>
+            <span>资料标题</span>
+            <input value={form.title} onChange={event => setForm(current => ({ ...current, title: event.target.value }))} placeholder="可选，默认使用文件名" />
+          </label>
+          <label>
+            <span>资料说明</span>
+            <textarea value={form.description} onChange={event => setForm(current => ({ ...current, description: event.target.value }))} placeholder="可选，说明文件用途、适用活动或届次" rows={3} />
+          </label>
+          <label className="siehub-file-picker">
+            <input type="file" multiple onChange={event => setForm(current => ({ ...current, files: Array.from(event.target.files || []) }))} />
+            <Paperclip />
+            <strong>{form.files.length ? `已选择 ${form.files.length} 个文件` : '选择部门资料'}</strong>
+            <span>{form.files.length ? form.files.map(file => file.name).join('、') : '支持多文件上传，单个文件不超过 200MB'}</span>
+          </label>
+          <button type="submit" disabled={uploading || !form.files.length}>{uploading ? '上传中' : '上传资料'}</button>
+        </form>
+      )}
+      {message && <div className="siehub-policy-message">{message}</div>}
+      <div className="siehub-file-list">
+        {files.map(file => (
+          <article key={file.id || file._id}>
+            <span className="siehub-file-icon"><FileText /></span>
+            <div>
+              <strong>{file.title || file.originalName}</strong>
+              <small>{file.originalName} · {formatDepartmentFileSize(file.size)}</small>
+              <small>{file.uploader?.name || '成员'} 上传 · {formatNoticeDate(file.createdAt)}</small>
+              {file.description && <p>{file.description}</p>}
+            </div>
+            <button type="button" onClick={() => downloadFile(file)}>
+              <Download />下载
+            </button>
+            {canManage && (
+              <button type="button" className="danger" onClick={() => deleteFile(file)} disabled={loading}>
+                删除
+              </button>
+            )}
+          </article>
+        ))}
+        {files.length === 0 && <p className="siehub-empty-text">{loading ? '资料同步中...' : '暂无部门资料。'}</p>}
       </div>
     </section>
   );
@@ -2665,9 +2851,12 @@ const NoticeDetailPage = ({ notice, language = 'zh', onBack }) => {
   );
 };
 
+const SIEHUB_NEWS_PAGE_SIZE = 5;
+
 const SIEHUBNoticePortal = ({ token, language = 'zh', fixedModule = null, user = null, refreshKey = 0 }) => {
   const [news, setNews] = useState([]);
   const [newsSlideIndex, setNewsSlideIndex] = useState(0);
+  const [newsPageIndex, setNewsPageIndex] = useState(0);
   const [notices, setNotices] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedNotice, setSelectedNotice] = useState(null);
@@ -2696,7 +2885,7 @@ const SIEHUBNoticePortal = ({ token, language = 'zh', fixedModule = null, user =
     const controller = new AbortController();
     const selected = departments.find(item => item.value === filters.departmentKey);
     const noticeParams = new URLSearchParams({ source: 'manual' });
-    const newsParams = new URLSearchParams({ source: 'wechat_mp', limit: '6' });
+    const newsParams = new URLSearchParams({ source: 'wechat_mp', limit: 'all' });
     if (filters.latestOnly) noticeParams.set('limit', '8');
     if (selected) {
       noticeParams.set('organization', selected.organization);
@@ -2726,11 +2915,12 @@ const SIEHUBNoticePortal = ({ token, language = 'zh', fixedModule = null, user =
     return () => controller.abort();
   }, [token, filters, departments, refreshKey]);
 
-  const carouselNews = news.slice(0, 5);
+  const carouselNews = news;
   const newsSignature = carouselNews.map(noticeIdentity).join('|');
 
   useEffect(() => {
     setNewsSlideIndex(0);
+    setNewsPageIndex(0);
   }, [newsSignature]);
 
   useEffect(() => {
@@ -2769,6 +2959,12 @@ const SIEHUBNoticePortal = ({ token, language = 'zh', fixedModule = null, user =
   const featureNewsDate = formatNoticeDate(featureNews?.publishedAt, language);
   const featureNewsHref = featureNews?.sourceUrl || '';
   const featureNewsCover = featureNews?.coverImageUrl || '';
+  const newsPageCount = Math.max(1, Math.ceil(carouselNews.length / SIEHUB_NEWS_PAGE_SIZE));
+  const visibleNewsPageIndex = Math.min(newsPageIndex, newsPageCount - 1);
+  const pagedNews = carouselNews.slice(
+    visibleNewsPageIndex * SIEHUB_NEWS_PAGE_SIZE,
+    visibleNewsPageIndex * SIEHUB_NEWS_PAGE_SIZE + SIEHUB_NEWS_PAGE_SIZE
+  );
   const shiftNewsSlide = (direction) => {
     if (!carouselNews.length) return;
     setNewsSlideIndex(current => (current + direction + carouselNews.length) % carouselNews.length);
@@ -2845,18 +3041,53 @@ const SIEHUBNoticePortal = ({ token, language = 'zh', fixedModule = null, user =
                 </div>
               )}
               {carouselNews.length > 1 && (
-                <div className="siehub-school-news-list">
-                  {carouselNews.map((item, index) => (
-                    <button key={noticeIdentity(item)} type="button" className={index === activeNewsSlideIndex ? 'is-active' : ''} onClick={() => setNewsSlideIndex(index)}>
+                <>
+                  <div className="siehub-school-news-list">
+                    {pagedNews.map((item, index) => {
+                      const originalIndex = visibleNewsPageIndex * SIEHUB_NEWS_PAGE_SIZE + index;
+                      return (
+                    <button
+                      key={noticeIdentity(item)}
+                      type="button"
+                      className={originalIndex === activeNewsSlideIndex ? 'is-active' : ''}
+                      onClick={() => {
+                        setNewsSlideIndex(originalIndex);
+                        if (item.sourceUrl) window.open(item.sourceUrl, '_blank', 'noopener,noreferrer');
+                      }}
+                    >
                       <span>{formatNoticeDate(item.publishedAt, language)}</span>
                       <strong>{pickLocalizedNoticeText(item.title, language)}</strong>
+                      {item.sourceUrl && <ArrowUpRight />}
                     </button>
-                  ))}
-                </div>
+                      );
+                    })}
+                  </div>
+                  {newsPageCount > 1 && (
+                    <div className="siehub-school-news-pagination">
+                      <button
+                        type="button"
+                        onClick={() => setNewsPageIndex(current => Math.max(0, current - 1))}
+                        disabled={visibleNewsPageIndex <= 0}
+                        aria-label={language === 'en' ? 'Previous news page' : '上一页新闻'}
+                      >
+                        <ArrowLeft />
+                      </button>
+                      <span>{visibleNewsPageIndex + 1} / {newsPageCount}</span>
+                      <button
+                        type="button"
+                        onClick={() => setNewsPageIndex(current => Math.min(newsPageCount - 1, current + 1))}
+                        disabled={visibleNewsPageIndex >= newsPageCount - 1}
+                        aria-label={language === 'en' ? 'Next news page' : '下一页新闻'}
+                      >
+                        <ArrowRight />
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           ) : (
-            <p className="siehub-empty-text">{language === 'en' ? 'No WeChat posts yet.' : '暂无国教空间公众号推送。'}</p>
+            <p className="siehub-empty-text">{language === 'en' ? 'No WeChat posts yet.' : '暂无公众号推送。'}</p>
           )}
         </section>
         <section className="siehub-school-announcement-panel">
@@ -3298,17 +3529,15 @@ const WechatMpHeroEntry = ({
   return (
     <aside className="siehub-wechat-entry">
       <button type="button" className="siehub-wechat-cover" onClick={openAccount} disabled={!wechatMp?.accountUrl}>
-        {wechatMp?.coverImageUrl ? <img src={wechatMp.coverImageUrl} alt={accountName} /> : (
-          <span>
-            {wechatMp?.qrImageUrl ? <img src={wechatMp.qrImageUrl} alt={`${accountName} QR`} /> : <Smartphone />}
-            <strong>{accountName}</strong>
-          </span>
-        )}
+        <span>
+          {wechatMp?.qrImageUrl ? <img src={wechatMp.qrImageUrl} alt={`${accountName} QR`} /> : <Smartphone />}
+          <strong>{accountName}</strong>
+        </span>
       </button>
       <div>
         <p>WECHAT MP</p>
-        <h2>{accountName}</h2>
-        <span>{wechatMp?.fallbackDescription || '关注“国教空间”微信公众号，查看学院资讯与学生工作动态。'}</span>
+        <h2>关注“{accountName}”</h2>
+        <span>{language === 'en' ? 'Follow the official account for college updates.' : '关注公众号，查看学院资讯与学生工作动态。'}</span>
         <div className="siehub-wechat-actions">
           {wechatMp?.accountUrl && <button type="button" onClick={openAccount}>打开主页 <ArrowUpRight /></button>}
           {user?.isUltimateAdmin && <button type="button" onClick={syncArticles} disabled={syncing}>{syncing ? '同步中' : '同步文章'}</button>}
@@ -3358,7 +3587,7 @@ const SIEHUBWechatNewsCarousel = ({ token, language = 'zh', refreshKey = 0 }) =>
     if (!token) return undefined;
     const controller = new AbortController();
     setLoading(true);
-    fetch(`${API_BASE}/hub/notices?${new URLSearchParams({ source: 'wechat_mp', limit: '5' }).toString()}`, {
+    fetch(`${API_BASE}/hub/notices?${new URLSearchParams({ source: 'wechat_mp', limit: 'all' }).toString()}`, {
       headers: { Authorization: `Bearer ${token}` },
       signal: controller.signal
     })
@@ -3373,7 +3602,7 @@ const SIEHUBWechatNewsCarousel = ({ token, language = 'zh', refreshKey = 0 }) =>
     return () => controller.abort();
   }, [token, refreshKey]);
 
-  const carouselNews = news.slice(0, 5);
+  const carouselNews = news;
   const newsSignature = carouselNews.map(noticeIdentity).join('|');
 
   useEffect(() => {
@@ -3405,11 +3634,7 @@ const SIEHUBWechatNewsCarousel = ({ token, language = 'zh', refreshKey = 0 }) =>
   };
 
   return (
-    <section className="siehub-home-news-panel" aria-label={language === 'en' ? 'WeChat news carousel' : '推文轮播'}>
-      <div className="siehub-home-news-head">
-        <span>NEWS</span>
-        <h3>{language === 'en' ? 'Latest WeChat posts' : '最新推文'}</h3>
-      </div>
+    <section className="siehub-home-news-panel" aria-label={language === 'en' ? 'WeChat hero post' : '推文封面'}>
       {loading ? (
         <p className="siehub-home-news-empty">{language === 'en' ? 'Loading news...' : '正在同步推文...'}</p>
       ) : activeNews ? (
@@ -3424,7 +3649,7 @@ const SIEHUBWechatNewsCarousel = ({ token, language = 'zh', refreshKey = 0 }) =>
             <span className="siehub-home-news-mask" aria-hidden="true"></span>
             <span className="siehub-home-news-caption">
               <strong>{activeTitle}</strong>
-              <small>{activeDate}</small>
+              {activeDate && <small>{activeDate}</small>}
             </span>
           </button>
           {carouselNews.length > 1 && (
@@ -3582,17 +3807,13 @@ const SIEHUBHome = ({ user, token, theme, onOpenModule, onOpenDepartments, onOpe
   return <main className="siehub-shell">
     <header className="siehub-topbar">
       <div className="siehub-brand"><span className="siehub-brand-mark"><img src={siehubLogo} alt="SIEHUB" /><i></i></span><div><strong>SIEHUB</strong><small>SIE LIFE PLATFORM</small></div></div>
-      <div className="siehub-topbar-actions"><ThemeModeButtons theme={theme} compact /><button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)} title="外观设置"><Palette /></button><HubUserChip user={user} />{user?.isUltimateAdmin && <button className="icon-button" type="button" onClick={openWechatManualImport} title="公众号导入"><Plus /></button>}<SIEHUBHomeNotificationCenter token={token} onOpenSIEVOX={onOpenSIEVOX} /><button className="siehub-topbar-link" type="button" onClick={onOpenDepartments}><Building2 />部门</button><button className="icon-button" type="button" onClick={onOpenMy} title="账号设置"><UserRound /></button><button className="icon-button" type="button" onClick={onLogout} title="退出登录"><LogOut /></button>{languageSwitcher}</div>
+      <div className="siehub-topbar-actions"><ThemeModeButtons theme={theme} compact /><button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)} title="外观设置"><Palette /></button><HubUserChip user={user} />{user?.isUltimateAdmin && <button className="icon-button siehub-wechat-import-trigger" type="button" onClick={openWechatManualImport} title="公众号导入"><Plus /></button>}<SIEHUBHomeNotificationCenter token={token} onOpenSIEVOX={onOpenSIEVOX} /><button className="siehub-topbar-link" type="button" onClick={onOpenDepartments}><Building2 />部门</button><button className="icon-button" type="button" onClick={onOpenMy} title="账号设置"><UserRound /></button><button className="icon-button" type="button" onClick={onLogout} title="退出登录"><LogOut /></button>{languageSwitcher}</div>
     </header>
     <div className="siehub-content">
       <section className="siehub-hero">
-        <div className="siehub-hero-meta"><span>WECHAT MP / 国教空间</span><b>{roleScope}</b></div>
+        <div className="siehub-hero-meta"><span>SIEHUB</span><b>{roleScope}</b></div>
+        <SIEHUBWechatNewsCarousel token={token} language={language} refreshKey={wechatNewsRefreshKey} />
         <div className="siehub-hero-copy">
-          <div>
-            <p>北京化工大学国际教育学院</p>
-            <h1>国教空间</h1>
-          </div>
-          <SIEHUBWechatNewsCarousel token={token} language={language} refreshKey={wechatNewsRefreshKey} />
           <div className="siehub-live-greeting">
             <span>{clock.greeting}，{user?.name}</span>
             <strong>{clock.timeLabel}</strong>
@@ -3694,9 +3915,11 @@ const SIEHUBDepartmentDirectory = ({ user, theme, onBack, onOpenModule, onOpenMy
 const DepartmentStudentPortal = ({ module, onOpenSIEVOX, onOpenSIEBridge, token, user, language = 'zh' }) => {
   const [introductionOpen, setIntroductionOpen] = useState(false);
   const [noticesOpen, setNoticesOpen] = useState(false);
+  const [filesOpen, setFilesOpen] = useState(false);
   const isSIEVOX = module?.key === 'student_rights';
   const isSIEBridge = module?.key === 'academic_technology';
   const isCultureSportsArts = module?.key === 'culture_sports_arts';
+  const canViewFiles = canViewDepartmentFiles(user, module);
 
   if (introductionOpen) {
     return (
@@ -3718,6 +3941,18 @@ const DepartmentStudentPortal = ({ module, onOpenSIEVOX, onOpenSIEBridge, token,
           返回学生服务入口
         </button>
         <SIEHUBNoticePortal token={token} language={language} fixedModule={module} user={user} />
+      </>
+    );
+  }
+
+  if (filesOpen) {
+    return (
+      <>
+        <button className="siehub-back" type="button" onClick={() => setFilesOpen(false)}>
+          <ChevronLeft />
+          返回学生服务入口
+        </button>
+        <DepartmentFileWorkspace module={module} token={token} canView={canViewFiles} canManage={false} compact />
       </>
     );
   }
@@ -3758,6 +3993,15 @@ const DepartmentStudentPortal = ({ module, onOpenSIEVOX, onOpenSIEBridge, token,
             <p>面向学生的通知、报名、活动材料与服务进度将集中展示。</p>
             <b>查看通知 <ChevronRight /></b>
           </button>
+          {canViewFiles && (
+            <button className="siehub-student-service-entry" type="button" onClick={() => setFilesOpen(true)}>
+              <span>04</span>
+              <FileText />
+              <strong>部门资料库</strong>
+              <p>查看本部门共享文件、活动资料和工作文档。</p>
+              <b>查看资料 <ChevronRight /></b>
+            </button>
+          )}
         </div>
       </section>
     </>
@@ -3777,6 +4021,8 @@ const DepartmentPlaceholder = ({ module, user, token, theme, onBack, onOpenSIEVO
   const canManageNotice = canManageDepartmentNotice(user, module);
   const canManageMembers = canManageDepartmentMembers(user, module);
   const canManageAccounts = canManageDepartmentAccounts(user, module);
+  const canViewFiles = canViewDepartmentFiles(user, module);
+  const canManageFiles = canManageDepartmentFiles(user, module);
   const canManagePerformance = policyAccess?.canEdit ?? fallbackCanManagePerformance;
   const canEnterSIEVOX = module?.key === 'student_rights' || user?.isUltimateAdmin;
   const isSIEBridge = module?.key === 'academic_technology';
@@ -3892,6 +4138,7 @@ const DepartmentPlaceholder = ({ module, user, token, theme, onBack, onOpenSIEVO
           <button type="button" className={manageWorkspace === 'notice' ? 'is-active' : ''} onClick={() => setManageWorkspace('notice')}>通知管理</button>
           <button type="button" className={manageWorkspace === 'members' ? 'is-active' : ''} onClick={() => setManageWorkspace('members')}>成员管理</button>
           <button type="button" className={manageWorkspace === 'accounts' ? 'is-active' : ''} onClick={() => setManageWorkspace('accounts')}>账号管理</button>
+          <button type="button" className={manageWorkspace === 'files' ? 'is-active' : ''} onClick={() => setManageWorkspace('files')}>部门资料库</button>
           <button type="button" className={manageWorkspace === 'performance' ? 'is-active' : ''} onClick={() => setManageWorkspace('performance')}>绩效考核</button>
         </div>
       )}
@@ -3913,6 +4160,8 @@ const DepartmentPlaceholder = ({ module, user, token, theme, onBack, onOpenSIEVO
         <DepartmentMemberWorkspace module={module} token={token} canManage={canManageMembers} language={language} />
       ) : manageWorkspace === 'accounts' ? (
         <DepartmentAccountWorkspace module={module} token={token} canManage={canManageAccounts} language={language} />
+      ) : manageWorkspace === 'files' ? (
+        <DepartmentFileWorkspace module={module} token={token} canView={canViewFiles} canManage={canManageFiles} />
       ) : manageWorkspace === 'performance' ? (
         <>
           <DepartmentPerformancePolicyCard
@@ -3945,6 +4194,7 @@ const DepartmentPlaceholder = ({ module, user, token, theme, onBack, onOpenSIEVO
               <section><span>03</span><h2>志愿者绩效制度</h2><p>{canManagePerformance ? '部门负责人及以上成员后续可在此调整规则细项；当前先沿用 SIEVOX 同款六维模板。' : '当前先统一沿用 SIEVOX 同款六维模板。'}</p><button type="button" disabled>{canManagePerformance ? '模板已同步' : '只读模板'}</button></section>
             )}
             <section><span>04</span><h2>成员与归档</h2><p>届次成员、身份标签、分管关系与绩效档案将归入统一组织框架。</p><button type="button" disabled>规划中</button></section>
+            <section><span>05</span><h2>部门资料库</h2><p>部门负责人、团委学生兼职团干部和分管主席层级可维护资料；志愿者可在学生端查看下载。</p><button type="button" disabled={!canViewFiles} onClick={() => setManageWorkspace('files')}>{canManageFiles ? '进入资料库' : canViewFiles ? '查看资料' : '未开放'}</button></section>
           </div>
           {isSIEBridge ? (
             <section className="siehub-bridge-card">
@@ -4057,7 +4307,7 @@ const HubInlineReturnButton = ({ onClick }) => (
   </button>
 );
 
-const Sidebar = ({ user, activePage, setActivePage, openCompose, onLogout, onOpenMy, serviceMetrics, language = 'zh' }) => (
+const Sidebar = ({ user, activePage, setActivePage, openCompose, serviceMetrics, language = 'zh' }) => (
   <aside className="sidebar" aria-label="主导航">
     <div className="brand-lockup"><img src={sieLogo} alt="SIEVOX" /><div><strong>SIEVOX</strong><span>学生权益反馈系统</span></div></div>
     <nav className="side-nav">
@@ -4071,13 +4321,11 @@ const Sidebar = ({ user, activePage, setActivePage, openCompose, onLogout, onOpe
     <div className="sidebar-user">
       <span className="avatar">{firstChar(user?.name)}</span>
       <div><strong>{user?.name}</strong><span>{user?.studentId}</span></div>
-      <button className="icon-button on-dark" type="button" onClick={onOpenMy}><Settings /></button>
-      <button className="icon-button on-dark" type="button" onClick={onLogout}><LogOut /></button>
     </div>
   </aside>
 );
 
-const Topbar = ({ pageTitle, theme, notifications, unreadCount = 0, onToggleNotifications, showNotifications = true, onOpenMy, user, portalView, onPortalChange, onBackToHub, languageSwitcher = null }) => (
+const Topbar = ({ pageTitle, theme, notifications, unreadCount = 0, onToggleNotifications, showNotifications = true, user, portalView, onPortalChange, onBackToHub, languageSwitcher = null }) => (
   <header className="topbar">
     <div className="breadcrumb"><span>国际教育学院</span><ChevronRight /><strong id="page-title">{pageTitle}</strong></div>
     <div className="topbar-actions">
@@ -4095,7 +4343,6 @@ const Topbar = ({ pageTitle, theme, notifications, unreadCount = 0, onToggleNoti
       </div>
       <ThemeModeButtons theme={theme} compact />
       <button className="icon-button theme-trigger" type="button" onClick={() => theme.setOpen(true)}><Palette /></button>
-      <button className="icon-button" type="button" onClick={onOpenMy} title="账号设置"><Settings /></button>
       {showNotifications && <button className="icon-button" type="button" title="消息通知" onClick={onToggleNotifications}><Bell />{unreadCount > 0 && <span className="notification-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>}</button>}
       {languageSwitcher}
     </div>
@@ -4181,16 +4428,24 @@ const CategoryGrid = ({ openCompose }) => (
   </div>
 );
 
-const FeedbackRow = ({ feedback, onOpen }) => {
+const FeedbackRow = ({ feedback, onOpen, onDelete }) => {
   const cat = getCategory(feedback.category);
+  const canWithdraw = feedback.status === 'pending' && typeof onDelete === 'function';
   return (
-    <button className="feedback-row" type="button" onClick={() => onOpen(feedback)}>
-      <CategoryIcon category={feedback.category} />
-      <span className="feedback-copy"><strong>{feedback.title}</strong><small>{cat.label} · {feedback.subCategory || '综合事项'}</small></span>
-      <StatusPill status={feedback.status} />
-      <span className="feedback-time"><strong>{formatDate(feedback.updatedAt || feedback.createdAt)}</strong><small>{feedback.responses?.length ? '已有部门回复' : '已进入队列'}</small></span>
-      <ChevronRight />
-    </button>
+    <article className="feedback-row">
+      <button className="feedback-row-main" type="button" onClick={() => onOpen(feedback)}>
+        <CategoryIcon category={feedback.category} />
+        <span className="feedback-copy"><strong>{feedback.title}</strong><small>{cat.label} · {feedback.subCategory || '综合事项'}</small></span>
+        <StatusPill status={feedback.status} />
+        <span className="feedback-time"><strong>{formatDate(feedback.updatedAt || feedback.createdAt)}</strong><small>{feedback.responses?.length ? '已有部门回复' : '已进入队列'}</small></span>
+        <ChevronRight />
+      </button>
+      {canWithdraw && (
+        <button className="feedback-withdraw-button" type="button" onClick={() => onDelete(feedback._id)}>
+          撤回
+        </button>
+      )}
+    </article>
   );
 };
 
@@ -4312,7 +4567,7 @@ const FeedbackDialog = ({ feedback, onClose, onReply, onRecall, onDelete }) => {
   );
 };
 
-const StudentDesktop = ({ user, stats, feedbacks, activePage, setActivePage, openCompose, onOpenFeedback, clock }) => {
+const StudentDesktop = ({ user, stats, feedbacks, activePage, setActivePage, openCompose, onOpenFeedback, onDeleteFeedback, clock }) => {
   const latest = feedbacks[0];
   const activeCase = feedbacks.find(item => item.status === 'processing') || latest;
   return (
@@ -4326,7 +4581,7 @@ const StudentDesktop = ({ user, stats, feedbacks, activePage, setActivePage, ope
         <div className="workspace-grid">
           <div className="workspace-primary">
             <section className="content-section"><div className="section-heading"><div><h2>从哪里开始？</h2><p>选择问题领域，我们会自动匹配负责部门。</p></div></div><CategoryGrid openCompose={openCompose} /></section>
-            <section className="content-section feedback-section"><div className="section-heading"><div><h2>最近反馈</h2><p>所有进度与回复会在这里持续留痕。</p></div><button className="text-button" type="button" onClick={() => setActivePage('feedbacks')}>查看全部<ArrowRight /></button></div><div className="feedback-list">{feedbacks.slice(0, 3).map(item => <FeedbackRow key={item._id} feedback={item} onOpen={onOpenFeedback} />)}</div></section>
+            <section className="content-section feedback-section"><div className="section-heading"><div><h2>最近反馈</h2><p>所有进度与回复会在这里持续留痕。</p></div><button className="text-button" type="button" onClick={() => setActivePage('feedbacks')}>查看全部<ArrowRight /></button></div><div className="feedback-list">{feedbacks.slice(0, 3).map(item => <FeedbackRow key={item._id} feedback={item} onOpen={onOpenFeedback} onDelete={onDeleteFeedback} />)}</div></section>
           </div>
           <aside className="insight-rail"><ActiveCase feedback={activeCase} onOpen={onOpenFeedback} /><section className="response-note"><MessageCircleMore /><div><strong>你的声音，会抵达。</strong><p>匿名反馈不会向处理部门展示个人身份，所有操作均保留审计记录。</p></div></section></aside>
         </div>
@@ -4335,22 +4590,25 @@ const StudentDesktop = ({ user, stats, feedbacks, activePage, setActivePage, ope
       <div className={cls('page-panel simple-page', activePage === 'feedbacks' && 'is-active')}>
         <div className="page-heading"><div><p className="eyebrow">MY FEEDBACK</p><h1>我的反馈</h1><p>按状态查看提交记录、部门回复与处理结果。</p></div><button className="primary-button" type="button" onClick={() => openCompose()}><Plus />发起新反馈</button></div>
         <div className="filter-row"><button className="filter-chip is-active">全部 {feedbacks.length}</button><button className="filter-chip">待受理 {stats.pending}</button><button className="filter-chip">处理中 {stats.processing}</button><button className="filter-chip">已解决 {stats.resolved}</button><span></span><label className="search-field"><MessagesSquare /><input placeholder="搜索标题或编号" /></label></div>
-        <div className="feedback-list full-list">{feedbacks.map(item => <FeedbackRow key={item._id} feedback={item} onOpen={onOpenFeedback} />)}</div>
+        <div className="feedback-list full-list">{feedbacks.map(item => <FeedbackRow key={item._id} feedback={item} onOpen={onOpenFeedback} onDelete={onDeleteFeedback} />)}</div>
       </div>
 
       <div className={cls('page-panel simple-page', activePage === 'guide' && 'is-active')}>
-        <div className="page-heading"><div><p className="eyebrow">SERVICE GUIDE</p><h1>服务指南</h1><p>了解各类事项的受理范围、预计时效和紧急联系渠道。</p></div></div>
+        <div className="page-heading"><div><p className="eyebrow">SERVICE GUIDE</p><h1>服务指南</h1><p>了解反馈受理、处理时效、材料补充与紧急联系方式，提交前可先确认事项是否适合走线上流程。</p></div></div>
         <div className="guide-grid">
-          <section><Route /><h2>反馈如何流转</h2><p>提交后由学生权益中心初审，并按问题领域分派至责任部门，全程可查看节点与回复。</p></section>
-          <section><Clock3 /><h2>响应时效</h2><p>普通事项原则上 1 个工作日内首次响应；高优先级问题会进入加急队列。</p></section>
-          <section><PhoneCall /><h2>紧急事项</h2><p>涉及人身安全、火情或突发疾病时，请直接联系校园应急电话，不要仅依赖在线反馈。</p></section>
+          <section><Route /><h2>反馈如何流转</h2><p>提交后由学生权益部先行受理，确认问题类别、紧急程度和是否需要补充材料，再分派至对应负责人与协同部门。</p></section>
+          <section><Clock3 /><h2>响应时效</h2><p>普通事项原则上 1 个工作日内首次响应；涉及跨部门核实、场地维修、制度咨询等事项，会在详情页持续同步进展。</p></section>
+          <section><PhoneCall /><h2>紧急事项</h2><p>涉及人身安全、突发疾病、火情、重大设备风险时，请优先联系学院老师、楼宇值班或校园应急渠道，线上反馈可作为后续留痕。</p></section>
+          <section><ShieldCheck /><h2>材料与隐私</h2><p>可上传图片、文档、录屏或其他佐证材料。匿名反馈不会向处理部门展示个人身份，但系统会保留必要审计记录以防恶意提交。</p></section>
+          <section><MessageCircleMore /><h2>补充与撤回</h2><p>事项提交后可在“我的反馈”中继续补充说明、查看回复。未进入处理流程前可撤回，已处理事项会保留归档记录。</p></section>
+          <section><FileText /><h2>提交建议</h2><p>建议写清时间、地点、涉及对象、已尝试解决方式和期望结果。标题简洁、正文具体，会明显提升受理效率。</p></section>
         </div>
       </div>
     </section>
   );
 };
 
-const MobileShell = ({ user, feedbacks, stats, page, setPage, openCompose, onOpenFeedback, onOpenMy, theme, clock, unreadCount = 0, onToggleNotifications, showNotifications = true, languageSwitcher = null }) => {
+const MobileShell = ({ user, feedbacks, stats, page, setPage, openCompose, onOpenFeedback, theme, clock, unreadCount = 0, onToggleNotifications, showNotifications = true, languageSwitcher = null }) => {
   const latest = feedbacks.find(item => item.status === 'processing') || feedbacks[0];
   return (
     <div className="mobile-stage">
@@ -4373,7 +4631,7 @@ const MobileShell = ({ user, feedbacks, stats, page, setPage, openCompose, onOpe
           </section>
           <section className={cls('mobile-page', page === 'guide' && 'is-active')}>
             <div className="mobile-page-title"><div><span>帮助中心</span><h1>服务指南</h1></div></div>
-            <div className="mobile-guide"><button><Route /><span><strong>反馈如何流转</strong><small>查看受理和分派规则</small></span><ChevronRight /></button><button><Clock3 /><span><strong>处理需要多久</strong><small>各类型事项响应时效</small></span><ChevronRight /></button><button><ShieldCheck /><span><strong>紧急情况处理</strong><small>校园应急联系电话</small></span><ChevronRight /></button></div>
+            <div className="mobile-guide"><button><Route /><span><strong>反馈如何流转</strong><small>受理、分派、回复与归档</small></span><ChevronRight /></button><button><Clock3 /><span><strong>处理需要多久</strong><small>普通事项 1 个工作日内响应</small></span><ChevronRight /></button><button><PhoneCall /><span><strong>紧急情况处理</strong><small>先联系线下应急渠道</small></span><ChevronRight /></button><button><ShieldCheck /><span><strong>材料与隐私</strong><small>附件支持佐证，匿名保护身份</small></span><ChevronRight /></button><button><MessageCircleMore /><span><strong>补充与撤回</strong><small>在我的反馈中继续跟进</small></span><ChevronRight /></button></div>
           </section>
         </main>
         <nav className="mobile-tabbar" aria-label="手机端导航">
@@ -4381,7 +4639,6 @@ const MobileShell = ({ user, feedbacks, stats, page, setPage, openCompose, onOpe
           <button className={page === 'feedbacks' ? 'is-active' : ''} type="button" onClick={() => setPage('feedbacks')}><MessagesSquare /><span>反馈</span></button>
           <button className="mobile-compose" type="button" onClick={() => openCompose('', true)}><Plus /></button>
           <button className={page === 'guide' ? 'is-active' : ''} type="button" onClick={() => setPage('guide')}><BookOpen /><span>指南</span></button>
-          <button type="button" onClick={onOpenMy}><UserRound /><span>账号设置</span></button>
         </nav>
       </div>
     </div>
@@ -4539,7 +4796,7 @@ const DashboardPage = ({ user, token, onLogout, onRefreshUser, onOpenMy, theme, 
   return (
     <>
       <div className="desktop-shell">
-        <Sidebar user={user} activePage={activePage} setActivePage={setActivePage} openCompose={openCompose} onLogout={onLogout} onOpenMy={onOpenMy} serviceMetrics={serviceMetrics} language={language} />
+        <Sidebar user={user} activePage={activePage} setActivePage={setActivePage} openCompose={openCompose} serviceMetrics={serviceMetrics} language={language} />
         <main className="desktop-main">
           <Topbar
             pageTitle={pageTitle}
@@ -4548,17 +4805,16 @@ const DashboardPage = ({ user, token, onLogout, onRefreshUser, onOpenMy, theme, 
             unreadCount={enableNotifications ? unreadCount : 0}
             showNotifications={enableNotifications}
             onToggleNotifications={() => setShowNotifications(current => !current)}
-            onOpenMy={onOpenMy}
             user={user}
             portalView={portalView}
             onPortalChange={onPortalChange}
             onBackToHub={onBackToHub}
             languageSwitcher={renderLanguageSwitcher?.()}
           />
-          <StudentDesktop user={user} stats={stats} feedbacks={feedbacks} activePage={activePage} setActivePage={setActivePage} openCompose={openCompose} onOpenFeedback={setSelectedFeedback} clock={clock} />
+          <StudentDesktop user={user} stats={stats} feedbacks={feedbacks} activePage={activePage} setActivePage={setActivePage} openCompose={openCompose} onOpenFeedback={setSelectedFeedback} onDeleteFeedback={deleteFeedback} clock={clock} />
         </main>
       </div>
-      <MobileShell user={user} feedbacks={feedbacks} stats={stats} page={mobilePage} setPage={setMobilePage} openCompose={openCompose} onOpenFeedback={setSelectedFeedback} onOpenMy={onOpenMy} theme={theme} clock={clock} unreadCount={enableNotifications ? unreadCount : 0} onToggleNotifications={() => setShowNotifications(current => !current)} showNotifications={enableNotifications} languageSwitcher={renderLanguageSwitcher?.()} />
+      <MobileShell user={user} feedbacks={feedbacks} stats={stats} page={mobilePage} setPage={setMobilePage} openCompose={openCompose} onOpenFeedback={setSelectedFeedback} theme={theme} clock={clock} unreadCount={enableNotifications ? unreadCount : 0} onToggleNotifications={() => setShowNotifications(current => !current)} showNotifications={enableNotifications} languageSwitcher={renderLanguageSwitcher?.()} />
       <div className={cls('drawer-backdrop', (composeOpen || mobileComposeOpen) && 'is-open')} onClick={() => { setComposeOpen(false); setMobileComposeOpen(false); }}></div>
       <ComposeDrawer open={composeOpen} category={composeCategory} setCategory={setComposeCategory} onClose={() => setComposeOpen(false)} onSubmit={submitFeedback} loading={loading} />
       <ComposeDrawer mobile open={mobileComposeOpen} category={composeCategory} setCategory={setComposeCategory} onClose={() => setMobileComposeOpen(false)} onSubmit={submitFeedback} loading={loading} />

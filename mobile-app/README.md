@@ -1,14 +1,14 @@
-# SIEHUB Mobile App
+# SIEVOX Mobile App
 
-Capacitor wrapper for the current SIEHUB web experience.
+Capacitor wrapper for the current SIEVOX web experience.
 
 ## What this does
 
-This package loads the configured SIEHUB web endpoint inside a mobile WebView shell.
+This package loads the configured SIEVOX web endpoint inside a mobile WebView shell.
 The fallback web page supports a `target` query parameter, for example:
 
 ```text
-web/index.html?target=https://siehub.example.cn
+web/index.html?target=https://sievox.cn
 ```
 
 ## Setup

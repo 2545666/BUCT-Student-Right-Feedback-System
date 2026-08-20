@@ -182,6 +182,8 @@ const buildManageCapabilities = (organization, department, options = {}) => {
     'manage_department_members',
     'manage_department_accounts',
     'manage_department_performance',
+    'manage_department_files',
+    'view_department_files',
     'manage_volunteer_performance_policy'
   ];
   if (options.includeSiebridgeReview && isSiebridgeDepartment(organization, department)) {
@@ -275,7 +277,7 @@ const getHubModuleAccess = (user = {}) => {
   }
 
   if (user.memberRole === 'volunteer' || user.role === 'admin') {
-    grant(user.organization, user.department, 'member', ['view', 'enter_student_portal', 'participate']);
+    grant(user.organization, user.department, 'member', ['view', 'enter_student_portal', 'participate', 'view_department_files']);
     return Array.from(accessByModuleId.values());
   }
 
