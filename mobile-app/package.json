@@ -2,7 +2,7 @@
   "name": "siehub-mobile",
   "version": "1.0.0",
   "private": true,
-  "description": "SIEHUB mobile webview shell",
+  "description": "SIEVOX mobile webview shell",
   "scripts": {
     "sync": "cap sync",
     "add:android": "cap add android",

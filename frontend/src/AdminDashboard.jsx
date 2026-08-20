@@ -17,6 +17,16 @@ const categories = {
   'comprehensive': { label: '综合服务与其他', icon: '📋' }
 };
 
+const DEFAULT_SIEVOX_CURRENT_SEMESTER = '2026-2027学年 第一学期';
+
+const ADMIN_FEEDBACK_CATEGORY_OPTIONS = [
+  { value: 'academic', label: '教学教务', sub: ['课程与教学管理', '学业答疑与讲座安排', '考试与成绩管理', '其他教学相关'] },
+  { value: 'accommodation', label: '宿舍住宿', sub: ['住宿环境与管理', '生活配套服务', '其他宿舍相关'] },
+  { value: 'catering', label: '餐饮服务', sub: ['食品安全与卫生', '菜品与价格管理', '食堂运营与服务', '其他餐饮相关'] },
+  { value: 'safety', label: '安全保卫', sub: ['人身与财产安全', '消防安全与隐患', '交通与出行安全', '网络与信息安全', '其他安全相关'] },
+  { value: 'comprehensive', label: '综合服务与其他', sub: ['学院活动与文化建设', '心理健康与成长支持', '行政服务与流程优化', '校园公共设施与环境', '其他未分类诉求'] }
+];
+
 const statusConfig = {
   'pending': { label: '待处理', color: 'yellow' },
   'processing': { label: '处理中', color: 'blue' },
@@ -1329,6 +1339,257 @@ const AccountManagement = ({ token, user: currentUser }) => {
   );
 };
 
+const FeedbackArchivePage = ({
+  archives = [],
+  feedbacks = [],
+  loading = false,
+  activeSemesterName,
+  canManageSemester = false,
+  currentSemester = '',
+  semesterLoadError = '',
+  onSelectArchive,
+  onClearArchive,
+  onArchiveSemester,
+  onBackToFeedback
+}) => {
+  const formatArchiveHours = (hours) => {
+    if (!Number.isFinite(hours)) return '暂无';
+    if (hours < 1) return `${Math.max(1, Math.round(hours * 60))} 分钟`;
+    return `${hours < 10 ? hours.toFixed(1) : Math.round(hours)} 小时`;
+  };
+
+  return (
+    <div className="business-feedback-redesign feedback-archive-page">
+      <div className="admin-tabs" aria-label="管理端功能切换">
+        <button type="button" onClick={onBackToFeedback}>◆ 业务反馈处理</button>
+        <button className="is-active" type="button">◇ 问题归档</button>
+      </div>
+
+      <section className="feedback-archive-panel">
+        <header>
+          <div>
+            <p>SEMESTER ARCHIVE</p>
+            <h2>每学期问题归档</h2>
+            <span>{activeSemesterName ? `当前筛选：${activeSemesterName}` : '按学年统一归纳，点击学期卡片查看该学期问题归档。'}</span>
+          </div>
+          <div className="feedback-archive-panel-actions">
+            {canManageSemester && (
+              <div className="feedback-archive-current-semester">
+                <span>当前学期</span>
+                <strong>{currentSemester || semesterLoadError || '加载中'}</strong>
+              </div>
+            )}
+            {activeSemesterName && <button type="button" onClick={onClearArchive}>查看全部学期</button>}
+            {canManageSemester && (
+              <button type="button" className="feedback-archive-primary" onClick={onArchiveSemester}>
+                归档并开启新学期
+              </button>
+            )}
+          </div>
+        </header>
+        <div className="feedback-archive-years">
+          {archives.length === 0 ? (
+            <div className="feedback-archive-empty">暂无可归档的问题数据</div>
+          ) : archives.map(year => (
+            <article key={year.academicYear} className="feedback-archive-year">
+              <div className="feedback-archive-year-head">
+                <strong>{year.academicYear}</strong>
+                <span>{year.total} 条问题</span>
+              </div>
+              <div className="feedback-archive-semesters">
+                {(year.semesters || []).map(semester => (
+                  <button
+                    key={semester.semester}
+                    type="button"
+                    className={activeSemesterName === semester.semester ? 'is-active' : ''}
+                    onClick={() => onSelectArchive?.(semester)}
+                  >
+                    <span>{semester.termLabel}</span>
+                    <strong>{semester.total}</strong>
+                    <small>{semester.startDate} 至 {semester.endDate}</small>
+                    <em>待受理 {semester.pending || 0} · 处理中 {semester.processing || 0} · 已解决 {semester.resolved || 0}</em>
+                    <i>平均首响 {formatArchiveHours(semester.averageFirstResponseHours)}</i>
+                  </button>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="queue-panel archive-feedback-results">
+        <div className="queue-toolbar">
+          <div>
+            <h2>{activeSemesterName ? `${activeSemesterName} · 问题明细` : '归档问题明细'}</h2>
+            <span>{activeSemesterName ? `当前学期共检索到 ${feedbacks.length} 条记录` : '点击上方学期卡片后，在这里查看该学期的问题记录。'}</span>
+          </div>
+        </div>
+        {activeSemesterName ? (
+          <div className="case-table" role="table">
+            <div className="case-tr table-head" role="row"><span>事项</span><span>提交人</span><span>状态</span><span>优先级</span><span>提交时间</span></div>
+            {loading ? (
+              <div className="empty-case-row">加载中...</div>
+            ) : feedbacks.length === 0 ? (
+              <div className="empty-case-row">该学期暂无反馈事项</div>
+            ) : feedbacks.map(feedback => {
+              const cat = categories[feedback.category] || { label: feedback.category, icon: '📌' };
+              const status = statusConfig[feedback.status] || statusConfig.pending;
+              const priority = priorityConfig[feedback.priority] || priorityConfig.normal;
+              const priorityClass = feedback.priority === 'high' || feedback.priority === 'urgent' ? 'high' : 'normal';
+              return (
+                <div key={feedback._id} className={`case-tr ${feedback.isRevoked ? 'is-revoked' : ''}`} role="row">
+                  <span>
+                    <i className={`priority-mark ${priorityClass}`}></i>
+                    <strong>{feedback.title}</strong>
+                    <small>#{feedback._id?.slice(-6)?.toUpperCase()} · {cat.label}</small>
+                  </span>
+                  <span><strong>{feedback.isAnonymous ? '匿名学生' : (feedback.user?.name || '学生')}</strong><small>{feedback.isAnonymous ? '身份受保护' : (feedback.user?.studentId || '校内账号')}</small></span>
+                  <span><b className={`status ${status.color === 'yellow' ? 'pending' : feedback.status}`}><i></i>{feedback.isRevoked ? '已撤回' : status.label}</b></span>
+                  <span><b className={`priority ${priorityClass}`}>{priority.label}</b></span>
+                  <span><strong>{new Date(feedback.createdAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</strong><small>{new Date(feedback.createdAt).toLocaleDateString('zh-CN')}</small></span>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="empty-case-row">请选择一个学期查看归档问题。</div>
+        )}
+      </section>
+    </div>
+  );
+};
+
+const AdminQuickFeedbackPage = ({ token, onBackToFeedback, onSubmitted }) => {
+  const defaultCategory = ADMIN_FEEDBACK_CATEGORY_OPTIONS[0];
+  const [form, setForm] = useState({
+    category: defaultCategory.value,
+    subCategory: defaultCategory.sub[0],
+    title: '',
+    content: '',
+    priority: 'normal',
+    isAnonymous: false
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const selectedCategory = ADMIN_FEEDBACK_CATEGORY_OPTIONS.find(item => item.value === form.category) || defaultCategory;
+
+  const updateCategory = (category) => {
+    const next = ADMIN_FEEDBACK_CATEGORY_OPTIONS.find(item => item.value === category) || defaultCategory;
+    setForm(current => ({ ...current, category: next.value, subCategory: next.sub[0] }));
+  };
+
+  const submitFeedback = async (event) => {
+    event.preventDefault();
+    if (!form.title.trim() || !form.content.trim()) {
+      alert('请填写反馈标题和详细内容');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${API_BASE}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(form)
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || '提交反馈失败');
+      alert('反馈提交成功');
+      setForm({
+        category: defaultCategory.value,
+        subCategory: defaultCategory.sub[0],
+        title: '',
+        content: '',
+        priority: 'normal',
+        isAnonymous: false
+      });
+      onSubmitted?.();
+    } catch (error) {
+      alert(error.message || '提交反馈失败，请稍后重试');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="business-feedback-redesign admin-side-page">
+      <div className="admin-tabs" aria-label="管理端功能切换">
+        <button type="button" onClick={onBackToFeedback}>◆ 业务反馈处理</button>
+        <button className="is-active" type="button">□ 发起反馈</button>
+      </div>
+      <form className="queue-panel admin-quick-feedback-form" onSubmit={submitFeedback}>
+        <div className="queue-toolbar">
+          <div>
+            <h2>发起反馈</h2>
+            <span>以当前账号提交问题反馈，提交后可在业务反馈中跟进处理记录。</span>
+          </div>
+        </div>
+        <div className="admin-quick-feedback-grid">
+          <label className="input-field">
+            <span>问题领域</span>
+            <select value={form.category} onChange={event => updateCategory(event.target.value)}>
+              {ADMIN_FEEDBACK_CATEGORY_OPTIONS.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
+            </select>
+          </label>
+          <label className="input-field">
+            <span>具体分类</span>
+            <select value={form.subCategory} onChange={event => setForm(current => ({ ...current, subCategory: event.target.value }))}>
+              {selectedCategory.sub.map(item => <option key={item} value={item}>{item}</option>)}
+            </select>
+          </label>
+          <label className="input-field">
+            <span>优先级</span>
+            <select value={form.priority} onChange={event => setForm(current => ({ ...current, priority: event.target.value }))}>
+              <option value="normal">普通</option>
+              <option value="high">紧急</option>
+              <option value="urgent">特急</option>
+            </select>
+          </label>
+        </div>
+        <label className="input-field">
+          <span>反馈标题</span>
+          <input value={form.title} maxLength={100} onChange={event => setForm(current => ({ ...current, title: event.target.value }))} placeholder="用一句话概括问题" />
+        </label>
+        <label className="input-field textarea-field">
+          <span>详细内容</span>
+          <textarea value={form.content} maxLength={2000} onChange={event => setForm(current => ({ ...current, content: event.target.value }))} placeholder="请写清时间、地点、具体情况和期望结果" />
+        </label>
+        <div className="admin-quick-feedback-actions">
+          <label className="mobile-anonymous">
+            <input type="checkbox" checked={form.isAnonymous} onChange={event => setForm(current => ({ ...current, isAnonymous: event.target.checked }))} />
+            <i></i>
+            <span>匿名提交</span>
+          </label>
+          <button className="primary-button" type="submit" disabled={submitting}>{submitting ? '提交中...' : '提交反馈'}</button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+const AdminServiceGuidePage = ({ onBackToFeedback }) => (
+  <div className="business-feedback-redesign admin-side-page">
+    <div className="admin-tabs" aria-label="管理端功能切换">
+      <button type="button" onClick={onBackToFeedback}>◆ 业务反馈处理</button>
+      <button className="is-active" type="button">◇ 服务指南</button>
+    </div>
+    <section className="queue-panel">
+      <div className="queue-toolbar">
+        <div>
+          <h2>服务指南</h2>
+          <span>用于说明学生权益反馈系统的受理范围、处理时效和材料规范。</span>
+        </div>
+      </div>
+      <div className="guide-grid admin-guide-grid">
+        <section><h2>反馈如何流转</h2><p>提交后由学生权益部先行受理，确认问题类别、紧急程度和是否需要补充材料，再分派给对应负责人或协同部门。</p></section>
+        <section><h2>响应时效</h2><p>普通事项原则上 1 个工作日内首次响应；涉及跨部门核实、场地维修、制度咨询等事项，会在详情页持续同步进展。</p></section>
+        <section><h2>紧急事项</h2><p>涉及人身安全、突发疾病、火情、重大设备风险时，请优先联系学院老师、楼宇值班或校园应急渠道。</p></section>
+        <section><h2>材料与隐私</h2><p>支持上传图片、文档、录屏等佐证材料。匿名反馈不会向处理部门展示个人身份，但系统会保留必要审计记录。</p></section>
+        <section><h2>补充与撤回</h2><p>事项提交后可继续补充说明、查看回复；未进入处理流程前可撤回，已处理事项会进入学期归档。</p></section>
+        <section><h2>提交建议</h2><p>建议写清时间、地点、涉及对象、已尝试解决方式和期望结果。标题简洁、正文具体，会提升受理效率。</p></section>
+      </div>
+    </section>
+  </div>
+);
+
 const BusinessFeedbackWorkspace = ({
   feedbacks,
   archives = [],
@@ -1352,7 +1613,8 @@ const BusinessFeedbackWorkspace = ({
   onSelectArchive,
   onClearArchive,
   onArchiveSemester,
-  onExportReport
+  onExportReport,
+  onOpenArchivePage
 }) => {
   const activeFeedback = selectedFeedback || feedbacks.find(item => !item.isRevoked) || feedbacks[0] || null;
   const counts = {
@@ -1375,8 +1637,10 @@ const BusinessFeedbackWorkspace = ({
         <button className="is-active" type="button">▦ 业务反馈处理</button>
         <button type="button" onClick={() => setFilters({ status: '', category: '', priority: '' })}>清空筛选</button>
         <button type="button" onClick={onExportReport}>导出报表</button>
+        <button type="button" onClick={onOpenArchivePage}>问题归档</button>
       </div>
 
+      {false && (
       <section className="feedback-archive-panel">
         <header>
           <div>
@@ -1428,6 +1692,7 @@ const BusinessFeedbackWorkspace = ({
           ))}
         </div>
       </section>
+      )}
 
       <div className="admin-workspace">
         <section className="queue-panel">
@@ -1566,6 +1831,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, o
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [semesterName, setSemesterName] = useState('');
   const [feedbackArchives, setFeedbackArchives] = useState([]);
+  const [activeAdminPage, setActiveAdminPage] = useState('feedback');
   const [loading, setLoading] = useState(false);
   const [semesterLoadError, setSemesterLoadError] = useState('');
   const [resetStudentId, setResetStudentId] = useState('');
@@ -1604,9 +1870,9 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, o
   const [performanceRecords, setPerformanceRecords] = useState([]);
   const [perfForm, setPerfForm] = useState({ volunteerIds: [], dimension: 'attendance', score: '', reason: '', occurrenceDate: '', activityName: '', targetSemester: '' });
   const [volunteers, setVolunteers] = useState([]);
-  const [currentSemester, setCurrentSemester] = useState('');
-  const [selectedSemester, setSelectedSemester] = useState('');
-  const [availableSemesters, setAvailableSemesters] = useState([]);
+  const [currentSemester, setCurrentSemester] = useState(DEFAULT_SIEVOX_CURRENT_SEMESTER);
+  const [selectedSemester, setSelectedSemester] = useState(DEFAULT_SIEVOX_CURRENT_SEMESTER);
+  const [availableSemesters, setAvailableSemesters] = useState([DEFAULT_SIEVOX_CURRENT_SEMESTER]);
 
   // [新增] 按学期成员名单（绩效"人员存档"）
   const [rosterMembers, setRosterMembers] = useState([]);   // 当前所选学期名单 [{_id,name,studentId}]
@@ -2011,9 +2277,9 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, o
   }, [fetchStats, fetchFeedbacks, fetchFeedbackArchives, fetchNotifications]);
 
   useEffect(() => {
-    if (!token || currentSemester) return;
+    if (!token) return;
     fetchSemesterConfig();
-  }, [token, currentSemester, fetchSemesterConfig]);
+  }, [token, fetchSemesterConfig]);
 
   useEffect(() => {
     if (!canManageSievoxSemester || !currentSemester || availableSemesters.length > 0) return;
@@ -2143,6 +2409,14 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, o
     } catch (err) { alert('网络错误'); }
   };
 
+  const adminPageTitle = activeAdminPage === 'compose'
+    ? '发起反馈'
+    : activeAdminPage === 'guide'
+      ? '服务指南'
+      : activeAdminPage === 'archive'
+        ? '问题归档'
+        : '权益事务处理台';
+
 // ------------------ 视图渲染 ------------------
   return (
     <div className="desktop-shell admin-demo-shell">
@@ -2157,16 +2431,16 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, o
 
         <nav className="side-nav">
           <p className="nav-label">学生服务</p>
-          <button className="nav-item is-active" type="button" onClick={() => { setShowAccountManagement(false); }}>
+          <button className="nav-item" type="button" onClick={() => { setShowAccountManagement(false); clearFeedbackArchive(); setActiveAdminPage('feedback'); }}>
             <span>▦</span><span>权益工作台</span>
           </button>
-          <button className="nav-item" type="button" onClick={() => { setShowAccountManagement(false); }}>
+          <button className={`nav-item ${activeAdminPage === 'compose' ? 'is-active' : ''}`} type="button" onClick={() => { setShowAccountManagement(false); setActiveAdminPage('compose'); }}>
             <span>□</span><span>发起反馈</span><kbd>N</kbd>
           </button>
-          <button className="nav-item" type="button" onClick={() => { setShowAccountManagement(false); }}>
+          <button className={`nav-item ${activeAdminPage === 'feedback' ? 'is-active' : ''}`} type="button" onClick={() => { setShowAccountManagement(false); clearFeedbackArchive(); setActiveAdminPage('feedback'); }}>
             <span>▱</span><span>业务反馈</span><span className="nav-count">●</span>
           </button>
-          <button className="nav-item" type="button">
+          <button className={`nav-item ${activeAdminPage === 'guide' ? 'is-active' : ''}`} type="button" onClick={() => { setShowAccountManagement(false); setActiveAdminPage('guide'); }}>
             <span>◇</span><span>服务指南</span>
           </button>
         </nav>
@@ -2176,7 +2450,6 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, o
         <div className="sidebar-user">
           <span className="avatar">{(user?.name || '管').slice(0, 1)}</span>
           <div><strong>{user?.name}</strong><span>{user?.studentId}</span><RoleTag user={user} /></div>
-          <button className="icon-button on-dark" type="button" onClick={() => onOpenMy?.()}>⚙</button>
         </div>
       </aside>
 
@@ -2186,7 +2459,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, o
       {/* 修改：浅色模式下背景设为稍深的紫色 (bg-purple-200/60)，边框设为紫色的半透明边框 (border-purple-300/50) */}
       <header className="topbar">
         <div className="breadcrumb">
-          <span>国际教育学院</span><span>›</span><strong>{showUltimatePortal ? '学院权益治理总控台' : '权益事务处理台'}</strong>
+          <span>国际教育学院</span><span>›</span><strong>{showUltimatePortal ? '学院权益治理总控台' : adminPageTitle}</strong>
         </div>
         <div className="topbar-actions">
           {isUltimateAdmin && (
@@ -2208,7 +2481,6 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, o
           </div>
           <AdminThemeModeButtons themeTools={themeTools} />
           <button className="icon-button theme-trigger" type="button" onClick={() => themeTools?.setOpen?.(true)} aria-label="外观设置">🎨</button>
-          <button className="outline-button" type="button" onClick={onLogout}>退出</button>
           {languageSwitcher}
         </div>
         {false && <div className="max-w-7xl mx-auto px-2 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-1 sm:gap-4">
@@ -2305,7 +2577,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, o
             <div className="admin-heading">
               <div>
                 <p className="eyebrow">OPERATIONS DESK</p>
-                <h1>权益事务处理台</h1>
+                <h1>{adminPageTitle}</h1>
                 <p>{currentSemester || semesterLoadError || '学期信息加载中'} · 国际教育学院</p>
               </div>
               <div className="admin-actions">
@@ -2321,7 +2593,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, o
             </div>
           </>
         )}
-        <div className="superadmin-tabs admin-module-tabs">
+        {activeAdminPage === 'feedback' && <div className="superadmin-tabs admin-module-tabs">
           <button
             onClick={() => { setShowAccountManagement(false); }}
             className={!showAccountManagement ? 'is-active' : ''}
@@ -2329,7 +2601,7 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, o
             <span>📋</span> 业务反馈处理
           </button>
           
-        </div>
+        </div>}
 
         {false ? (
           <div className={`performance-redesign-panel ${user?.role === 'superadmin' ? 'super-performance-redesign' : 'self-performance-redesign'} animate-fadeIn space-y-4 md:space-y-6`}>
@@ -2653,31 +2925,56 @@ export default function AdminDashboard({ user, token, onLogout, onRefreshUser, o
            <AccountManagement token={token} user={user} />
         ) : (
           <>
-            <BusinessFeedbackWorkspace
-              feedbacks={feedbacks}
-              archives={feedbackArchives}
-              selectedFeedback={selectedFeedback}
-              setSelectedFeedback={setSelectedFeedback}
-              responseText={responseText}
-              setResponseText={setResponseText}
-              setSelectedReplyFiles={setSelectedReplyFiles}
-              updateStatus={updateStatus}
-              handleRecallMsg={handleRecallMsg}
-              user={user}
-              loading={loading}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              filters={filters}
-              setFilters={setFilters}
-              canManageSemester={canManageSievoxSemester}
-              currentSemester={currentSemester}
-              semesterLoadError={semesterLoadError}
-              activeSemesterName={semesterName}
-              onSelectArchive={selectFeedbackArchive}
-              onClearArchive={clearFeedbackArchive}
-              onArchiveSemester={handleArchiveSemester}
-              onExportReport={exportFeedbackReport}
-            />
+            {activeAdminPage === 'compose' ? (
+              <AdminQuickFeedbackPage
+                token={token}
+                onBackToFeedback={() => { clearFeedbackArchive(); setActiveAdminPage('feedback'); }}
+                onSubmitted={() => { fetchFeedbacks(false); setActiveAdminPage('feedback'); }}
+              />
+            ) : activeAdminPage === 'guide' ? (
+              <AdminServiceGuidePage onBackToFeedback={() => setActiveAdminPage('feedback')} />
+            ) : activeAdminPage === 'archive' ? (
+              <FeedbackArchivePage
+                archives={feedbackArchives}
+                feedbacks={feedbacks}
+                loading={loading}
+                canManageSemester={canManageSievoxSemester}
+                currentSemester={currentSemester}
+                semesterLoadError={semesterLoadError}
+                activeSemesterName={semesterName}
+                onSelectArchive={selectFeedbackArchive}
+                onClearArchive={clearFeedbackArchive}
+                onArchiveSemester={handleArchiveSemester}
+                onBackToFeedback={() => { clearFeedbackArchive(); setActiveAdminPage('feedback'); }}
+              />
+            ) : (
+              <BusinessFeedbackWorkspace
+                feedbacks={feedbacks}
+                archives={feedbackArchives}
+                selectedFeedback={selectedFeedback}
+                setSelectedFeedback={setSelectedFeedback}
+                responseText={responseText}
+                setResponseText={setResponseText}
+                setSelectedReplyFiles={setSelectedReplyFiles}
+                updateStatus={updateStatus}
+                handleRecallMsg={handleRecallMsg}
+                user={user}
+                loading={loading}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                filters={filters}
+                setFilters={setFilters}
+                canManageSemester={canManageSievoxSemester}
+                currentSemester={currentSemester}
+                semesterLoadError={semesterLoadError}
+                activeSemesterName={semesterName}
+                onSelectArchive={selectFeedbackArchive}
+                onClearArchive={clearFeedbackArchive}
+                onArchiveSemester={handleArchiveSemester}
+                onExportReport={exportFeedbackReport}
+                onOpenArchivePage={() => setActiveAdminPage('archive')}
+              />
+            )}
             <div className="legacy-feedback-content" hidden>
             {/* 统计模块 */}
             {stats && (

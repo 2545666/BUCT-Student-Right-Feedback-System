@@ -139,6 +139,24 @@ const departmentNoticeUpload = multer({
 
 app.use('/api/department-intro-assets', express.static(departmentIntroUploadDir));
 app.use('/api/department-notice-assets', express.static(departmentNoticeUploadDir));
+
+const departmentFileUploadDir = path.join(__dirname, 'department_file_uploads');
+if (!fs.existsSync(departmentFileUploadDir)) {
+  fs.mkdirSync(departmentFileUploadDir, { recursive: true });
+}
+const departmentFileStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, departmentFileUploadDir);
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    cb(null, `${Date.now()}-${crypto.randomBytes(10).toString('hex')}${ext}`);
+  }
+});
+const departmentFileUpload = multer({
+  storage: departmentFileStorage,
+  limits: { fileSize: 200 * 1024 * 1024, files: 20 }
+});
 // ============================================
 // 环境配置
 // ============================================
@@ -648,6 +666,24 @@ departmentNoticeSchema.index(
 );
 const DepartmentNotice = mongoose.model('DepartmentNotice', departmentNoticeSchema);
 
+const departmentFileSchema = new mongoose.Schema({
+  organization: { type: String, enum: Object.keys(ORGANIZATIONS), required: true },
+  department: { type: String, required: true },
+  title: { type: String, default: '' },
+  description: { type: String, default: '' },
+  originalName: { type: String, required: true },
+  filename: { type: String, required: true },
+  mimeType: { type: String, default: '' },
+  size: { type: Number, default: 0 },
+  hash: { type: String, default: '' },
+  uploader: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  status: { type: String, enum: ['active', 'deleted'], default: 'active', index: true },
+  deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  deletedAt: Date
+}, { timestamps: true });
+departmentFileSchema.index({ organization: 1, department: 1, status: 1, createdAt: -1 });
+const DepartmentFile = mongoose.model('DepartmentFile', departmentFileSchema);
+
 // [新增] 系统配置模型 (用于存储当前运行的学期)
 const systemConfigSchema = new mongoose.Schema({
   key: { type: String, required: true, unique: true },
@@ -858,6 +894,21 @@ const sanitizeInput = (input) => {
     return input.trim().replace(/<[^>]*>/g, '');
   }
   return input;
+};
+
+const hasReadableCjk = (value = '') => /[\u3400-\u9fff]/.test(value);
+const hasUnreadableChars = (value = '') => /[\u0000-\u001f\u007f-\u009f\ufffd]/.test(value);
+const decodeOriginalFilename = (name = '') => {
+  const value = String(name || '');
+  if (!value) return 'department-file';
+  if (hasReadableCjk(value) && !hasUnreadableChars(value)) return value;
+  try {
+    const decoded = Buffer.from(value, 'latin1').toString('utf8');
+    if (!decoded || hasUnreadableChars(decoded)) return value;
+    return hasReadableCjk(decoded) ? decoded : value;
+  } catch {
+    return value;
+  }
 };
 
 const normalizeEmail = (email) => sanitizeInput(email || '').toLowerCase();
@@ -1071,6 +1122,25 @@ const getDepartmentNoticeAccess = (user, assignment) => {
   };
 };
 
+const getDepartmentFileAccess = (user, assignment) => {
+  const moduleAccess = getHubModuleAccess(user).find(item =>
+    item.organization === assignment.organization &&
+    item.department === assignment.department
+  );
+  if (!moduleAccess) return null;
+  const canManage = moduleAccess.capabilities?.includes('manage_department_files') || false;
+  const canView = canManage || moduleAccess.capabilities?.includes('view_department_files') || false;
+  if (!canView) return null;
+  return {
+    moduleId: moduleAccess.moduleId,
+    accessLevel: moduleAccess.accessLevel,
+    capabilities: moduleAccess.capabilities || [],
+    canView,
+    canUpload: canManage,
+    canDelete: canManage
+  };
+};
+
 const getDepartmentCapabilityAccess = (user, assignment, capability) => {
   if (!isValidManagedDepartment(assignment)) return null;
   const moduleAccess = getHubModuleAccess(user).find(item =>
@@ -1104,6 +1174,14 @@ const cleanLocalizedText = (value = {}, fallback = {}, maxLength = 500) => ({
   zh: cleanText(value.zh ?? fallback.zh ?? '', maxLength),
   en: cleanText(value.en ?? fallback.en ?? '', maxLength)
 });
+
+const resolveNoticeListLimit = (value, defaultLimit, maxLimit) => {
+  const raw = String(value ?? '').trim().toLowerCase();
+  if (raw === 'all' || raw === 'unlimited' || raw === 'infinite') return null;
+  const numeric = Number(raw || defaultLimit);
+  if (!Number.isFinite(numeric) || numeric <= 0) return defaultLimit;
+  return Math.min(numeric, maxLimit);
+};
 
 const normalizeNoticePayload = (payload = {}, existing = null) => {
   const source = ['manual', 'wechat_mp'].includes(payload.source) ? payload.source : existing?.source || 'manual';
@@ -1158,6 +1236,86 @@ const serializeDepartmentNotice = (notice) => {
     publishedBy: serializeNoticeUserBrief(item.publishedBy),
     createdAt: item.createdAt,
     updatedAt: item.updatedAt
+  };
+};
+
+const serializeDepartmentFile = (file, access = null) => {
+  const item = file?.toObject ? file.toObject() : file;
+  if (!item) return null;
+  const id = String(item._id || item.id || '');
+  return {
+    id,
+    _id: id,
+    organization: item.organization,
+    organizationLabel: ORGANIZATIONS[item.organization]?.label || '',
+    department: item.department,
+    departmentLabel: getDepartment(item.organization, item.department) || '',
+    title: item.title || item.originalName || '',
+    description: item.description || '',
+    originalName: item.originalName || item.title || 'department-file',
+    mimeType: item.mimeType || '',
+    size: item.size || 0,
+    uploader: serializeNoticeUserBrief(item.uploader),
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+    downloadUrl: `/api/hub/departments/${item.organization}/${item.department}/files/${id}/download`,
+    canDelete: Boolean(access?.canDelete)
+  };
+};
+
+const pickLocalizedText = (value, fallback = '') => {
+  if (!value) return fallback;
+  if (typeof value === 'string') return cleanText(value, 600) || fallback;
+  if (typeof value === 'object') {
+    return cleanText(value.zh || value.en || fallback, 600) || fallback;
+  }
+  return fallback;
+};
+
+const extractDepartmentIntroductionPreview = (content, departmentLabel) => {
+  const fallbackSummary = `${departmentLabel}介绍页面正在持续完善中。`;
+  const blocks = Array.isArray(content?.blocks) ? content.blocks : [];
+  const heroBlock = blocks.find(block => block?.visible !== false && block.type === 'hero' && block.data);
+  const textBlock = blocks.find(block => block?.visible !== false && block.type === 'text' && block.data);
+  const dutiesBlock = blocks.find(block => block?.visible !== false && block.type === 'duties' && block.data);
+
+  const title = pickLocalizedText(heroBlock?.data?.title || textBlock?.data?.title, departmentLabel);
+  const summary = pickLocalizedText(
+    heroBlock?.data?.subtitle || textBlock?.data?.body || dutiesBlock?.data?.items?.[0],
+    fallbackSummary
+  );
+
+  return {
+    title,
+    summary: summary || fallbackSummary
+  };
+};
+
+const extractDepartmentIntroductionCover = (content) => {
+  const pages = Array.isArray(content?.pages) ? content.pages : [];
+  for (const page of pages) {
+    if (page?.backgroundImageUrl) return page.backgroundImageUrl;
+    const elements = Array.isArray(page?.elements) ? page.elements : [];
+    const imageElement = elements.find(element => element?.visible !== false && element.type === 'image' && element.content?.url);
+    if (imageElement?.content?.url) return imageElement.content.url;
+  }
+  return '';
+};
+
+const buildMobileDepartmentCard = (introDoc, assignment) => {
+  const departmentLabel = getDepartment(assignment.organization, assignment.department) || '';
+  const serialized = serializeDepartmentIntroduction(introDoc, assignment, 'published');
+  const preview = extractDepartmentIntroductionPreview(serialized.content, departmentLabel);
+  return {
+    organization: assignment.organization,
+    organizationLabel: ORGANIZATIONS[assignment.organization]?.label || '',
+    department: assignment.department,
+    departmentLabel,
+    title: preview.title || departmentLabel,
+    summary: preview.summary,
+    coverImageUrl: extractDepartmentIntroductionCover(serialized.content) || '',
+    hasPublished: serialized.hasPublished,
+    status: serialized.status
   };
 };
 
@@ -2643,6 +2801,93 @@ app.get('/api/organization/meta', (req, res) => {
   });
 });
 
+app.get('/api/mobile/home', async (req, res) => {
+  try {
+    const currentSemester = await getCurrentSemesterName();
+    const notices = await DepartmentNotice.find({ status: 'published' })
+      .sort({ publishedAt: -1, updatedAt: -1 })
+      .limit(12)
+      .populate('createdBy updatedBy publishedBy', 'name studentId')
+      .lean();
+
+    const departmentCards = [];
+    for (const assignment of listDepartments()) {
+      const intro = await DepartmentIntroduction.findOne({
+        organization: assignment.organization,
+        department: assignment.department
+      }).lean();
+      departmentCards.push({
+        ...assignment,
+        ...buildMobileDepartmentCard(intro, assignment)
+      });
+    }
+
+    const serializedNotices = notices.map(serializeDepartmentNotice);
+    const leadNotice = serializedNotices[0] || null;
+    const leadCover = leadNotice?.coverImageUrl || departmentCards.find(card => card.coverImageUrl)?.coverImageUrl || '';
+
+    res.json({
+      success: true,
+      currentSemester,
+      hero: {
+        title: '国教空间',
+        subtitle: '北京化工大学国际教育学院',
+        summary: '关注“国教空间”微信公众号，查看学院资讯与学生工作动态。',
+        coverImageUrl: leadCover
+      },
+      portals: [
+        {
+          key: 'rights',
+          badge: 'SIEVOX',
+          title: '学生权益反馈系统',
+          desc: '反馈、诉求跟进与处理进度查询'
+        },
+        {
+          key: 'bridge',
+          badge: 'SIEBridge',
+          title: '课程资源共享平台',
+          desc: '课程资料、上传审核与共享入口'
+        }
+      ],
+      notices: serializedNotices,
+      departments: departmentCards
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '获取移动端首页内容失败' });
+  }
+});
+
+app.get('/api/mobile/departments/:organization/:department', async (req, res) => {
+  const assignment = {
+    organization: req.params.organization,
+    department: req.params.department
+  };
+  if (!isValidManagedDepartment(assignment)) {
+    return res.status(404).json({ success: false, message: '部门模块不存在' });
+  }
+
+  try {
+    const intro = await DepartmentIntroduction.findOne(assignment).lean();
+    const notices = await DepartmentNotice.find({ ...assignment, status: 'published' })
+      .sort({ publishedAt: -1, updatedAt: -1 })
+      .limit(6)
+      .populate('createdBy updatedBy publishedBy', 'name studentId')
+      .lean();
+
+    const serializedIntro = serializeDepartmentIntroduction(intro, assignment, 'published');
+    const department = buildMobileDepartmentCard(intro, assignment);
+
+    res.json({
+      success: true,
+      department,
+      introduction: serializedIntro,
+      notices: notices.map(serializeDepartmentNotice)
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '获取部门内容失败' });
+  }
+});
+
 app.get('/api/hub/modules', (req, res) => {
   res.json({
     success: true,
@@ -2716,12 +2961,13 @@ app.get('/api/hub/notices', authenticate, async (req, res) => {
   }
 
   try {
+    const limit = resolveNoticeListLimit(req.query.limit, 100, 200);
     const notices = await DepartmentNotice.find(query)
       .sort({ publishedAt: -1, updatedAt: -1 })
-      .limit(Math.min(Number(req.query.limit || 100), 200))
       .populate('createdBy updatedBy publishedBy', 'name studentId')
       .lean();
-    res.json({ success: true, notices: notices.map(serializeDepartmentNotice) });
+    const limitedNotices = limit == null ? notices : notices.slice(0, limit);
+    res.json({ success: true, notices: limitedNotices.map(serializeDepartmentNotice) });
   } catch (error) {
     res.status(500).json({ success: false, message: '获取部门通知失败' });
   }
@@ -2746,12 +2992,13 @@ app.get('/api/hub/departments/:organization/:department/notices', authenticate, 
   }
 
   try {
+    const limit = resolveNoticeListLimit(req.query.limit, 30, 100);
     const notices = await DepartmentNotice.find(query)
       .sort({ publishedAt: -1, updatedAt: -1 })
-      .limit(Math.min(Number(req.query.limit || 30), 100))
       .populate('createdBy updatedBy publishedBy', 'name studentId')
       .lean();
-    res.json({ success: true, access, notices: notices.map(serializeDepartmentNotice) });
+    const limitedNotices = limit == null ? notices : notices.slice(0, limit);
+    res.json({ success: true, access, notices: limitedNotices.map(serializeDepartmentNotice) });
   } catch (error) {
     res.status(500).json({ success: false, message: '获取部门通知失败' });
   }
@@ -2865,6 +3112,129 @@ app.patch('/api/hub/departments/:organization/:department/notices/:id', authenti
     res.json({ success: true, notice: serializeDepartmentNotice(existing), access });
   } catch (error) {
     res.status(error?.code === 11000 ? 409 : 500).json({ success: false, message: error?.code === 11000 ? '该外部文章已同步' : '更新部门通知失败' });
+  }
+});
+
+app.get('/api/hub/departments/:organization/:department/files', authenticate, async (req, res) => {
+  const assignment = { organization: req.params.organization, department: req.params.department };
+  if (!isValidManagedDepartment(assignment)) return res.status(404).json({ success: false, message: '部门模块不存在' });
+  const access = getDepartmentFileAccess(req.user, assignment);
+  if (!access?.canView) return res.status(403).json({ success: false, message: '无权访问该部门资料库' });
+
+  try {
+    const files = await DepartmentFile.find({ ...assignment, status: 'active' })
+      .sort({ createdAt: -1 })
+      .populate('uploader', 'name studentId')
+      .lean();
+    res.json({ success: true, access, files: files.map(file => serializeDepartmentFile(file, access)) });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '获取部门资料失败' });
+  }
+});
+
+app.post(
+  '/api/hub/departments/:organization/:department/files',
+  authenticate,
+  (req, res, next) => {
+    departmentFileUpload.array('files', 20)(req, res, (error) => {
+      if (error) return res.status(400).json({ success: false, message: error.message || '上传部门资料失败' });
+      next();
+    });
+  },
+  async (req, res) => {
+    const assignment = { organization: req.params.organization, department: req.params.department };
+    if (!isValidManagedDepartment(assignment)) {
+      (req.files || []).forEach(file => fs.unlink(file.path, () => {}));
+      return res.status(404).json({ success: false, message: '部门模块不存在' });
+    }
+    const access = getDepartmentFileAccess(req.user, assignment);
+    if (!access?.canUpload) {
+      (req.files || []).forEach(file => fs.unlink(file.path, () => {}));
+      return res.status(403).json({ success: false, message: '当前身份不能上传该部门资料' });
+    }
+    if (!req.files?.length) return res.status(400).json({ success: false, message: '请选择要上传的部门资料' });
+
+    try {
+      const title = cleanText(req.body?.title, 120);
+      const description = cleanText(req.body?.description, 600);
+      const docs = await Promise.all(req.files.map(async (file) => {
+        const hash = crypto.createHash('sha256').update(await fs.promises.readFile(file.path)).digest('hex');
+        const originalName = cleanText(decodeOriginalFilename(file.originalname || file.filename), 300);
+        return DepartmentFile.create({
+          ...assignment,
+          title: title || originalName,
+          description,
+          originalName: originalName || file.filename,
+          filename: file.filename,
+          mimeType: file.mimetype || '',
+          size: file.size || 0,
+          hash,
+          uploader: req.user._id
+        });
+      }));
+      const populated = await DepartmentFile.find({ _id: { $in: docs.map(doc => doc._id) } })
+        .populate('uploader', 'name studentId')
+        .sort({ createdAt: -1 })
+        .lean();
+      await logAction(req.user._id, 'upload_department_files', 'departmentFile', null, {
+        ...assignment,
+        count: docs.length,
+        totalSize: docs.reduce((sum, doc) => sum + (doc.size || 0), 0)
+      }, req);
+      res.status(201).json({ success: true, access, files: populated.map(file => serializeDepartmentFile(file, access)) });
+    } catch (error) {
+      (req.files || []).forEach(file => fs.unlink(file.path, () => {}));
+      res.status(500).json({ success: false, message: '上传部门资料失败' });
+    }
+  }
+);
+
+app.get('/api/hub/departments/:organization/:department/files/:id/download', authenticate, async (req, res) => {
+  const assignment = { organization: req.params.organization, department: req.params.department };
+  if (!isValidManagedDepartment(assignment)) return res.status(404).json({ success: false, message: '部门模块不存在' });
+  const access = getDepartmentFileAccess(req.user, assignment);
+  if (!access?.canView) return res.status(403).json({ success: false, message: '无权下载该部门资料' });
+
+  try {
+    const file = await DepartmentFile.findOne({ _id: req.params.id, ...assignment, status: 'active' }).lean();
+    if (!file) return res.status(404).json({ success: false, message: '部门资料不存在' });
+    const absolutePath = path.resolve(departmentFileUploadDir, file.filename);
+    const relativePath = path.relative(departmentFileUploadDir, absolutePath);
+    if (relativePath.startsWith('..') || path.isAbsolute(relativePath) || !fs.existsSync(absolutePath)) {
+      return res.status(404).json({ success: false, message: '文件不存在' });
+    }
+    res.download(absolutePath, file.originalName || file.filename);
+  } catch (error) {
+    res.status(500).json({ success: false, message: '下载部门资料失败' });
+  }
+});
+
+app.delete('/api/hub/departments/:organization/:department/files/:id', authenticate, async (req, res) => {
+  const assignment = { organization: req.params.organization, department: req.params.department };
+  if (!isValidManagedDepartment(assignment)) return res.status(404).json({ success: false, message: '部门模块不存在' });
+  const access = getDepartmentFileAccess(req.user, assignment);
+  if (!access?.canDelete) return res.status(403).json({ success: false, message: '当前身份不能删除该部门资料' });
+
+  try {
+    const file = await DepartmentFile.findOne({ _id: req.params.id, ...assignment, status: 'active' });
+    if (!file) return res.status(404).json({ success: false, message: '部门资料不存在' });
+    file.status = 'deleted';
+    file.deletedBy = req.user._id;
+    file.deletedAt = new Date();
+    await file.save();
+    const absolutePath = path.resolve(departmentFileUploadDir, file.filename);
+    const relativePath = path.relative(departmentFileUploadDir, absolutePath);
+    if (!relativePath.startsWith('..') && !path.isAbsolute(relativePath)) {
+      fs.unlink(absolutePath, () => {});
+    }
+    await logAction(req.user._id, 'delete_department_file', 'departmentFile', file._id, {
+      ...assignment,
+      originalName: file.originalName,
+      size: file.size
+    }, req);
+    res.json({ success: true, message: '部门资料已删除', access });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '删除部门资料失败' });
   }
 });
 

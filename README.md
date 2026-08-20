@@ -214,6 +214,9 @@ npm run dev -- --port 3001
 | WECHAT_MP_FALLBACK_DESCRIPTION | 未配置跳转或封面时展示的备用说明 |
 | WECHAT_MP_SYNC_INTERVAL_MINUTES | 后续定时同步间隔配置，当前手动同步接口会读取同一配置 |
 | WECHAT_MP_NOTICE_ORGANIZATION / WECHAT_MP_NOTICE_DEPARTMENT | 微信文章同步到 DepartmentNotice 的目标部门 |
+| WECHAT_MINI_APP_ID | 微信小程序 AppID |
+| WECHAT_MINI_APP_SECRET | 微信小程序 AppSecret，仅保存在后端环境变量 |
+| WECHAT_MINI_DOMAIN | 微信小程序对外访问域名，默认 `https://sievox.cn` |
 
 ## 主要 API
 

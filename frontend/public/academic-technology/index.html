@@ -3,16 +3,22 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#101b2d" />
-    <meta name="description" content="北京化工大学国际教育学院学术科技部部门介绍页" />
+    <meta name="theme-color" content="#11233a" />
+    <meta name="description" content="北京化工大学国际教育学院学术科技部部门宣传页，展示 SIE 学辅、奖学金经验分享、科创竞赛、院周活动、创新表彰和 SIEBridge 课程资源共享平台。" />
     <title>学术科技部 | SIEHUB</title>
     <link rel="stylesheet" href="styles.css" />
-    <link rel="stylesheet" href="gallery-carousel.css" />
-    <link rel="stylesheet" href="real-interface.css" />
-    <link rel="stylesheet" href="legal-footer.css" />
+    <link rel="stylesheet" href="member-layout.css?v=20260810" />
   </head>
   <body>
-    <header class="topbar">
+    <!--
+      THESIS: 学术科技部是一份可翻阅的学术成长档案，拒绝普通部门介绍页的静态卡片堆叠。
+      OWN-WORLD: 深石墨蓝、学术蓝、青绿和信号黄组成纸本档案与数字坐标混合的展示语言。
+      STORY: 访客从课程支持进入，看到榜样、竞赛、院周和成果，再进入 SIEBridge 参与资源共享。
+      FIRST VIEWPORT: 真实活动照片全屏铺底，标题在安全区域，右下给 SIEBridge 和活动图谱入口。
+      FORM: Academic Growth Atlas, plan-approved direction, seed key manual-20260810-academic-atlas.
+      FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
+    -->
+    <header class="site-topbar">
       <a class="brand" href="#top" aria-label="返回学术科技部首页">
         <span class="brand-logos" aria-hidden="true">
           <img src="../BUCT_LOGO_blue.png" alt="" />
@@ -21,83 +27,421 @@
           <i></i>
           <img src="../SIEBridge_LOGO.png" alt="" />
         </span>
-        <span class="brand-copy"><b>学术科技部</b><small>SIEBRIDGE / ACADEMIC TECHNOLOGY</small></span>
+        <span class="brand-copy">
+          <strong>学术科技部</strong>
+          <small>Academic Technology</small>
+        </span>
       </a>
-      <div class="top-status"><span></span>学术资源节点稳定运行</div>
-      <a class="department-return" href="/departments?module=academic_technology">返回学术科技部</a>
-      <button class="menu-button" type="button" aria-label="打开导航" aria-expanded="false"><i></i><i></i></button>
-      <nav class="main-nav"><a href="#bridge">SIEBridge</a><a href="#support">研究支持</a><a href="#matrix">项目矩阵</a><a href="#showcase">展示台</a><a href="#team">成员</a><a href="#calendar">学年索引</a><a href="#join">加入团队</a></nav>
+      <button class="menu-button" type="button" aria-label="打开导航" aria-expanded="false">
+        <span></span><span></span>
+      </button>
+      <nav class="main-nav" aria-label="页面导航">
+        <a href="#atlas">活动图谱</a>
+        <a href="#tutoring">SIE学辅</a>
+        <a href="#scholarship">榜样分享</a>
+        <a href="#competition">科创竞赛</a>
+        <a href="#bridge">SIEBridge</a>
+        <a href="/departments?module=academic_technology">返回部门</a>
+      </nav>
     </header>
 
     <main id="top">
       <section class="hero">
+        <div class="hero-carousel" aria-label="学术科技部代表活动照片轮播">
+          <img class="hero-image active" src="assets/activities/campus-week/image28.webp" alt="院周活动联合宣讲合影" loading="eager" decoding="async" />
+          <img class="hero-image" src="assets/activities/innovation-recognition/image32.webp" alt="学生创新表彰总结会全景" loading="lazy" decoding="async" />
+          <img class="hero-image" src="assets/activities/tutoring/image01.webp" alt="SIE 学辅课堂现场" loading="lazy" decoding="async" />
+          <img class="hero-image" src="assets/activities/speak-up/image06.webp" alt="Speak Up 外语角现场" loading="lazy" decoding="async" />
+          <img class="hero-image" src="assets/activities/scholarship/image14.webp" alt="国家奖学金答辩现场" loading="lazy" decoding="async" />
+          <img class="hero-image" src="assets/activities/scholarship/image18.webp" alt="国奖分享会现场" loading="lazy" decoding="async" />
+          <img class="hero-image" src="assets/activities/competitions/image24.webp" alt="科创竞赛活动现场" loading="lazy" decoding="async" />
+          <img class="hero-image" src="assets/activities/campus-week/image30.webp" alt="院周活动宣讲现场" loading="lazy" decoding="async" />
+          <img class="hero-image" src="assets/activities/innovation-recognition/image34.webp" alt="创新竞赛成果颁奖" loading="lazy" decoding="async" />
+          <img class="hero-image" src="assets/activities/innovation-recognition/image39.webp" alt="学生经验分享现场" loading="lazy" decoding="async" />
+        </div>
+        <div class="hero-scrim"></div>
+        <div class="hero-motion" aria-hidden="true">
+          <span class="hero-ring hero-ring-one"></span>
+          <span class="hero-ring hero-ring-two"></span>
+          <span class="hero-ring hero-ring-three"></span>
+          <span class="hero-node hero-node-a"></span>
+          <span class="hero-node hero-node-b"></span>
+          <span class="hero-node hero-node-c"></span>
+          <span class="hero-vector hero-vector-a"></span>
+          <span class="hero-vector hero-vector-b"></span>
+          <span class="hero-scanline"></span>
+        </div>
         <div class="hero-copy">
-          <div class="lab-label"><span>NODE 02</span><span>OPEN / 24x6</span></div>
-          <p class="eyebrow">ACADEMIC TECHNOLOGY DEPARTMENT</p>
-          <h1>好问题<br />值得有<br /><em>下一步</em></h1>
-          <p class="hero-lede">我们把课程、竞赛、表达与升学资源组织起来，让同学在需要的时候，找到一份资料、一位同伴或一个清晰的方向。</p>
-          <div class="hero-actions"><a class="primary-button" href="/siebridge">Open SIEBridge <span>&#8599;</span></a><a class="outline-button" href="#matrix">查看项目矩阵</a></div>
-          <div class="hero-foot"><span>学术科技部 / 2026</span><span>知识在流动，机会才会抵达</span></div>
+          <p class="section-kicker">Academic Growth Atlas</p>
+          <h1>从课程到成果，搭起每一步的学术支点</h1>
+          <p>学术科技部把课程辅导、外语表达、奖学金经验、科创竞赛与资源共享组织成一条可回看的成长路径。</p>
+          <div class="hero-actions">
+            <a class="button primary" href="/siebridge">进入 SIEBridge</a>
+            <a class="button ghost" href="#atlas">查看活动图谱</a>
+          </div>
         </div>
-        <div class="lab-visual real-visual" aria-label="SIEBridge 真实系统截图">
-          <figure class="real-interface-shot real-interface-shot-siebridge">
-            <img src="siebridge-real-interface.png" alt="SIEBridge 真实系统界面截图" loading="eager" />
-            <figcaption><span>REAL SYSTEM UI</span><strong>SIEBridge 课程资源共享平台</strong><p>截图来自本地登录后的真实系统界面。</p></figcaption>
-          </figure>
+        <div class="hero-note">
+          <span>SIE 学辅</span>
+          <span>奖学金答辩</span>
+          <span>科创竞赛</span>
+          <span>创新表彰</span>
+        </div>
+        <div class="hero-dots" aria-label="轮播进度"></div>
+      </section>
+
+      <section class="atlas section" id="atlas">
+        <div class="section-heading narrow">
+          <p class="section-kicker">五条成长路径</p>
+          <h2>从学辅到科创，打开学术科技部的活动图谱</h2>
+          <p>围绕课程支持、榜样经验、科创实践与成果展示，串起同学们在学术成长中的每一次参与。</p>
+        </div>
+        <div class="atlas-rail" aria-label="活动系列导航">
+          <a href="#tutoring"><b>01</b><strong>SIE学辅</strong><span>课程基础与表达训练</span></a>
+          <a href="#scholarship"><b>02</b><strong>奖学金答辩</strong><span>榜样经验与答辩现场</span></a>
+          <a href="#competition"><b>03</b><strong>科创竞赛</strong><span>项目报名、选拔与规划</span></a>
+          <a href="#campus-week"><b>04</b><strong>院周活动</strong><span>跨校联合宣讲</span></a>
+          <a href="#recognition"><b>05</b><strong>创新表彰</strong><span>成果颁奖与经验分享</span></a>
         </div>
       </section>
 
-      <div class="data-strip"><span><b>40+</b> 年度活动</span><span><b>08</b> SPEAK UP! 场次</span><span><b>10</b> 学辅主题</span><span><b>1,000+</b> 覆盖人次</span></div>
-
-      <section class="support section" id="support"><div class="section-mark"><span>01</span><small>RESEARCH SUPPORT</small></div><div class="intro"><h2>把资源放到<br /><em>恰好的位置</em></h2><p>学术科技部做的，是把零散的经验组织成可以被搜索、被理解、被继续使用的支持系统。每一项工作都对应同学成长中的一个节点。</p></div><div class="support-grid"><article><span class="support-index">01 / FOUNDATIONS</span><h3>学辅支持</h3><p>高数、普物、有机化学、四六级等考前辅导，连接朋辈讲师与真正需要帮助的课程。</p><b>课程攻坚</b></article><article><span class="support-index">02 / EVIDENCE</span><h3>榜样引领</h3><p>国奖答辩与奖学金分享，把优秀同学的准备过程拆开，让路径可以被参考。</p><b>经验复用</b></article><article><span class="support-index">03 / EXPRESSION</span><h3>表达训练</h3><p>SPEAK UP! 让观点获得舞台，在一次次发言中训练结构、节奏与临场反应。</p><b>观点成形</b></article><article><span class="support-index">04 / HORIZON</span><h3>视野拓展</h3><p>留学、职业规划、萌芽杯与挑战杯，帮助同学把眼前的课程连接到更远的选择。</p><b>向外生长</b></article></div></section>
-
-      <section class="bridge section" id="bridge"><div class="bridge-intro"><div class="section-mark dark"><span>02</span><small>SIEBRIDGE / RESOURCE FLOW</small></div><h2>资料不是终点，<br /><em>流动才是</em></h2><p>SIEBridge 是 SIEHUB 中的课程资源共享平台。上传、审核、公开、凭证和我的记录组成一条可追溯的资源链。</p><a class="text-arrow" href="/siebridge">Open SIEBridge <span>&#8599;</span></a></div><figure class="real-interface-shot bridge-real-shot"><img src="siebridge-real-resource-flow.png" alt="SIEBridge 真实资源流转界面截图" loading="lazy" /><figcaption><span>REAL RESOURCE FLOW</span><strong>SIEBridge 资源上传与课程列表</strong><p>截图来自本地真实系统界面。</p></figcaption></figure></section>
-
-      <section class="matrix section" id="matrix"><div class="section-mark"><span>03</span><small>PROGRAM INDEX</small></div><div class="intro"><h2>五条线，<br /><em>一张成长地图</em></h2><p>从基础课程到未来选择，项目矩阵把每一场活动放回学年的节奏里，也让团队知道下一步该准备什么。</p></div><div class="program-grid"><article class="program-main"><small>A / SCHOLARSHIP</small><h3>国奖与奖学金系列</h3><p>见证优秀，拆解准备过程，把可复制的经验重新交到同学手里。</p><span class="program-tag">EVIDENCE TO ACTION</span></article><article class="program-blue"><small>B / TUTORING</small><h3>SIE 学辅</h3><span>10 topics / peer mentors</span></article><article class="program-yellow"><small>C / SPEECH</small><h3>SPEAK<br />UP!</h3><span>08 sessions / stage</span></article><article class="program-outline"><small>D / GLOBAL</small><h3>留学辅导</h3><p>德国留学、升学规划与学长经验。</p></article><article class="program-outline"><small>E / CAREER</small><h3>职业规划大赛</h3><p>从材料到答辩，打磨一份个人发展方案。</p></article></div></section>
-
-      <section class="showcase section" id="showcase">
-        <div class="section-mark"><span>04</span><small>ACADEMIC SHOWCASE</small></div>
-        <div class="showcase-head"><div><h2>把成果，<br /><em>接入展示台</em></h2></div><p>本地编辑模式下可为每个活动上传多张照片并轮播预览；服务器端展示为只读版本。</p></div>
-        <div class="showcase-grid" aria-label="学术科技部图片展示台">
-          <article class="showcase-card gallery-trigger" data-gallery-index="0" tabindex="0" role="button"><div class="upload-photo blue-stage"><img alt="学辅课堂现场预览" /><b>01</b><span class="photo-count">Image slot</span></div><div class="event-info"><small>TUTORING</small><h3>SIE 学辅课堂</h3><span>朋辈讲解 · 课程攻坚</span></div></article>
-          <article class="showcase-card gallery-trigger" data-gallery-index="1" tabindex="0" role="button"><div class="upload-photo cyan-stage"><img alt="SPEAK UP 活动预览" /><b>02</b><span class="photo-count">Image slot</span></div><div class="event-info"><small>SPEAK UP!</small><h3>表达训练现场</h3><span>观点输出 · 舞台反馈</span></div></article>
-          <article class="showcase-card gallery-trigger wide" data-gallery-index="2" tabindex="0" role="button"><div class="upload-photo yellow-stage"><img alt="挑战杯备赛预览" /><b>03</b><span class="photo-count">Image slot</span></div><div class="event-info"><small>COMPETITION</small><h3>挑战杯 / 萌芽杯</h3><span>选题讨论 · 项目打磨</span></div></article>
-          <article class="showcase-card gallery-trigger" data-gallery-index="3" tabindex="0" role="button"><div class="upload-photo navy-stage"><img alt="国奖答辩与经验分享预览" /><b>04</b><span class="photo-count">Image slot</span></div><div class="event-info"><small>SCHOLARSHIP</small><h3>国奖答辩分享</h3><span>经验拆解 · 榜样引领</span></div></article>
+      <section class="tutoring section paper-band" id="tutoring">
+        <div class="section-heading">
+          <p class="section-title-note">在考前最需要方向的时候，把知识点、题型和复习节奏一起梳理清楚。</p>
+          <h2>SIE学辅</h2>
+          <p>期中、期末考试前，为帮助同学们高效复习，充足备考，轻松应考，学术科技部会开展考前复习活动——针对知识点、题型进行串讲与辅导，我们将邀请往届的高绩点讲师为大家系统梳理知识体系，总结分享做题经验，助力大家取得佳绩。</p>
+        </div>
+        <div class="subject-grid">
+          <article class="subject-card" data-cycle="high-math">
+            <img src="assets/activities/tutoring/image01.webp" alt="高等数学考前串讲现场" loading="lazy" decoding="async" />
+            <div class="subject-copy">
+              <small>考前串讲</small>
+              <h3>高等数学</h3>
+              <p>把极限、导数、积分和常见题型重新梳成一条清晰的复习线。</p>
+              <a class="article-link" href="https://mp.weixin.qq.com/s/23m90K-bMIpO11IepVloUQ" target="_blank" rel="noreferrer noopener">查看推文 <span>&#8599;</span></a>
+            </div>
+          </article>
+          <article class="subject-card screenshot" data-cycle="physics-bao-siyuan">
+            <img src="assets/article-shots/physics-title-shot.png" alt="普通物理推文标题截图" loading="lazy" decoding="async" />
+            <div class="subject-copy">
+              <small>考前串讲</small>
+              <h3>普通物理</h3>
+              <p>力学、电磁学和核心公式一起整理，帮助同学快速抓住得分路径。</p>
+              <a class="article-link" href="https://mp.weixin.qq.com/s/HvcBg1Iix7ehpPd2vY35-g" target="_blank" rel="noreferrer noopener">查看推文 <span>&#8599;</span></a>
+            </div>
+          </article>
+          <article class="subject-card screenshot" data-cycle="complex-bao-siyuan">
+            <img src="assets/article-shots/complex-title-shot.png" alt="复变函数与积分变换推文标题截图" loading="lazy" decoding="async" />
+            <div class="subject-copy">
+              <small>考前串讲</small>
+              <h3>复变函数与积分变换</h3>
+              <p>把常见题型拆成方法块，方便同学在冲刺阶段反复调用。</p>
+              <a class="article-link" href="https://mp.weixin.qq.com/s/lGg-Pm_fmYFwDnBsd9X3gg" target="_blank" rel="noreferrer noopener">查看推文 <span>&#8599;</span></a>
+            </div>
+          </article>
+          <article class="subject-card" data-cycle="english-tutoring">
+            <img src="assets/activities/tutoring/image05.webp" alt="大学英语与四六级考前串讲现场" loading="lazy" decoding="async" />
+            <div class="subject-copy">
+              <small>考前串讲</small>
+              <h3>大学英语与四六级</h3>
+              <p>围绕阅读、写作和听力做临考梳理，把复习重点拉回到考场里。</p>
+              <a class="article-link" href="https://mp.weixin.qq.com/s/oSS2hgjto0Np415CqffnQQ" target="_blank" rel="noreferrer noopener">查看推文 <span>&#8599;</span></a>
+            </div>
+          </article>
+          <article class="subject-card screenshot" data-cycle="organic-tutoring">
+            <img src="assets/article-shots/organic-wechat-mid.png" alt="有机化学推文封面截图" loading="lazy" decoding="async" />
+            <div class="subject-copy">
+              <small>考前串讲</small>
+              <h3>有机化学</h3>
+              <p>把反应机理、推断思路和易错点拆开讲清，让知识更容易落到纸面上。</p>
+              <a class="article-link" href="https://mp.weixin.qq.com/s/JxpSZsAI0cEWGVl9Y9sA2w" target="_blank" rel="noreferrer noopener">查看推文 <span>&#8599;</span></a>
+            </div>
+          </article>
+          <article class="subject-card screenshot" data-cycle="italian-tutoring">
+            <img src="assets/article-shots/italian-wechat.png" alt="意大利语推文封面截图" loading="lazy" decoding="async" />
+            <div class="subject-copy">
+              <small>考前串讲</small>
+              <h3>意大利语</h3>
+              <p>没有单独现场图时，直接保留公众号原文封面，方便按原始发布内容回看。</p>
+              <a class="article-link" href="https://mp.weixin.qq.com/s/auYRcI4g8FcjXg-1lUiYrg" target="_blank" rel="noreferrer noopener">查看推文 <span>&#8599;</span></a>
+            </div>
+          </article>
+        </div>
+        <div class="tutoring-tail">
+          <span class="tutoring-watermark">SIE学辅</span>
+          <p>......更多课程，等你解锁</p>
         </div>
       </section>
 
-      <section class="team section" id="team">
-        <div class="section-mark"><span>05</span><small>MEMBER BOARD</small></div>
-        <div class="intro"><h2>一位主席团成员，<br /><em>两位部门负责人</em></h2><p>展示板预留成员照片位，后续本地编辑时可替换为正式头像与介绍。</p></div>
+      <section class="speakup section" id="speakup">
+        <div class="section-heading narrow light">
+          <p class="section-kicker">Speak Up! 外语角</p>
+          <h2>让语言练习在真实交流中发生</h2>
+          <p>Speak Up！外语角延续轻松交流的节奏，把听说练习、现场互动和语言表达放在同一个场景里，既能看见活动，也能看见同学们真正开口的瞬间。</p>
+        </div>
+        <div class="wide-story speakup-story" data-cycle="speak-up">
+          <img src="assets/activities/speak-up/image06.webp" alt="Speak Up 外语角现场" loading="lazy" decoding="async" />
+          <div>
+            <p class="section-kicker">Language Corner</p>
+            <h2>Speak Up！外语角</h2>
+            <p>现场交流、主题对话和自由表达一起组成外语角的气氛，让语言练习从课本里走出来，变成可以被参与的活动。</p>
+            <a class="button primary" href="https://mp.weixin.qq.com/s/3pEh6hV6VxH0H6sYv7Px8g" target="_blank" rel="noreferrer noopener">查看外语角推文</a>
+            <button class="button quiet" type="button" data-gallery="speak-up">打开现场图集</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="scholarship section" id="scholarship">
+        <div class="section-heading narrow light">
+          <p class="section-kicker">Scholarship Dossiers</p>
+          <h2>把优秀拆解成可以参考的路径</h2>
+          <p>从答辩现场到榜样分享，把优秀同学的经验沉淀成可学习、可借鉴的成长线索。</p>
+        </div>
+        <div class="scholarship-grid">
+          <article class="case-card large" data-cycle="national-scholarship">
+            <img src="assets/activities/scholarship/image14.webp" alt="国家奖学金答辩现场" loading="lazy" decoding="async" />
+            <div>
+              <h3>国家奖学金答辩</h3>
+              <p>通过公开答辩展示学习成果、科研实践与综合成长，让优秀经验被看见、被讨论。</p>
+              <a href="https://mp.weixin.qq.com/s/VlBZYDVmYWgkgxO35i8lmA" target="_blank" rel="noreferrer noopener">查看国家奖学金答辩推文</a>
+            </div>
+          </article>
+          <article class="case-card" data-cycle="scholarship-sharing">
+            <img src="assets/activities/scholarship/image18.webp" alt="国奖分享会现场" loading="lazy" decoding="async" />
+            <div>
+              <h3>国奖分享会</h3>
+              <p>把时间规划、课程学习和竞赛科研经验拆成可执行的方法。</p>
+              <a href="https://mp.weixin.qq.com/s/oxfzBvKsfx-XdJK0cQc6gw" target="_blank" rel="noreferrer noopener">查看国奖分享会推文</a>
+            </div>
+          </article>
+          <article class="case-card" data-cycle="social-scholarship">
+            <img src="assets/activities/scholarship/image20.webp" alt="社会资助奖学金答辩现场" loading="lazy" decoding="async" />
+            <div>
+              <h3>社会资助奖学金答辩</h3>
+              <p>呈现受助学生的成长、实践与公益责任，形成更完整的荣誉叙事。</p>
+              <a href="https://mp.weixin.qq.com/s/Ubin2NGVIdVkV-7Po0evTw" target="_blank" rel="noreferrer noopener">查看社会资助奖学金答辩</a>
+            </div>
+          </article>
+        </div>
+        <div class="section-actions">
+          <button class="button quiet dark-text" type="button" data-gallery="scholarship">查看奖学金答辩与分享图集</button>
+        </div>
+      </section>
+
+      <section class="profile-series section paper-band" id="national-scholarship-profiles">
+        <div class="profile-series-heading">
+          <div>
+            <p class="section-kicker">National Scholarship / 01</p>
+            <h2>国奖榜样零距离系列推送</h2>
+            <p>以国奖榜样为坐标，把学习方法、科研实践与成长选择讲给更多同学听。</p>
+          </div>
+        </div>
+        <div class="series-spotlight">
+          <div>
+            <p class="section-kicker">成长档案</p>
+            <h3>从形象照开始，逐张翻开他们的经验分享</h3>
+            <p>把优秀经验拆成可借鉴的行动线索，让榜样不只停留在荣誉榜上，也成为可以靠近的路径。</p>
+          </div>
+        </div>
+        <div class="profile-strip" aria-label="国奖榜样零距离系列人物卡片">
+          <article data-cycle="su-yanyan">
+            <img src="assets/scholarship-profiles/su-yanyan.png" alt="苏妍妍形象照" loading="lazy" decoding="async" />
+            <div><strong>苏妍妍</strong><span>慢热也能一路拿到国奖</span><a href="https://mp.weixin.qq.com/s/L9o5XRDstdrbWgCdv-DZpg" target="_blank" rel="noreferrer noopener">阅读全文</a></div>
+          </article>
+          <article data-cycle="bao-xingpeng">
+            <img src="assets/scholarship-profiles/bao-xingpeng.png" alt="包兴鹏形象照" loading="lazy" decoding="async" />
+            <div><strong>包兴鹏</strong><span>三年专业双第一，保研清华</span><a href="https://mp.weixin.qq.com/s/-mM5UWw-moref-gshVapYg" target="_blank" rel="noreferrer noopener">阅读全文</a></div>
+          </article>
+          <article data-cycle="chen-yichi">
+            <img src="assets/scholarship-profiles/chen-yichi.png" alt="陈钇池形象照" loading="lazy" decoding="async" />
+            <div><strong>陈钇池</strong><span>三获国奖，保研上交</span><a href="https://mp.weixin.qq.com/s/FVjCkBcaby8rfm8LOBp1SA" target="_blank" rel="noreferrer noopener">阅读全文</a></div>
+          </article>
+          <article data-cycle="zheng-xiaonan" data-focus="left">
+            <img src="assets/scholarship-profiles/zheng-xiaonan.png" alt="郑晓楠形象照" loading="lazy" decoding="async" />
+            <div><strong>郑晓楠</strong><span>从 65 分起步闯出设计路</span><a href="https://mp.weixin.qq.com/s/p6NGxTvBnVKBzaRnir0cQQ" target="_blank" rel="noreferrer noopener">阅读全文</a></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="competition section paper-band" id="competition">
+        <div class="section-heading">
+          <p class="section-kicker">科创竞赛</p>
+          <h2>从报名通知到项目打磨，给想法一个上场位置</h2>
+          <p>萌芽杯、挑战杯和职业规划大赛覆盖不同方向的创新实践。学术科技部通过信息同步、材料整理和经验支持，帮助同学把想法推进到可展示的作品。</p>
+        </div>
+        <div class="split-panels">
+          <article>
+            <img src="assets/activities/competitions/image24.webp" alt="萌芽杯活动现场" loading="lazy" decoding="async" />
+            <h3>萌芽杯</h3>
+            <p>科技创新及学术论文大赛报名开启，鼓励同学从问题意识走向项目表达。</p>
+            <a href="https://mp.weixin.qq.com/s/JsBTZxYD1Uab-b5q3VYFaw" target="_blank" rel="noreferrer noopener">查看萌芽杯报名通知</a>
+          </article>
+          <article>
+            <img src="assets/activities/competitions/image25.webp" alt="挑战杯备赛讨论现场" loading="lazy" decoding="async" />
+            <h3>挑战杯</h3>
+            <p>首都大学生创业计划竞赛校内选拔赛，为创意、团队与路演提供更明确的节奏。</p>
+            <a href="https://mp.weixin.qq.com/s/RQtJiGlXXLp2fbj-Kk2UOQ" target="_blank" rel="noreferrer noopener">查看挑战杯赛事通知</a>
+          </article>
+          <article data-cycle="career-planning">
+            <img src="assets/activities/competitions/image26.webp" alt="职业规划大赛宣讲现场" loading="lazy" decoding="async" />
+            <h3>职业规划大赛</h3>
+            <p>从自我认知、行业观察到表达训练，让个人发展方案更具体。</p>
+            <button class="text-button" type="button" data-gallery="competitions">查看竞赛图集</button>
+          </article>
+        </div>
+      </section>
+
+      <section class="campus-week section" id="campus-week">
+        <div class="wide-story" data-cycle="campus-week">
+          <img src="assets/activities/campus-week/image30.webp" alt="北京化工大学与北京中医药大学联合宣讲活动现场" loading="lazy" decoding="async" />
+          <div>
+            <p class="section-kicker">院周活动</p>
+            <h2>承中医精粹，通国际华章</h2>
+            <p>北京化工大学与北京中医药大学联合宣讲活动，把跨校交流、中医文化和国际视野放入学院院周的共同记忆中。</p>
+            <a class="button primary" href="https://mp.weixin.qq.com/s/m6ohR65__pPHzHHTlVqc-Q" target="_blank" rel="noreferrer noopener">查看活动回顾</a>
+            <button class="button quiet" type="button" data-gallery="campus-week">打开现场图集</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="recognition section paper-band" id="recognition">
+        <div class="section-heading">
+          <p class="section-kicker">创新表彰总结会</p>
+          <h2>让创新实践被看见，也让下一次出发有方向</h2>
+          <p>总结会包含创新竞赛成果颁奖、专业工作室指导老师及部门负责人聘书颁发、学生经验分享。它既是一次表彰，也是下一轮创新实践的起点。</p>
+        </div>
+        <div class="recognition-grid">
+          <article class="recognition-main" data-cycle="recognition">
+            <img src="assets/activities/innovation-recognition/image32.webp" alt="学生创新表彰总结会全景" loading="lazy" decoding="async" />
+            <div>
+              <h3>学生创新表彰总结会</h3>
+              <a href="https://mp.weixin.qq.com/s/cImeAADMerAOysfaasnyqg" target="_blank" rel="noreferrer noopener">查看总结会推文</a>
+            </div>
+          </article>
+          <article><img src="assets/activities/innovation-recognition/image34.webp" alt="创新竞赛成果颁奖" loading="lazy" decoding="async" /><span>创新竞赛成果颁奖</span></article>
+          <article><img src="assets/activities/innovation-recognition/image36.webp" alt="聘书颁发现场" loading="lazy" decoding="async" /><span>专业工作室聘书颁发</span></article>
+          <article><img src="assets/activities/innovation-recognition/image39.webp" alt="学生经验分享现场" loading="lazy" decoding="async" /><span>学生经验分享</span></article>
+        </div>
+        <div class="section-actions">
+          <button class="button ghost" type="button" data-gallery="recognition">查看创新表彰完整图集</button>
+        </div>
+      </section>
+
+      <section class="bridge section" id="bridge">
+        <div class="bridge-copy">
+          <p class="section-kicker">SIEBridge</p>
+          <p class="bridge-title-note">上传、审核、共享、凭证，课程资料在这里完成闭环</p>
+          <h2>SIEBridge课程资源共享平台</h2>
+          <p>SIEBridge 把课程资料共享做成一条清晰的路径：同学上传资料，学术科技部完成审核，审核通过后进入课程资源库，同时为上传者生成可下载的 PDF 上传凭证。</p>
+          <div class="bridge-actions">
+            <a class="button primary" href="/siebridge">进入 SIEBridge 课程资源共享平台</a>
+            <a class="button ghost" href="/siebridge/my">查看我的上传</a>
+          </div>
+        </div>
+        <div class="screen-stack">
+          <img src="siebridge-real-interface.png" alt="SIEBridge 真实界面截图" loading="lazy" decoding="async" />
+          <img src="siebridge-real-resource-flow.png" alt="SIEBridge 资源流转界面截图" loading="lazy" decoding="async" />
+        </div>
+        <div class="bridge-flow" aria-label="SIEBridge 上传流程与凭证说明">
+          <article class="flow-card">
+            <span>01</span>
+            <h3>选择课程并上传资料</h3>
+            <p>进入对应课程后，可上传文件或文件夹，保留原有目录结构；资料类型、文件名和课程信息会一起记录。</p>
+          </article>
+          <article class="flow-card">
+            <span>02</span>
+            <h3>提交学术科技部审核</h3>
+            <p>提交后资料进入审核队列，由学术科技部负责人、分管主席或终极管理员确认内容是否适合公开共享。</p>
+          </article>
+          <article class="flow-card">
+            <span>03</span>
+            <h3>通过后进入资源库</h3>
+            <p>审核通过的资料会展示在课程资源中；上传者也能在“我的”里查看上传记录和凭证。</p>
+          </article>
+          <article class="bridge-receipt">
+            <div class="receipt-watermark">SIEBridge</div>
+            <small>上传凭证</small>
+            <h3>审核通过后自动生成 PDF</h3>
+            <dl>
+              <div><dt>姓名 / 学号</dt><dd>记录上传者身份</dd></div>
+              <div><dt>课程信息</dt><dd>对应课程与资料类型</dd></div>
+              <div><dt>上传内容</dt><dd>文件名与文件夹结构</dd></div>
+              <div><dt>落款</dt><dd>国际教育学院学术科技部</dd></div>
+            </dl>
+          </article>
+        </div>
+      </section>
+
+      <section class="team section paper-band" id="team">
+        <div class="section-heading">
+          <p class="section-kicker">成员介绍</p>
+          <h2>把学术支持做扎实，也把资源服务接续好</h2>
+        </div>
         <div class="member-board">
-          <article class="member-feature"><div class="member-photo member-photo-large"><img alt="主席团成员照片" /><span>PRESIDIUM</span></div><div class="member-copy"><small>主席团分管</small><h3>主席团成员</h3><p>统筹学术科技部项目矩阵、跨部门资源协同与重点活动复盘。</p><div class="member-tags"><span>资源统筹</span><span>项目复盘</span><span>成长支持</span></div></div></article>
-          <article class="member-card"><div class="member-photo member-photo-tall"><img alt="部门负责人照片" /><span>LEAD 01</span></div><div class="member-copy small-copy"><small>部门负责人</small><h3>负责人 A</h3><p>负责 SIEBridge 资源流转、课程学辅与材料审核。</p></div></article>
-          <article class="member-card"><div class="member-photo member-photo-tall"><img alt="部门负责人照片" /><span>LEAD 02</span></div><div class="member-copy small-copy"><small>部门负责人</small><h3>负责人 B</h3><p>负责竞赛支持、表达训练与活动展示素材整理。</p></div></article>
+          <article class="member-feature">
+            <div class="member-photo member-photo-large">
+              <span>Presidium</span>
+            </div>
+            <div class="member-copy">
+              <small>主席团成员</small>
+              <h3>赵启涵</h3>
+              <p>统筹学术科技部项目矩阵、跨部门资源协同与重点活动复盘，保证课程资源、竞赛支持和活动展示持续推进。</p>
+              <div class="member-tags"><span>资源统筹</span><span>项目复盘</span><span>成长支持</span></div>
+            </div>
+          </article>
+          <div class="member-row" aria-label="部门负责人">
+            <article class="member-card">
+              <div class="member-photo warm"><span>Lead 01</span></div>
+              <div class="member-copy small-copy">
+                <small>部门负责人</small>
+                <h3>王力源</h3>
+                <p>负责 SIEBridge 资源流转、课程学辅与材料审核。</p>
+              </div>
+            </article>
+            <article class="member-card">
+              <div class="member-photo cool"><span>Lead 02</span></div>
+              <div class="member-copy small-copy">
+                <small>部门负责人</small>
+                <h3>郭雨翔</h3>
+                <p>负责竞赛支持、表达训练与活动展示素材整理。</p>
+              </div>
+            </article>
+          </div>
         </div>
       </section>
 
-      <section class="calendar section" id="calendar"><div class="calendar-head"><div><p class="section-mark-text">ACADEMIC YEAR</p><h2>把每个节点，<br /><em>放回学年节奏</em></h2></div><p>从开学资源整理到期末学辅，再到竞赛与答辩，项目安排跟随真实需求滚动更新。</p></div><div class="month-grid"><article><span>SEP</span><strong>资源整理</strong><p>课程资料、学辅主题和朋辈讲师招募。</p></article><article class="month-hot"><span>NOV</span><strong>SPEAK UP!</strong><p>表达训练与主题分享。</p></article><article><span>JAN</span><strong>期末学辅</strong><p>高频课程复习与答疑支持。</p></article><article><span>MAR</span><strong>竞赛启动</strong><p>挑战杯、萌芽杯选题与组队。</p></article><article><span>JUN</span><strong>成果复盘</strong><p>国奖答辩、经验分享与资料归档。</p></article></div></section>
-
-      <section class="join section" id="join"><div class="join-card"><div><p class="section-mark-text">JOIN THE NODE</p><h2>把你的经验，<br /><em>变成下一位同学的路标</em></h2></div><div><p>加入学术科技部，和我们一起维护资源、组织分享、搭建表达舞台，让知识在学院里继续流动。</p><a class="primary-button" href="/siebridge">进入学术科技部 <span>&#8599;</span></a></div></div></section>
+      <section class="join section">
+        <div class="join-panel">
+          <div>
+            <p class="section-kicker">Join The Node</p>
+            <h2>把你的经验，变成下一位同学的路标</h2>
+          </div>
+          <p>加入学术科技部，一起维护资源、组织分享、搭建表达舞台，让知识在学院里继续流动。</p>
+          <a class="button primary" href="/departments?module=academic_technology">回到学术科技部</a>
+        </div>
+      </section>
     </main>
 
-    <footer class="site-legal-footer">
-      <div class="site-legal-brand"><span>Copyright© 2026 BUCT SIE</span><a href="/">返回 SIEHUB</a></div>
-      <div class="site-legal-links">
-        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noreferrer">京ICP备2026010091号-1</a>
-        <a href="https://beian.mps.gov.cn/#/query/webSearch?code=11011402055565" target="_blank" rel="noreferrer"><img src="../beian.png" alt="公安备案图标" /> 京公网安备11011402055565号</a>
-      </div>
+    <footer class="site-footer">
+      <span>Copyright 2026 BUCT SIE</span>
+      <a href="/">返回 SIEHUB</a>
     </footer>
 
     <div class="gallery-modal" id="galleryModal" aria-hidden="true">
-      <button class="gallery-close" id="galleryClose" aria-label="关闭图集">×</button>
-      <div class="gallery-heading"><span id="galleryCategory">ACADEMIC SHOWCASE</span><h2 id="galleryTitle">SIE 学辅课堂</h2><p id="galleryCounter">01 / 04</p></div>
-      <button class="gallery-arrow prev" id="galleryPrev" aria-label="上一张">←</button>
-      <figure class="gallery-stage"><img id="galleryImage" src="" alt="活动照片" /><figcaption id="galleryCaption">活动照片</figcaption></figure>
-      <button class="gallery-arrow next" id="galleryNext" aria-label="下一张">→</button>
+      <button class="gallery-close" type="button" aria-label="关闭图集">×</button>
+      <button class="gallery-arrow prev" type="button" aria-label="上一张">‹</button>
+      <figure class="gallery-stage">
+        <img id="galleryImage" src="assets/activities/tutoring/image01.webp" alt="学辅图集预览" />
+        <figcaption>
+          <span id="galleryCount"></span>
+          <strong id="galleryTitle"></strong>
+        </figcaption>
+      </figure>
+      <button class="gallery-arrow next" type="button" aria-label="下一张">›</button>
       <div class="gallery-thumbs" id="galleryThumbs"></div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js" defer></script>
     <script src="script.js" defer></script>
   </body>
 </html>

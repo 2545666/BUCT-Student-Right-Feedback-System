@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">SIEHUB</string>
-    <string name="title_activity_main">SIEHUB</string>
+    <string name="app_name">SIEVOX</string>
+    <string name="title_activity_main">SIEVOX</string>
     <string name="package_name">cn.siehub.mobile</string>
     <string name="custom_url_scheme">cn.siehub.mobile</string>
 </resources>

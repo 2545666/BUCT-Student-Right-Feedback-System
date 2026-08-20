@@ -1,0 +1,238 @@
+<view class="page">
+  <view class="topbar">
+    <view class="brand">
+      <image class="brand-logo" src="/assets/siehub-logo.mini.png" mode="aspectFit" />
+      <view class="brand-copy">
+        <text class="brand-name">SIEHUB</text>
+        <text class="brand-sub">一站式学生服务平台</text>
+      </view>
+    </view>
+    <view class="top-actions">
+      <text wx:if="{{token}}" class="user-pill">{{displayName}}</text>
+      <button wx:if="{{token}}" class="ghost-button" bindtap="logout">退出</button>
+      <button wx:if="{{!token}}" class="ghost-button" bindtap="switchTab" data-tab="home">登录</button>
+    </view>
+  </view>
+
+  <view wx:if="{{tab === 'home'}}" class="screen">
+    <view class="hero-card">
+      <image class="hero-cover" src="{{siteHome && siteHome.coverImageUrl ? siteHome.coverImageUrl : '/assets/home-hero.png'}}" mode="aspectFill" />
+      <view class="hero-overlay">
+        <text class="hero-eyebrow">WECHAT MP / 国教空间</text>
+        <text class="hero-title">{{siteHome && siteHome.title ? siteHome.title : '国教空间'}}</text>
+        <text class="hero-desc">{{siteHome && siteHome.summary ? siteHome.summary : '关注“国教空间”微信公众号，查看学院资讯与学生工作动态。'}}</text>
+        <text wx:if="{{currentSemester}}" class="hero-semester">{{currentSemester}}</text>
+      </view>
+      <view class="hero-badge-card">
+        <image class="hero-badge-logo" src="/assets/siehub-logo.mini.png" mode="aspectFit" />
+        <view class="hero-badge-copy">
+          <text class="hero-badge-title">关注国教空间</text>
+          <text class="hero-badge-sub">学院资讯与学生工作动态同步更新</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="panel notice-panel">
+      <view class="panel-head">
+        <text class="panel-kicker">SIEHUB 消息中心</text>
+        <text class="panel-title">新闻动态 · 通知公告</text>
+      </view>
+      <view wx:if="{{!homeNotices.length}}" class="empty-block">
+        <text>暂无可显示的消息。</text>
+      </view>
+      <block wx:else>
+        <view wx:if="{{homeLeadNotice}}" class="lead-notice">
+        <view class="lead-notice-media">
+            <image src="{{homeLeadNotice.coverImageUrl || (siteHome && siteHome.coverImageUrl) || '/assets/home-hero.png'}}" mode="aspectFill" />
+          </view>
+          <view class="lead-notice-copy">
+            <text class="lead-notice-tag">{{homeLeadNotice.departmentLabel || '最新推文'}}</text>
+            <text class="lead-notice-title">{{homeLeadNotice.displayTitle || homeLeadNotice.title}}</text>
+            <text class="lead-notice-text">{{homeLeadNotice.displaySummary || '暂无摘要'}}</text>
+            <text class="lead-notice-time">{{homeLeadNotice.displayTime}}</text>
+          </view>
+        </view>
+        <view class="notice-list">
+          <view wx:for="{{homeNotices}}" wx:key="_id" class="notice-card">
+            <view class="notice-top">
+              <text class="notice-title">{{item.displayTitle || item.title}}</text>
+              <text class="notice-time">{{item.displayTime}}</text>
+            </view>
+            <text class="notice-sub">{{item.organizationLabel}} · {{item.departmentLabel}}</text>
+            <text class="notice-content">{{item.displaySummary || '暂无摘要'}}</text>
+          </view>
+        </view>
+      </block>
+    </view>
+
+    <view class="panel entry-panel">
+      <view class="panel-head">
+        <text class="panel-kicker">ENTRY</text>
+        <text class="panel-title">核心平台入口</text>
+      </view>
+      <view class="entry-grid">
+        <button wx:for="{{portals}}" wx:key="key" class="entry-card {{item.accent}}" data-key="{{item.key}}" bindtap="openPortal">
+          <text class="entry-index">{{item.key === 'rights' ? '01' : '02'}}</text>
+          <image wx:if="{{item.key === 'rights'}}" class="entry-logo" src="/assets/sievox-logo.mini.png" mode="aspectFit" />
+          <image wx:else class="entry-logo" src="/assets/siebridge-logo.mini.png" mode="aspectFit" />
+          <view class="entry-copy">
+            <text class="entry-badge">{{item.badge}}</text>
+            <text class="entry-title">{{item.title}}</text>
+            <text class="entry-desc">{{item.desc}}</text>
+          </view>
+          <text class="entry-action">进入</text>
+        </button>
+      </view>
+    </view>
+
+    <view class="panel dept-panel">
+      <view class="panel-head">
+        <text class="panel-kicker">DEPT</text>
+        <text class="panel-title">部门风采入口</text>
+      </view>
+      <view wx:for="{{departmentGroups}}" wx:key="marker" class="dept-group">
+        <view class="dept-group-head">
+          <text class="dept-group-index">{{item.marker}}</text>
+          <text class="dept-group-title">{{item.title}}</text>
+        </view>
+        <view class="dept-card-grid">
+          <button
+            wx:for="{{item.items}}"
+            wx:for-item="dept"
+            wx:key="department"
+            class="dept-card"
+            type="button"
+            data-organization="{{dept.organization}}"
+            data-department="{{dept.department}}"
+            bindtap="openDepartment">
+            <text class="dept-card-label">{{dept.label}}</text>
+            <text class="dept-card-name">{{dept.departmentLabel || dept.label || ''}}</text>
+            <text class="dept-card-sub">{{dept.summary || dept.title || '点击查看部门介绍'}}</text>
+          </button>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{!token}}" class="panel login-panel">
+      <text class="panel-kicker">ACCESS</text>
+      <text class="panel-title">账号登录</text>
+      <input class="field" placeholder="学号" value="{{loginForm.studentId}}" data-field="studentId" bindinput="onLoginInput" />
+      <input class="field" placeholder="密码" password value="{{loginForm.password}}" data-field="password" bindinput="onLoginInput" />
+      <button class="primary-button" loading="{{loading}}" bindtap="login">登录</button>
+      <text class="hint">使用 SIEVOX 网站同一套账号密码。</text>
+    </view>
+  </view>
+
+  <view wx:elif="{{tab === 'departments'}}" class="panel dept-detail-panel">
+    <view class="panel-head">
+      <text class="panel-kicker">SHOWCASE</text>
+      <text class="panel-title">部门介绍</text>
+      <button class="small-button" bindtap="switchTab" data-tab="home">返回首页</button>
+    </view>
+        <view wx:if="{{departmentDetail}}" class="dept-detail">
+      <view class="dept-detail-hero">
+        <image
+          class="dept-detail-cover"
+          src="{{departmentDetail.coverImageUrl || (siteHome && siteHome.coverImageUrl) || '/assets/home-hero.png'}}"
+          mode="aspectFill" />
+        <view class="dept-detail-copy">
+          <text class="dept-detail-org">{{departmentDetail.organizationLabel}}</text>
+          <text class="dept-detail-title">{{departmentDetail.departmentLabel}}</text>
+          <text class="dept-detail-summary">{{departmentDetail.summary}}</text>
+        </view>
+      </view>
+      <view class="dept-detail-meta">
+        <text>{{departmentDetail.title}}</text>
+      </view>
+      <view wx:if="{{departmentDetail.notices && departmentDetail.notices.length}}" class="dept-notice-list">
+        <view wx:for="{{departmentDetail.notices}}" wx:key="_id" class="dept-notice-card">
+          <text class="dept-notice-title">{{item.displayTitle || item.title}}</text>
+          <text class="dept-notice-meta">{{item.displayTime}} · {{item.departmentLabel}}</text>
+          <text class="dept-notice-summary">{{item.displaySummary || '暂无摘要'}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:elif="{{tab === 'submit'}}" class="panel form-panel">
+    <view class="panel-head">
+      <text class="panel-kicker">SIEVOX 学生权益反馈</text>
+      <text class="panel-title">提交新的反馈</text>
+    </view>
+    <view wx:if="{{!token}}" class="empty-block"><text>请先登录后再提交反馈。</text></view>
+    <block wx:else>
+      <view class="picker-field">
+        <text>问题领域</text>
+        <picker mode="selector" range="{{categories}}" range-key="label" value="{{categoryIndex}}" bindchange="onCategoryChange">
+          <view class="picker-value">{{categories[categoryIndex].label}} · {{categories[categoryIndex].desc}}</view>
+        </picker>
+      </view>
+      <view class="picker-field">
+        <text>细分类别</text>
+        <picker mode="selector" range="{{categories[categoryIndex].sub}}" value="{{subCategoryIndex}}" bindchange="onSubCategoryChange">
+          <view class="picker-value">{{categories[categoryIndex].sub[subCategoryIndex]}}</view>
+        </picker>
+      </view>
+      <input class="field" maxlength="100" placeholder="标题，100字以内" value="{{feedbackForm.title}}" data-field="title" bindinput="onFeedbackInput" />
+      <textarea class="textarea" maxlength="2000" placeholder="请描述具体情况、地点、时间和诉求" value="{{feedbackForm.content}}" data-field="content" bindinput="onFeedbackInput" />
+      <checkbox-group bindchange="onAnonymousChange">
+        <label class="checkbox-row">
+          <checkbox value="anonymous" checked="{{feedbackForm.isAnonymous}}" color="#4f8cff" />
+          <text>匿名提交</text>
+        </label>
+      </checkbox-group>
+      <button class="primary-button" loading="{{loading}}" bindtap="submitFeedback">提交反馈</button>
+    </block>
+  </view>
+
+  <view wx:elif="{{tab === 'bridge'}}" class="panel bridge-panel">
+    <view class="panel-head">
+      <text class="panel-kicker">SIEBridge</text>
+      <text class="panel-title">课程资源共享平台</text>
+    </view>
+    <text class="bridge-lead">课程资料、真题课件与学习笔记的共享、上传和审核。</text>
+    <view class="bridge-grid">
+      <view wx:for="{{bridgeSteps}}" wx:key="index" class="bridge-card">
+        <text class="bridge-card-step">0{{index + 1}}</text>
+        <text class="bridge-card-text">{{item}}</text>
+      </view>
+    </view>
+    <button class="primary-button" bindtap="switchTab" data-tab="home">返回首页</button>
+  </view>
+
+  <view wx:elif="{{tab === 'mine'}}" class="panel list-panel">
+    <view class="panel-head">
+      <text class="panel-kicker">MY</text>
+      <text class="panel-title">账号与反馈</text>
+      <button class="small-button" loading="{{refreshing}}" bindtap="loadFeedbacks">刷新</button>
+    </view>
+    <view wx:if="{{!token}}" class="empty-block">
+      <text>登录后可查看账号信息和我的反馈。</text>
+    </view>
+    <block wx:else>
+      <view class="my-card">
+        <text class="my-name">{{displayName}}</text>
+        <text class="my-meta">{{user.studentId}}</text>
+      </view>
+      <view wx:if="{{feedbacks.length === 0}}" class="empty-block">
+        <text>暂无反馈记录</text>
+      </view>
+      <view wx:for="{{feedbacks}}" wx:key="_id" class="feedback-card">
+        <view class="feedback-top">
+          <text class="feedback-title">{{item.title}}</text>
+          <text class="status">{{statusText[item.status] || item.status}}</text>
+        </view>
+        <text class="feedback-meta">{{item.subCategory || item.category}} · {{priorityText[item.priority] || item.priority}}</text>
+        <text class="feedback-content">{{item.content}}</text>
+        <text class="feedback-time">{{item.createdAt}}</text>
+      </view>
+    </block>
+  </view>
+
+  <view class="bottom-dock">
+    <button class="dock-item {{tab === 'home' ? 'active' : ''}}" data-tab="home" bindtap="switchTab">首页</button>
+    <button class="dock-item {{tab === 'departments' ? 'active' : ''}}" data-tab="departments" bindtap="switchTab">部门</button>
+    <button class="dock-item {{tab === 'submit' ? 'active' : ''}}" data-tab="submit" bindtap="switchTab">反馈</button>
+    <button class="dock-item {{tab === 'mine' ? 'active' : ''}}" data-tab="mine" bindtap="switchTab">我的</button>
+  </view>
+</view>

@@ -59,6 +59,17 @@ coverage/
 *.temp
 .cache/
 .tmp-putty/
+.tmp-*/
+tmp/
+tmp-*/
+tmp-playwright/
+tmp-shot/
+Release/
+Tempory-files/*.zip
+Tempory-files/*.png
+Tempory-files/*.html
+Tempory-files/*.css
+Tempory-files/SIEHUB_WECHAT_MINIPROGRAM_*/
 
 # MongoDB 数据（如果本地测试）
 data/db/

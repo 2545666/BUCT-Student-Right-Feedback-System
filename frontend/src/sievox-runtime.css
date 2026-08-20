@@ -4,6 +4,178 @@
   --font-latin: "Source Serif 4", "Iowan Old Style", "Georgia", "Times New Roman", serif;
 }
 
+/* Final student feedback form fit and withdraw controls. */
+.feedback-list {
+  min-width: 0;
+}
+
+.feedback-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.feedback-row-main {
+  min-width: 0;
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto minmax(86px, auto) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.feedback-copy,
+.feedback-time {
+  min-width: 0;
+}
+
+.feedback-copy strong,
+.feedback-copy small,
+.feedback-time strong,
+.feedback-time small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feedback-withdraw-button {
+  min-height: 34px;
+  padding: 0 11px;
+  border: 1px solid color-mix(in srgb, #dc2626 36%, var(--line));
+  border-radius: 999px;
+  color: #b91c1c;
+  background: color-mix(in srgb, #fee2e2 78%, var(--paper));
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.compose-drawer,
+.mobile-sheet {
+  overflow-x: hidden;
+}
+
+.compose-body,
+.sheet-body,
+.input-field,
+.upload-area,
+.compose-options,
+.sheet-actions,
+.compose-categories {
+  min-width: 0;
+}
+
+.input-field input,
+.input-field select,
+.input-field textarea,
+.mobile-sheet input,
+.mobile-sheet select,
+.mobile-sheet textarea {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.input-field textarea,
+.mobile-sheet textarea {
+  resize: vertical;
+}
+
+.upload-area {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.upload-area > div {
+  min-width: 0;
+}
+
+.upload-area strong,
+.upload-area p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sheet-attach input[hidden],
+.upload-area input[hidden] {
+  display: none !important;
+}
+
+.compose-drawer footer,
+.sheet-actions {
+  flex-wrap: wrap;
+}
+
+.compose-drawer footer .primary-button,
+.sheet-actions .sheet-next {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 760px) {
+  .feedback-row {
+    grid-template-columns: 1fr;
+  }
+
+  .feedback-row-main {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .feedback-row-main .feedback-time,
+  .feedback-row-main > svg:last-child {
+    display: none;
+  }
+
+  .feedback-withdraw-button {
+    justify-self: stretch;
+    margin: 0 10px 10px;
+  }
+
+  .sheet-actions {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .sheet-actions .sheet-next {
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .compose-drawer {
+    width: min(100vw, 420px);
+  }
+
+  .compose-categories {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .upload-area {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .upload-area .outline-button {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .compose-options {
+    grid-template-columns: 1fr;
+  }
+}
+
 html,
 body,
 button,
@@ -1496,6 +1668,67 @@ html[data-theme="dark"] .admin-demo-shell .organization-framework-panel .org-lea
   white-space: nowrap;
 }
 
+.admin-demo-shell .brand-lockup {
+  align-items: center !important;
+  gap: 11px;
+}
+
+.admin-demo-shell .brand-lockup img {
+  flex: 0 0 42px;
+  display: block;
+  transform: translateY(-1px);
+}
+
+.admin-demo-shell .brand-lockup div {
+  min-height: 42px;
+  display: grid !important;
+  align-content: center;
+  gap: 3px;
+}
+
+.admin-demo-shell .brand-lockup span {
+  margin-top: 0 !important;
+  line-height: 1.18;
+}
+
+.admin-side-page {
+  display: grid;
+  gap: 16px;
+}
+
+.admin-quick-feedback-form {
+  display: grid;
+  gap: 16px;
+}
+
+.admin-quick-feedback-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-quick-feedback-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.admin-guide-grid {
+  margin-top: 16px;
+}
+
+@media (max-width: 860px) {
+  .admin-quick-feedback-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-quick-feedback-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
 html[data-theme="dark"] .topbar-user-chip {
   color: #fff !important;
   background: color-mix(in srgb, rgb(var(--theme-rgb)) 20%, #0b1018) !important;
@@ -2015,5 +2248,161 @@ html[data-theme="dark"] .topbar-user-chip {
   .admin-demo-shell .case-tr > span:nth-child(5) {
     justify-items: start;
     text-align: left;
+  }
+}
+
+/* Final override: SIEVOX student form and recall action must fit compact screens. */
+.feedback-list {
+  min-width: 0;
+}
+
+.feedback-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.feedback-row-main {
+  min-width: 0;
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto minmax(86px, auto) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.feedback-copy,
+.feedback-time {
+  min-width: 0;
+}
+
+.feedback-copy strong,
+.feedback-copy small,
+.feedback-time strong,
+.feedback-time small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feedback-withdraw-button {
+  min-height: 34px;
+  padding: 0 11px;
+  border: 1px solid color-mix(in srgb, #dc2626 36%, var(--line));
+  border-radius: 999px;
+  color: #b91c1c;
+  background: color-mix(in srgb, #fee2e2 78%, var(--paper));
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.compose-drawer,
+.mobile-sheet {
+  overflow-x: hidden;
+}
+
+.compose-body,
+.sheet-body,
+.input-field,
+.upload-area,
+.compose-options,
+.sheet-actions,
+.compose-categories {
+  min-width: 0;
+}
+
+.input-field input,
+.input-field select,
+.input-field textarea,
+.mobile-sheet input,
+.mobile-sheet select,
+.mobile-sheet textarea {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.upload-area {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.upload-area > div {
+  min-width: 0;
+}
+
+.upload-area strong,
+.upload-area p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compose-drawer footer,
+.sheet-actions {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 760px) {
+  .feedback-row {
+    grid-template-columns: 1fr;
+  }
+
+  .feedback-row-main {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .feedback-row-main .feedback-time,
+  .feedback-row-main > svg:last-child {
+    display: none;
+  }
+
+  .feedback-withdraw-button {
+    justify-self: stretch;
+    margin: 0 10px 10px;
+  }
+
+  .sheet-actions {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .sheet-actions .sheet-next {
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .compose-drawer {
+    width: min(100vw, 420px);
+  }
+
+  .compose-categories {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .upload-area {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .upload-area .outline-button {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .compose-options {
+    grid-template-columns: 1fr;
   }
 }

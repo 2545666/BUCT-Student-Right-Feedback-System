@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="gallery-carousel.css" />
     <link rel="stylesheet" href="real-interface.css" />
     <link rel="stylesheet" href="legal-footer.css" />
+    <link rel="stylesheet" href="member-layout.css?v=20260806" />
   </head>
   <body>
     <div class="grain" aria-hidden="true"></div>
@@ -52,7 +53,7 @@
         </div>
         <div class="hero-visual real-visual" aria-label="SIEVOX 真实系统截图">
           <figure class="real-interface-shot real-interface-shot-sievox">
-            <img src="sievox-real-interface.png" alt="SIEVOX 真实系统界面截图" loading="eager" />
+            <img src="sievox-real-interface-zhaoqihan-20260807.png" alt="SIEVOX 真实系统界面截图" loading="eager" />
             <figcaption><span>REAL SYSTEM UI</span><strong>SIEVOX 学生权益工作台</strong><p>截图来自本地登录后的真实系统界面。</p></figcaption>
           </figure>
         </div>
@@ -74,10 +75,30 @@
         <div class="section-kicker light"><span>02</span><p>SIEVOX SERVICE DESK</p></div>
         <div class="desk-section-head"><div><h2>一张单据，<br /><em>六个清楚的节点</em></h2></div><p>SIEHUB 里的 SIEVOX 是学生权益部的工作台。反馈提交后进入统一队列，分类、协同、回访与归档都留下记录。</p></div>
         <div class="workflow">
-          <div class="workflow-rail"><span class="rail-current">01</span><span>02</span><span>03</span><span>04</span><span>05</span><span>06</span></div>
+          <div class="workflow-rail" aria-label="问题反馈流转步骤">
+            <button class="rail-current" type="button" data-workflow-step="0">01</button>
+            <button type="button" data-workflow-step="1">02</button>
+            <button type="button" data-workflow-step="2">03</button>
+            <button type="button" data-workflow-step="3">04</button>
+            <button type="button" data-workflow-step="4">05</button>
+            <button type="button" data-workflow-step="5">06</button>
+          </div>
           <div class="workflow-copy">
-            <div class="workflow-card"><small>01 / 接住声音</small><h3>提交反馈，先让问题有名字</h3><p>同学可以从 SIEHUB 进入 SIEVOX，留下问题分类、地点和期望。每一条反馈都有自己的编号。</p><a href="/rights">Open SIEVOX &#8599;</a></div>
-            <div class="workflow-notes"><span>提交</span><span>初筛</span><span>转交</span><span>回访</span><span>归档</span></div>
+            <div class="workflow-card" aria-live="polite">
+              <small id="workflowStepLabel">01 / 接住声音</small>
+              <h3 id="workflowStepTitle">提交反馈，先让问题有名字</h3>
+              <p id="workflowStepCopy">同学可以从 SIEHUB 进入 SIEVOX，留下问题分类、地点和期望。每一条反馈都有自己的编号。</p>
+              <a id="workflowStepAction" href="/rights">Open SIEVOX &#8599;</a>
+              <div class="workflow-progress" aria-hidden="true"><i></i></div>
+            </div>
+            <div class="workflow-notes" aria-label="问题反馈节点快捷切换">
+              <button class="is-active" type="button" data-workflow-step="0">提交</button>
+              <button type="button" data-workflow-step="1">编号</button>
+              <button type="button" data-workflow-step="2">初筛</button>
+              <button type="button" data-workflow-step="3">分派</button>
+              <button type="button" data-workflow-step="4">处理</button>
+              <button type="button" data-workflow-step="5">回访归档</button>
+            </div>
           </div>
           <div class="desk-aside"><span class="aside-label">THIS MONTH</span><strong>18</strong><p>条反馈完成闭环</p><div class="aside-rule"></div><span class="aside-label">RESPONSE RATE</span><strong>96<span>%</span></strong><p>首次响应及时率</p></div>
         </div>
@@ -85,28 +106,68 @@
 
       <section class="field section" id="field">
         <div class="section-kicker"><span>03</span><p>FIELD NOTES</p></div>
-        <div class="section-intro"><h2>权益不只在后台，<br /><em>也在每一次相遇里</em></h2><p>提案大赛、心栈 SIE、百花心晴集市和院周活动，让“被看见”成为校园里真实发生的事。</p></div>
-        <div class="field-grid"><article class="field-card field-red"><span>01 / PROPOSAL</span><h3>提案大赛</h3><p>把观察写成方案，把方案带到可以讨论的桌面。</p><b>READ THE ROOM &#8599;</b></article><article class="field-card field-yellow"><span>02 / WELLBEING</span><h3>心栈 SIE</h3><p>给忙碌的同学留一块可以呼吸、表达与被照顾的空间。</p><b>MAKE SPACE &#8599;</b></article><article class="field-card field-green"><span>03 / CAMPUS LIFE</span><h3>院周活动</h3><p>从最美班级到最美宿舍，让集体生活的细节被认真记录。</p><b>SEE THE GOOD &#8599;</b></article></div>
+        <div class="section-intro"><h2>权益不只在后台，<br /><em>也在每一次相遇里</em></h2><p>提案大赛、心栖SIE、百花心晴集市和院周活动，让“被看见”成为校园里真实发生的事。</p></div>
+        <div class="field-grid">
+          <article class="field-card field-red"><img class="field-card-image" src="assets/activities/image1.png" alt="" loading="eager" /><i class="field-card-shade"></i><span>01 / PROPOSAL</span><h3>提案大赛</h3><p>把观察写成方案，把方案带到可以讨论的桌面。</p><b>READ THE ROOM &#8599;</b></article>
+          <article class="field-card field-yellow"><img class="field-card-image" src="assets/activities/image18.png" alt="" loading="eager" /><i class="field-card-shade"></i><span>02 / WELLBEING</span><h3>心栖SIE</h3><p>给忙碌的同学留一块可以呼吸、表达与被照顾的空间。</p><b>MAKE SPACE &#8599;</b></article>
+          <article class="field-card field-green"><img class="field-card-image" src="assets/activities/image5.png" alt="" loading="eager" /><i class="field-card-shade"></i><span>03 / CAMPUS LIFE</span><h3>院周活动</h3><p>从最美班级到最美宿舍，让集体生活的细节被认真记录。</p><b>SEE THE GOOD &#8599;</b></article>
+        </div>
       </section>
 
       <section class="showcase section" id="showcase">
         <div class="section-kicker"><span>04</span><p>RIGHTS SHOWCASE</p></div>
-        <div class="showcase-head"><div><h2>把现场，<br /><em>接入展示台</em></h2></div><p>本地编辑模式下可上传每个活动的多张照片；推送到服务器后，学生端与志愿者端仅展示已发布的只读版本。</p></div>
+        <div class="showcase-head"><div><h2>把现场，<br /><em>接入展示台</em></h2></div><p>从提案表达、院周共建到心理陪伴，学生权益部把同学们真实参与过的活动整理成可阅读、可回看、可跳转推文的展示档案。</p></div>
         <div class="showcase-grid" aria-label="学生权益部图片展示台">
-          <article class="showcase-card gallery-trigger" data-gallery-index="0" tabindex="0" role="button"><div class="upload-photo red-stage"><img alt="权益反馈回访预览" /><b>01</b><span class="photo-count">Image slot</span></div><div class="event-info"><small>SIEVOX</small><h3>权益反馈回访</h3><span>问题记录 · 进度回访</span></div></article>
-          <article class="showcase-card gallery-trigger" data-gallery-index="1" tabindex="0" role="button"><div class="upload-photo paper-stage"><img alt="提案大赛活动预览" /><b>02</b><span class="photo-count">Image slot</span></div><div class="event-info"><small>PROPOSAL</small><h3>提案大赛</h3><span>校园观察 · 方案表达</span></div></article>
-          <article class="showcase-card gallery-trigger wide" data-gallery-index="2" tabindex="0" role="button"><div class="upload-photo yellow-stage"><img alt="心栈 SIE 活动预览" /><b>03</b><span class="photo-count">Image slot</span></div><div class="event-info"><small>WELLBEING</small><h3>心栈 SIE</h3><span>表达空间 · 成长陪伴</span></div></article>
-          <article class="showcase-card gallery-trigger" data-gallery-index="3" tabindex="0" role="button"><div class="upload-photo green-stage"><img alt="权益服务日预览" /><b>04</b><span class="photo-count">Image slot</span></div><div class="event-info"><small>SERVICE DAY</small><h3>权益服务日</h3><span>现场收集 · 即时回应</span></div></article>
+          <article class="showcase-card gallery-trigger" data-gallery-index="0" tabindex="0" role="button">
+            <div class="upload-photo red-stage"><img alt="模拟政协提案大赛预览" /><b>01</b><span class="photo-count">Image slot</span></div>
+            <div class="event-info"><small>PROPOSAL</small><h3>模拟政协提案大赛</h3><span>把校园观察转化为公共表达训练</span><p>围绕真实议题完成调研、提案撰写与现场展示，让同学们在模拟政协场景里学习如何提出有证据、有回应路径的建议。</p><a class="article-link" href="https://mp.weixin.qq.com/s/amcKCkQyM1ZGR8y4uBbI7A" target="_blank" rel="noreferrer">查看推文 <span>&#8599;</span></a></div>
+          </article>
+          <article class="showcase-card gallery-trigger" data-gallery-index="1" tabindex="0" role="button">
+            <div class="upload-photo paper-stage"><img alt="北京化工大学提案大赛预览" /><b>02</b><span class="photo-count">Image slot</span></div>
+            <div class="event-info"><small>PROPOSAL</small><h3>北京化工大学提案大赛</h3><span>从学院视角走向校级议题表达</span><p>引导同学把日常发现整理成系统方案，在更大的平台上参与校园治理讨论。</p><a class="article-link" href="https://mp.weixin.qq.com/s/71YrErLwPiy_hLP4ttRKdA" target="_blank" rel="noreferrer">查看推文 <span>&#8599;</span></a></div>
+          </article>
+          <article class="showcase-card gallery-trigger" data-gallery-index="2" tabindex="0" role="button">
+            <div class="upload-photo green-stage"><img alt="班级风采展示预览" /><b>03</b><span class="photo-count">Image slot</span></div>
+            <div class="event-info"><small>CAMPUS WEEK</small><h3>班级风采展示</h3><span>筑梦“家”园 · 共绘青春</span><p>记录班级建设里的凝聚力、创造力和日常温度，让集体故事被看见。</p><a class="article-link" href="https://mp.weixin.qq.com/s/DFOO26xaDQ2PPSw50m72Jw" target="_blank" rel="noreferrer">查看推文 <span>&#8599;</span></a></div>
+          </article>
+          <article class="showcase-card gallery-trigger" data-gallery-index="3" tabindex="0" role="button">
+            <div class="upload-photo green-stage"><img alt="宿舍风采展示预览" /><b>04</b><span class="photo-count">Image slot</span></div>
+            <div class="event-info"><small>CAMPUS WEEK</small><h3>宿舍风采展示</h3><span>生活空间里的共同成长</span><p>从宿舍整理、空间布置到相处瞬间，展示同学们在小家里经营出的秩序与默契。</p><a class="article-link" href="https://mp.weixin.qq.com/s/h0mju-nu_R0hE2B7tgJWAA" target="_blank" rel="noreferrer">查看推文 <span>&#8599;</span></a></div>
+          </article>
+          <article class="showcase-card gallery-trigger wide" data-gallery-index="4" tabindex="0" role="button">
+            <div class="upload-photo red-stage"><img alt="教师节暖心活动预览" /><b>05</b><span class="photo-count">Image slot</span></div>
+            <div class="event-info"><small>WARM SERVICE</small><h3>教师节暖心活动</h3><span>把感谢送到老师身边</span><p>在教师节节点组织心意传递与祝福表达，把学生的感谢变成老师能真实接收到的温暖。</p><a class="article-link" href="https://mp.weixin.qq.com/s/FphxnTA6rTIgCUaXEV29qg" target="_blank" rel="noreferrer">查看推文 <span>&#8599;</span></a></div>
+          </article>
+          <article class="showcase-card gallery-trigger wide" data-gallery-index="5" tabindex="0" role="button">
+            <div class="upload-photo paper-stage"><img alt="师生下午茶预览" /><b>06</b><span class="photo-count">Image slot</span></div>
+            <div class="event-info"><small>DIALOGUE</small><h3>师生下午茶</h3><span>在轻松场景里打开沟通</span><p>以下午茶为媒介，让老师与同学围绕学习生活、学院服务和成长困惑展开更自然的交流。</p><a class="article-link" href="https://mp.weixin.qq.com/s/-m5o_CBlNKkiTVd_9zHPzA" target="_blank" rel="noreferrer">查看推文 <span>&#8599;</span></a></div>
+          </article>
+          <article class="showcase-card gallery-trigger" data-gallery-index="6" tabindex="0" role="button">
+            <div class="upload-photo yellow-stage"><img alt="正念冥想活动预览" /><b>07</b><span class="photo-count">Image slot</span></div>
+            <div class="event-info"><small>心栖SIE</small><h3>“向阳纾压，静心疗愈”正念冥想活动</h3><span>给情绪一个安放的空间</span><p>通过正念体验帮助同学们放慢节奏、觉察压力，在学院生活里找到短暂而稳定的休息点。</p><a class="article-link" href="https://mp.weixin.qq.com/s/kaK-n6CyA7im_r1QUsXOhQ" target="_blank" rel="noreferrer">查看推文 <span>&#8599;</span></a></div>
+          </article>
+          <article class="showcase-card gallery-trigger" data-gallery-index="7" tabindex="0" role="button">
+            <div class="upload-photo yellow-stage"><img alt="情绪拼贴画活动预览" /><b>08</b><span class="photo-count">Image slot</span></div>
+            <div class="event-info"><small>心栖SIE</small><h3>“剪贴情绪，拼出心声”情绪拼贴画活动</h3><span>用拼贴表达说不出口的感受</span><p>把图片、色块与文字重新组合，让同学们用更自由的方式识别情绪、表达心声。</p><a class="article-link" href="https://mp.weixin.qq.com/s/oy7QraQoteAS0hwxvmU6rA" target="_blank" rel="noreferrer">查看推文 <span>&#8599;</span></a></div>
+          </article>
+          <article class="showcase-card gallery-trigger wide" data-gallery-index="8" tabindex="0" role="button">
+            <div class="upload-photo yellow-stage"><img alt="525百花心晴集市预览" /><b>09</b><span class="photo-count">Image slot</span></div>
+            <div class="event-info"><small>心栖SIE</small><h3>525百花心晴集市</h3><span>心愿徽章 DIY · 烦恼香囊 DIY · 趣味套圈</span><p>把心理主题活动做成可参与、可带走、可分享的集市体验，让关照自我成为校园生活里的轻松时刻。</p><a class="article-link" href="https://mp.weixin.qq.com/s/ts3lucZLZcsFocb-3MSBgw" target="_blank" rel="noreferrer">查看推文 <span>&#8599;</span></a></div>
+          </article>
         </div>
       </section>
 
       <section class="team section" id="team">
         <div class="section-kicker"><span>05</span><p>MEMBER BOARD</p></div>
-        <div class="section-intro"><h2>一位主席团成员，<br /><em>两位部门负责人</em></h2><p>展示板预留成员照片位，后续本地编辑时可替换为正式头像与介绍。</p></div>
+        <div class="section-intro"><h2>成员介绍</h2></div>
         <div class="member-board">
-          <article class="member-feature"><div class="member-photo member-photo-large"><img alt="主席团成员照片" /><span>PRESIDIUM</span></div><div class="member-copy"><small>主席团分管</small><h3>主席团成员</h3><p>统筹学生权益部重点事项、跨部门沟通与服务闭环，保证同学诉求能被持续追踪。</p><div class="member-tags"><span>协同推进</span><span>服务闭环</span><span>重点复盘</span></div></div></article>
-          <article class="member-card"><div class="member-photo member-photo-tall"><img alt="部门负责人照片" /><span>LEAD 01</span></div><div class="member-copy small-copy"><small>部门负责人</small><h3>负责人 A</h3><p>负责反馈受理、事项分派与回访节奏。</p></div></article>
-          <article class="member-card"><div class="member-photo member-photo-tall"><img alt="部门负责人照片" /><span>LEAD 02</span></div><div class="member-copy small-copy"><small>部门负责人</small><h3>负责人 B</h3><p>负责活动策划、权益调研与展示台素材整理。</p></div></article>
+          <div class="leader-label chair-label"><span>01</span><p>主席团成员 <small>PRESIDIUM MEMBER</small></p></div>
+          <article class="member-feature"><div class="member-photo member-photo-large"><img alt="主席团成员照片" /><span>PRESIDIUM MEMBER</span></div><div class="member-copy"><small>主席团成员</small><h3>赵启涵</h3><p>统筹学生权益部重点事项、跨部门沟通与服务闭环，保证同学诉求能被持续追踪。</p><div class="member-tags"><span>协同推进</span><span>服务闭环</span><span>重点复盘</span></div></div></article>
+          <div class="leader-label"><span>02</span><p>部门负责人 <small>TEAM LEADERS</small></p></div>
+          <div class="member-row">
+            <article class="member-card"><div class="member-photo member-photo-tall"><img alt="部门负责人照片" /><span>LEAD 01</span></div><div class="member-copy small-copy"><small>部门负责人</small><h3>孔晨宇</h3><p>负责反馈受理、事项分派与回访节奏。</p></div></article>
+            <article class="member-card"><div class="member-photo member-photo-tall"><img alt="部门负责人照片" /><span>LEAD 02</span></div><div class="member-copy small-copy"><small>部门负责人</small><h3>付贞辉</h3><p>负责活动策划、权益调研与展示台素材整理。</p></div></article>
+          </div>
         </div>
       </section>
 

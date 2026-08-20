@@ -24,9 +24,9 @@
   gap: 12px 26px;
   align-items: center;
   padding: 24px clamp(20px, 7vw, 112px);
-  border-top: 1px solid rgba(30, 41, 37, .16);
+  border-top: 1px solid rgba(30, 41, 37, .12);
   color: rgba(30, 41, 37, .62);
-  background: #f8f3e8;
+  background: transparent;
   font-size: 11px;
   letter-spacing: .03em;
 }
