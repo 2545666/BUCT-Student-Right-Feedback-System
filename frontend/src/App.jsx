@@ -841,9 +841,13 @@ const useLanguage = () => {
   const textOriginals = useRef(new WeakMap());
   const attrOriginals = useRef(new WeakMap());
   const translating = useRef(false);
+  const pendingTranslation = useRef(false);
+  const observerFrame = useRef(null);
+  const activeLanguage = useRef(language);
 
-  const applyLanguage = useCallback((mode = language) => {
+  const applyLanguage = useCallback((mode) => {
     if (!document.body) return;
+    activeLanguage.current = mode;
     translating.current = true;
     document.documentElement.lang = mode === 'en' ? 'en' : 'zh-CN';
     document.documentElement.dataset.language = mode;
@@ -854,7 +858,8 @@ const useLanguage = () => {
       if (!shouldSkipTranslation(textNode)) {
         if (!textOriginals.current.has(textNode)) textOriginals.current.set(textNode, textNode.nodeValue);
         const original = textOriginals.current.get(textNode);
-        textNode.nodeValue = mode === 'en' ? translateTextValue(original) : original;
+        const nextValue = mode === 'en' ? translateTextValue(original) : original;
+        if (textNode.nodeValue !== nextValue) textNode.nodeValue = nextValue;
       }
       textNode = walker.nextNode();
     }
@@ -869,12 +874,18 @@ const useLanguage = () => {
       TRANSLATABLE_ATTRS.forEach(attr => {
         if (!element.hasAttribute(attr)) return;
         if (originals[attr] === undefined) originals[attr] = element.getAttribute(attr);
-        element.setAttribute(attr, mode === 'en' ? translateTextValue(originals[attr]) : originals[attr]);
+        const nextValue = mode === 'en' ? translateTextValue(originals[attr]) : originals[attr];
+        if (element.getAttribute(attr) !== nextValue) element.setAttribute(attr, nextValue);
       });
     });
 
-    requestAnimationFrame(() => { translating.current = false; });
-  }, [language]);
+    requestAnimationFrame(() => {
+      translating.current = false;
+      if (!pendingTranslation.current) return;
+      pendingTranslation.current = false;
+      applyLanguage(activeLanguage.current);
+    });
+  }, []);
 
   useEffect(() => {
     localStorage.setItem(LANGUAGE_KEY, language);
@@ -882,12 +893,35 @@ const useLanguage = () => {
   }, [language, applyLanguage]);
 
   useEffect(() => {
-    const observer = new MutationObserver(() => {
-      if (translating.current) return;
-      requestAnimationFrame(() => applyLanguage(language));
+    const observer = new MutationObserver((records) => {
+      if (translating.current) {
+        pendingTranslation.current = true;
+        return;
+      }
+
+      records.forEach(record => {
+        if (record.type === 'characterData' && !shouldSkipTranslation(record.target)) {
+          textOriginals.current.set(record.target, record.target.nodeValue);
+          return;
+        }
+        if (record.type === 'attributes' && record.attributeName && !shouldSkipTranslation(record.target)) {
+          const originals = attrOriginals.current.get(record.target) || {};
+          originals[record.attributeName] = record.target.getAttribute(record.attributeName);
+          attrOriginals.current.set(record.target, originals);
+        }
+      });
+
+      if (observerFrame.current !== null) cancelAnimationFrame(observerFrame.current);
+      observerFrame.current = requestAnimationFrame(() => {
+        observerFrame.current = null;
+        applyLanguage(language);
+      });
     });
     observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: TRANSLATABLE_ATTRS });
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (observerFrame.current !== null) cancelAnimationFrame(observerFrame.current);
+    };
   }, [language, applyLanguage]);
 
   return { language, setLanguage };
