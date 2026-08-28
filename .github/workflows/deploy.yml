@@ -25,7 +25,7 @@ jobs:
             cd /var/www/student-feedback-system
             
             echo "📥 拉取最新代码..."
-            git pull origin main
+            git -c http.version=HTTP/1.1 pull origin main
             
             echo "📦 安装后端依赖..."
             cd backend
