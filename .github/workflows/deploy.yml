@@ -48,6 +48,8 @@ jobs:
             echo "📂 部署前端文件..."
             test -f /tmp/siehub-deploy-${{ github.run_id }}/frontend/dist/index.html
             cp -r /tmp/siehub-deploy-${{ github.run_id }}/frontend/dist/* /var/www/html/
+            mkdir -p /var/www/sievox/frontend/dist
+            cp -r /tmp/siehub-deploy-${{ github.run_id }}/frontend/dist/* /var/www/sievox/frontend/dist/
 
             echo "🧾 同步本次源码与部署配置..."
             cp /tmp/siehub-deploy-${{ github.run_id }}/frontend/src/App.jsx /var/www/student-feedback-system/frontend/src/App.jsx
